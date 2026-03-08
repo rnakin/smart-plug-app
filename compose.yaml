@@ -2,18 +2,18 @@ services:
   db:
     image: postgres:16
     restart: always
-    environment:
-      POSTGRES_DB: your_db_name
-      POSTGRES_USER: your_db_user
-      POSTGRES_PASSWORD: your_password
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   web:
-    build: .
+    build:
+      context: ./knowwatt    # ← build context IS the django folder
+      dockerfile: Dockerfile
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - .:/app
+      - ./knowwatt:/app      # ← mount the django folder into /app
     ports:
       - "8000:8000"
     depends_on:
