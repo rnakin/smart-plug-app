@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head><title>Dashboard</title></head>
+<body>
+  <h2>Dashboard</h2>
+  <p>Welcome, <strong id="username"></strong></p>
+  <p>Email: <span id="email"></span></p>
+  <br>
+  <button onclick="logout()">Logout</button>
+
+  <script>
+    const token = localStorage.getItem('access');
+
+    // No token → go to login
+    if (!token) window.location = 'login.html';
+
+    // Verify token and load user data
+    async function loadUser() {
+      const res = await fetch('http://localhost:8000/auth/me/', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById('username').textContent = data.username;
+        document.getElementById('email').textContent = data.email;
+      } else {
+        // Token expired or invalid
+        localStorage.clear();
+        window.location = 'login.html';
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location = 'login.html';
+    }
+
+    loadUser();
+  </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><title>Register</title></head>
+<body>
+  <h2>Register</h2>
+  <input id="username" placeholder="Username" /><br><br>
+  <input id="email" placeholder="Email" /><br><br>
+  <input id="password" type="password" placeholder="Password" /><br><br>
+  <button onclick="register()">Register</button>
+  <p id="error" style="color:red"></p>
+
+  <script>
+    async function register() {
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const res = await fetch('http://localhost:8000/auth/register/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        localStorage.setItem('access', data.access);
+        localStorage.setItem('refresh', data.refresh);
+        window.location = 'dashboard.html';
+      } else {
+        document.getElementById('error').textContent = JSON.stringify(data);
+      }
+    }
+  </script>
+</body>
+</html>
