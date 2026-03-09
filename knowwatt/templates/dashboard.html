@@ -16,7 +16,7 @@
 
     // Verify token and load user data
     async function loadUser() {
-      const res = await fetch('http://localhost:8000/auth/me/', {
+      const res = await fetch('/auth/me/', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
 
@@ -27,13 +27,13 @@
       } else {
         // Token expired or invalid
         localStorage.clear();
-        window.location = 'login.html';
+        window.location = '/login/';
       }
     }
 
     function logout() {
       localStorage.clear();
-      window.location = 'login.html';
+      window.location = '/login/';
     }
 
     loadUser();
