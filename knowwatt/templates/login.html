@@ -1,38 +1,83 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
-<head><title>Login</title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — KnowWatt</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
 <body>
-  <h2>Login</h2>
-  <input id="username" placeholder="Username" /><br><br>
-  <input id="password" type="password" placeholder="Password" /><br><br>
-  <button onclick="login()">Login</button>
-  <p id="forgot" style="color:black">Forgot password? click <a href='/forgot-password/'>here</a></p>
-  <p id="error" style="color:red"></p>
+<div class="auth-page">
+  <div class="auth-card m3-enter">
 
-  <script>
-    // If already logged in, skip to dashboard
-    if (localStorage.getItem('access')) window.location = '/dashboard/';
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--md-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+      </div>
+      <span class="auth-logo-name">KnowWatt</span>
+    </div>
 
-    async function login() {
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
+    <h1 class="auth-headline">Welcome back</h1>
+    <p class="auth-subhead">Sign in to your account</p>
 
-      const res = await fetch('/auth/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
+    <div class="field-group">
+      <div class="field">
+        <label class="field-label" for="username">Username</label>
+        <input class="field-input" id="username" type="text" placeholder="Enter your username" autocomplete="username">
+      </div>
+      <div class="field">
+        <label class="field-label" for="password">Password</label>
+        <input class="field-input" id="password" type="password" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+    </div>
 
-      const data = await res.json();
+    <p class="msg-error" id="error"></p>
 
-      if (res.ok) {
-        localStorage.setItem('access', data.access);
-        localStorage.setItem('refresh', data.refresh);
-        window.location = '/dashboard/';
-      } else {
-        document.getElementById('error').textContent = data.detail || 'Login failed';
-      }
+    <button class="btn-filled btn-full" onclick="login()">Sign In</button>
+
+    <div class="auth-footer" style="margin-top:16px;">
+      <a href="/forgot-password/">Forgot password?</a>
+    </div>
+    <div class="auth-footer">
+      Don't have an account? <a href="/register/">Create one</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  if (localStorage.getItem('access')) window.location = '/dashboard/';
+
+  async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorEl = document.getElementById('error');
+
+    errorEl.textContent = '';
+
+    const res = await fetch('/auth/login/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      localStorage.setItem('access', data.access);
+      localStorage.setItem('refresh', data.refresh);
+      window.location = '/dashboard/';
+    } else {
+      errorEl.textContent = data.detail || 'Login failed. Please check your credentials.';
     }
-  </script>
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+</script>
 </body>
 </html>

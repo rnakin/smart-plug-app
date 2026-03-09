@@ -1,36 +1,83 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
-<head><title>Register</title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — KnowWatt</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
 <body>
-  <h2>Register</h2>
-  <input id="username" placeholder="Username" /><br><br>
-  <input id="email" placeholder="Email" /><br><br>
-  <input id="password" type="password" placeholder="Password" /><br><br>
-  <button onclick="register()">Register</button>
-  <p id="error" style="color:red"></p>
+<div class="auth-page">
+  <div class="auth-card m3-enter">
 
-  <script>
-    async function register() {
-      const username = document.getElementById('username').value;
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--md-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+      </div>
+      <span class="auth-logo-name">KnowWatt</span>
+    </div>
 
-      const res = await fetch('/auth/register/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password })
-      });
+    <h1 class="auth-headline">Create account</h1>
+    <p class="auth-subhead">Start monitoring your energy usage</p>
 
-      const data = await res.json();
+    <div class="field-group">
+      <div class="field">
+        <label class="field-label" for="username">Username</label>
+        <input class="field-input" id="username" type="text" placeholder="Choose a username" autocomplete="username">
+      </div>
+      <div class="field">
+        <label class="field-label" for="email">Email</label>
+        <input class="field-input" id="email" type="email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label class="field-label" for="password">Password</label>
+        <input class="field-input" id="password" type="password" placeholder="Create a password" autocomplete="new-password">
+      </div>
+    </div>
 
-      if (res.ok) {
-        localStorage.setItem('access', data.access);
-        localStorage.setItem('refresh', data.refresh);
-        window.location = '/dashboard/';
-      } else {
-        document.getElementById('error').textContent = JSON.stringify(data);
-      }
+    <p class="msg-error" id="error"></p>
+
+    <button class="btn-filled btn-full" onclick="register()">Create Account</button>
+
+    <div class="auth-footer">
+      Already have an account? <a href="/login/">Sign in</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  async function register() {
+    const username = document.getElementById('username').value;
+    const email    = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorEl  = document.getElementById('error');
+
+    errorEl.textContent = '';
+
+    const res = await fetch('/auth/register/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      localStorage.setItem('access', data.access);
+      localStorage.setItem('refresh', data.refresh);
+      window.location = '/dashboard/';
+    } else {
+      errorEl.textContent = data.error || JSON.stringify(data);
     }
-  </script>
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') register();
+  });
+</script>
 </body>
 </html>

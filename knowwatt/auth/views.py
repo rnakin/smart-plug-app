@@ -119,8 +119,8 @@ class ForgotPasswordView(APIView):
         try:
             user = User.objects.get(email=email)
             token = generate_token({'user_id': user.id, 'type': 'password_reset'}, hours=1)
-            reset_url = f"{settings.FRONTEND_URL}/reset-password/?token={quote(token)}"  # ← wrap with quote()
-
+            reset_url = f"{settings.FRONTEND_URL}/reset-password/?token={quote(token)}"  #wrap with quote()
+            print(reset_url) 
             send_mail(
                 subject='Reset your KnowWatt password',
                 message=f'Click to reset your password: {reset_url}',
