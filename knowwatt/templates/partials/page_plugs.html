@@ -1,0 +1,22 @@
+<!-- ════ PAGE: PLUGS ════ -->
+<div class="page" id="page-plugs">
+  <div class="page-header">
+    <h1 class="page-title">Smart Plugs</h1>
+    <button class="btn-filled" onclick="openModal('modal-add-plug')">+ Add Plug</button>
+  </div>
+
+  <div class="plugs-grid" id="plugs-grid">
+    <div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--md-outline)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="2" width="12" height="6" rx="2"/>
+          <path d="M4 8h16v2a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8z"/>
+          <path d="M12 14v8"/>
+        </svg>
+      </div>
+      <div class="empty-title">No smart plugs</div>
+      <div class="empty-sub">Register your first smart plug to start monitoring energy usage.</div>
+      <button class="btn-tonal" style="margin-top:8px" onclick="openModal('modal-add-plug')">Register Plug</button>
+    </div>
+  </div>
+</div>

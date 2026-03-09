@@ -1,0 +1,43 @@
+<!-- ════ PAGE: SETTINGS ════ -->
+<div class="page" id="page-settings">
+  <div class="page-header">
+    <h1 class="page-title">Settings</h1>
+  </div>
+
+  <!-- House settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">House</div>
+    <div class="field-group" style="margin-bottom:16px;">
+      <div class="field">
+        <label class="field-label">House Name</label>
+        <input class="field-input" id="settings-house-name" placeholder="My Home">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-tonal" onclick="saveHouseName()">Save Changes</button>
+      <button class="btn-filled" onclick="openModal('modal-create-house')"
+              style="background:var(--md-secondary);color:var(--md-on-secondary);">
+        + Create New House
+      </button>
+    </div>
+    <p class="msg-notice" id="settings-house-msg" style="margin-top:12px;"></p>
+  </div>
+
+  <!-- Account settings -->
+  <div class="settings-section">
+    <div class="settings-section-title">Account</div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="popup-avatar" id="settings-avatar" style="width:56px;height:56px;font-size:22px;">?</div>
+      <div>
+        <div style="font-size:var(--type-title-sm);font-weight:600;" id="settings-username">—</div>
+        <div style="font-size:var(--type-body-sm);color:var(--md-on-surface-var);" id="settings-email">—</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn-tonal" onclick="logout()"
+              style="background:var(--md-error-cont);color:var(--md-on-error-cont);">
+        Sign Out
+      </button>
+    </div>
+  </div>
+</div>
