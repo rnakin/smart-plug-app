@@ -1,4 +1,6 @@
 from django.contrib.auth.models import User
+from django.conf import settings
+from django.core.mail import send_mail
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,6 +8,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+import jwt
+import datetime
+from urllib.parse import quote
+
+def generate_token(payload: dict, hours: int = 1) -> str:
+    payload = payload.copy()
+    payload['exp'] = datetime.datetime.utcnow() + datetime.timedelta(hours=hours)
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+
+
+def decode_token(token: str) -> dict:
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
 
 
 class RegisterView(APIView):
@@ -94,6 +108,7 @@ class MeView(APIView):
             'email': request.user.email,
         })
 
+
 class ForgotPasswordView(APIView):
     def post(self, request):
         email = request.data.get('email')
@@ -104,7 +119,7 @@ class ForgotPasswordView(APIView):
         try:
             user = User.objects.get(email=email)
             token = generate_token({'user_id': user.id, 'type': 'password_reset'}, hours=1)
-            reset_url = f"{settings.FRONTEND_URL}/reset-password/?token={token}"
+            reset_url = f"{settings.FRONTEND_URL}/reset-password/?token={quote(token)}"  # ← wrap with quote()
 
             send_mail(
                 subject='Reset your KnowWatt password',
@@ -113,7 +128,7 @@ class ForgotPasswordView(APIView):
                 recipient_list=[email],
             )
         except User.DoesNotExist:
-            pass  # Don't reveal if email exists
+            pass
 
         return Response({'message': 'If that email exists, a reset link has been sent.'})
 

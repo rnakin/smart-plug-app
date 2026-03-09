@@ -11,7 +11,7 @@
 
   <script>
     // If already logged in, skip to dashboard
-    if (localStorage.getItem('access')) window.location = 'dashboard.html';
+    if (localStorage.getItem('access')) window.location = '/dashboard/';
 
     async function login() {
       const username = document.getElementById('username').value;

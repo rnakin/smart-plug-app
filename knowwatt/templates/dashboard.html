@@ -12,7 +12,7 @@
     const token = localStorage.getItem('access');
 
     // No token → go to login
-    if (!token) window.location = 'login.html';
+    if (!token) window.location = '/login/';
 
     // Verify token and load user data
     async function loadUser() {
@@ -31,7 +31,18 @@
       }
     }
 
-    function logout() {
+    async function logout() {
+      const refresh = localStorage.getItem('refresh');
+      if (refresh) {
+        await fetch('/auth/logout/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ refresh })
+        });
+      }
       localStorage.clear();
       window.location = '/login/';
     }
