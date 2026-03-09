@@ -93,3 +93,52 @@ class MeView(APIView):
             'username': request.user.username,
             'email': request.user.email,
         })
+
+class ForgotPasswordView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+
+        if not email:
+            return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+            token = generate_token({'user_id': user.id, 'type': 'password_reset'}, hours=1)
+            reset_url = f"{settings.FRONTEND_URL}/reset-password/?token={token}"
+
+            send_mail(
+                subject='Reset your KnowWatt password',
+                message=f'Click to reset your password: {reset_url}',
+                from_email='noreply@knowwatt.com',
+                recipient_list=[email],
+            )
+        except User.DoesNotExist:
+            pass  # Don't reveal if email exists
+
+        return Response({'message': 'If that email exists, a reset link has been sent.'})
+
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        token = request.data.get('token')
+        new_password = request.data.get('password')
+
+        if not token or not new_password:
+            return Response({'error': 'Token and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            payload = decode_token(token)
+
+            if payload.get('type') != 'password_reset':
+                raise Exception('Invalid token type')
+
+            user = User.objects.get(id=payload['user_id'])
+            user.set_password(new_password)
+            user.save()
+
+            return Response({'message': 'Password reset successful. You can now login.'})
+
+        except jwt.ExpiredSignatureError:
+            return Response({'error': 'Reset link expired'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)

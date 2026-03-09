@@ -11,3 +11,12 @@ def register_page(request):
 
 def dashboard_page(request):
     return render(request, 'dashboard.html')
+
+def verify_email_page(request):
+    return render(request, 'verify_email.html')
+
+def forgot_password_page(request):
+    return render(request, 'forgot_password.html')
+
+def reset_password_page(request):
+    return render(request, 'reset_password.html')

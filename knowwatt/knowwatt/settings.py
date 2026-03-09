@@ -145,3 +145,6 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+FRONTEND_URL = 'http://localhost:8000'
