@@ -21,15 +21,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# SECRET_KEY = 'django-insecure-^jam_4*=9)^=$9rw)fd+18&57mndc7=rlecmpf28c#yqwxky9t'
+
 SECRET_KEY = os.environ.get('SECRET_KEY')
-# SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = []
+if SECRET_KEY is None:
+    SECRET_KEY = "thisisarandomsecretkeyforlocallytesingonly"
 
 
+DEBUG = os.environ.get('DEBUG')
+
+if DEBUG is None:
+    DEBUG = True
+
+ALLOWED_HOSTS = ["localhost","0.0.0.0"]
+print(SECRET_KEY)
+print(DEBUG)
 # Application definition
 
 INSTALLED_APPS = [
@@ -40,6 +45,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
