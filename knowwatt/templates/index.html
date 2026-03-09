@@ -1,10 +1,425 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
-<head><title>KnowWatt</title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KnowWatt — Smart Energy Monitoring</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+    /* ── Landing-specific layout ── */
+    .landing {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top nav bar ── */
+    .landing-nav {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      padding: 0 40px;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--md-surface);
+      border-bottom: 1px solid var(--md-outline-var);
+    }
+
+    .landing-nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      text-decoration: none;
+    }
+
+    .landing-nav-logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--shape-md);
+      background: var(--md-primary-container);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .landing-nav-logo-name {
+      font-size: var(--type-title-md);
+      font-weight: 700;
+      color: var(--md-on-surface);
+      letter-spacing: -0.2px;
+    }
+
+    .landing-nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Hero section ── */
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 64px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--md-primary-container);
+      color: var(--md-on-primary-cont);
+      font-size: var(--type-label-lg);
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: var(--shape-full);
+      margin-bottom: 28px;
+      letter-spacing: 0.02em;
+    }
+
+    .hero-title {
+      font-size: clamp(36px, 6vw, 57px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      color: var(--md-on-surface);
+      margin-bottom: 20px;
+    }
+
+    .hero-title .accent {
+      color: var(--md-primary);
+    }
+
+    .hero-sub {
+      font-size: var(--type-body-lg);
+      color: var(--md-on-surface-var);
+      line-height: 1.6;
+      max-width: 520px;
+      margin: 0 auto 40px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ── Feature cards section ── */
+    .features {
+      padding: 64px 40px;
+      background: var(--md-surface-container-low);
+      border-top: 1px solid var(--md-outline-var);
+    }
+
+    .features-title {
+      text-align: center;
+      font-size: var(--type-headline-sm);
+      font-weight: 400;
+      color: var(--md-on-surface);
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .features-sub {
+      text-align: center;
+      font-size: var(--type-body-md);
+      color: var(--md-on-surface-var);
+      margin-bottom: 40px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      background: var(--md-surface-container-lowest);
+      background-image: linear-gradient(var(--elev-1), var(--elev-1));
+      border-radius: var(--shape-xl);
+      padding: 28px 24px;
+      box-shadow: var(--shadow-1);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--shape-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .feature-icon.primary  { background: var(--md-primary-container); }
+    .feature-icon.secondary{ background: var(--md-secondary-cont); }
+    .feature-icon.tertiary { background: var(--md-tertiary-cont); }
+
+    .feature-name {
+      font-size: var(--type-title-sm);
+      font-weight: 600;
+      color: var(--md-on-surface);
+      margin-bottom: 8px;
+    }
+
+    .feature-desc {
+      font-size: var(--type-body-sm);
+      color: var(--md-on-surface-var);
+      line-height: 1.6;
+    }
+
+    /* ── Stats strip ── */
+    .stats-strip {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      padding: 48px 40px;
+      border-top: 1px solid var(--md-outline-var);
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      flex: 1;
+      min-width: 160px;
+      text-align: center;
+      padding: 16px 24px;
+      border-right: 1px solid var(--md-outline-var);
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-num {
+      font-size: var(--type-headline-md);
+      font-weight: 700;
+      color: var(--md-primary);
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-desc {
+      font-size: var(--type-body-sm);
+      color: var(--md-on-surface-var);
+    }
+
+    /* ── CTA section ── */
+    .cta-section {
+      padding: 64px 40px;
+      text-align: center;
+      background: var(--md-primary-container);
+      border-top: 1px solid var(--md-outline-var);
+    }
+
+    .cta-title {
+      font-size: var(--type-headline-sm);
+      font-weight: 400;
+      color: var(--md-on-primary-cont);
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .cta-sub {
+      font-size: var(--type-body-md);
+      color: var(--md-on-primary-cont);
+      opacity: 0.75;
+      margin-bottom: 28px;
+    }
+
+    /* ── Footer ── */
+    .landing-footer {
+      padding: 24px 40px;
+      border-top: 1px solid var(--md-outline-var);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .footer-copy {
+      font-size: var(--type-body-sm);
+      color: var(--md-on-surface-var);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    .footer-links a {
+      font-size: var(--type-body-sm);
+      color: var(--md-on-surface-var);
+    }
+
+    .footer-links a:hover { color: var(--md-primary); }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .landing-nav { padding: 0 20px; }
+      .features    { padding: 48px 20px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .stats-strip { padding: 32px 20px; }
+      .stat-item   { border-right: none; border-bottom: 1px solid var(--md-outline-var); }
+      .stat-item:last-child { border-bottom: none; }
+      .cta-section { padding: 48px 20px; }
+      .landing-footer { padding: 20px; flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (max-width: 520px) {
+      .hero { padding: 56px 20px 48px; }
+      .hero-actions { flex-direction: column; align-items: stretch; }
+      .hero-actions .btn-filled,
+      .hero-actions .btn-tonal { text-align: center; }
+    }
+  </style>
+</head>
 <body>
-  <h1>Welcome to KnowWatt</h1>
-  <p>Monitor your energy usage.</p>
-  <a href="/login/">Login</a> |
-  <a href="/register/">Register</a>
+<div class="landing">
+
+  <!-- ── NAV ── -->
+  <nav class="landing-nav">
+    <a class="landing-nav-logo" href="/">
+      <div class="landing-nav-logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--md-primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+      </div>
+      <span class="landing-nav-logo-name">KnowWatt</span>
+    </a>
+    <div class="landing-nav-actions">
+      <a href="/login/"    class="btn-text"   style="height:36px;line-height:36px;">Sign In</a>
+      <a href="/register/" class="btn-filled" style="height:36px;line-height:36px;padding:0 20px;">Get Started</a>
+    </div>
+  </nav>
+
+  <!-- ── HERO ── -->
+  <section class="hero m3-enter">
+    <div class="hero-eyebrow">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      Smart Energy Monitoring
+    </div>
+
+    <h1 class="hero-title">
+      Know your watts.<br>
+      <span class="accent">Save your money.</span>
+    </h1>
+
+    <p class="hero-sub">
+      KnowWatt gives you real-time visibility into every smart plug in your home.
+      Track usage, set timers, get alerts — and cut your electricity bill effortlessly.
+    </p>
+
+    <div class="hero-actions">
+      <a href="/register/" class="btn-filled" style="height:48px;line-height:48px;padding:0 32px;font-size:var(--type-body-lg);">
+        Start for free
+      </a>
+      <a href="/login/" class="btn-tonal" style="height:48px;line-height:48px;padding:0 32px;font-size:var(--type-body-lg);">
+        Sign in
+      </a>
+    </div>
+  </section>
+
+  <!-- ── STATS STRIP ── -->
+  <div class="stats-strip m3-enter d2">
+    <div class="stat-item">
+      <div class="stat-num">12.5<span style="font-size:var(--type-title-md);font-weight:400"> kWh</span></div>
+      <div class="stat-desc">Average daily usage tracked</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">30%</div>
+      <div class="stat-desc">Average energy savings reported</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">7</div>
+      <div class="stat-desc">Plugs monitored per household</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">Real-time</div>
+      <div class="stat-desc">Live power consumption data</div>
+    </div>
+  </div>
+
+  <!-- ── FEATURES ── -->
+  <section class="features m3-enter d3">
+    <h2 class="features-title">Everything you need</h2>
+    <p class="features-sub">Simple, powerful tools to understand and control your energy use</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon primary">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--md-primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+        </div>
+        <div class="feature-name">Real-time Monitoring</div>
+        <div class="feature-desc">See live power draw from every plug. Spot energy hogs instantly and understand your usage patterns over time.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon secondary">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--md-secondary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </div>
+        <div class="feature-name">Smart Alerts</div>
+        <div class="feature-desc">Get notified when a device runs too long, draws unusual power, or goes offline. Stay in control without watching a screen.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon tertiary">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--md-tertiary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="2" width="12" height="6" rx="2"/>
+            <path d="M4 8h16v2a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8z"/>
+            <path d="M12 14v8"/>
+          </svg>
+        </div>
+        <div class="feature-name">Remote Control</div>
+        <div class="feature-desc">Turn any plug on or off from anywhere. Schedule devices, set timers, and automate your home's energy routine.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ── -->
+  <section class="cta-section m3-enter d4">
+    <h2 class="cta-title">Ready to take control of your energy?</h2>
+    <p class="cta-sub">Create a free account and connect your first smart plug in minutes.</p>
+    <a href="/register/" class="btn-filled" style="height:48px;line-height:48px;padding:0 36px;font-size:var(--type-body-lg);background:var(--md-primary);">
+      Create free account
+    </a>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer class="landing-footer">
+    <span class="footer-copy">© 2025 KnowWatt. All rights reserved.</span>
+    <div class="footer-links">
+      <a href="/login/">Sign In</a>
+      <a href="/register/">Register</a>
+      <a href="/forgot-password/">Forgot Password</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  // If already logged in, go straight to dashboard
+  if (localStorage.getItem('access')) window.location = '/dashboard/';
+</script>
 </body>
 </html>
