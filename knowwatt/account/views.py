@@ -10,7 +10,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken, Token
 from rest_framework_simplejwt.exceptions import TokenError
 import datetime
-
+from django.contrib.auth.password_validation import validate_password, ValidationError
 
 # ── Custom Token Types ─────────────────────────────────────────────────────────
 
@@ -56,6 +56,12 @@ class RegisterView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Validate password
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            return Response({'error': e.messages}, status=status.HTTP_400_BAD_REQUEST)
+        # Create user
         user = User.objects.create_user(
             username=username,
             password=password,
@@ -66,7 +72,7 @@ class RegisterView(APIView):
         token = EmailVerifyToken.for_user(user)
         verify_url = f"{settings.FRONTEND_URL}/verify-email/?token={quote(str(token))}"
         if settings.DEBUG:
-            print(f"\n🔗 Reset URL: {verify_url}\n")
+            print(f"\n🔗 verification URL: {verify_url}\n")
         send_mail(
             subject='Verify your KnowWatt account',
             message=(
@@ -244,8 +250,8 @@ class ForgotPasswordView(APIView):
             if settings.DEBUG:
                 print(f"\n🔗 Reset URL: {reset_url}\n")
             # Save locally for testing
-            with open('reset_link_temp.txt', 'w') as f:
-                f.write(reset_url)
+                with open('reset_link_temp.txt', 'w') as f:
+                    f.write(reset_url)
 
             send_mail(
                 subject='Reset your KnowWatt password',
