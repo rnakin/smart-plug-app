@@ -249,9 +249,6 @@ class ForgotPasswordView(APIView):
             reset_url = f"{settings.FRONTEND_URL}/reset-password/?token={quote(str(token))}"
             if settings.DEBUG:
                 print(f"\n🔗 Reset URL: {reset_url}\n")
-            # Save locally for testing
-                with open('reset_link_temp.txt', 'w') as f:
-                    f.write(reset_url)
 
             send_mail(
                 subject='Reset your KnowWatt password',
