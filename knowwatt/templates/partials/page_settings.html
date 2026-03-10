@@ -12,9 +12,13 @@
         <label class="field-label">House Name</label>
         <input class="field-input" id="settings-house-name" placeholder="My Home">
       </div>
+      <div class="field">
+        <label class="field-label">Address</label>
+        <input class="field-input" id="settings-house-address" placeholder="Enter address">
+      </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn-tonal" onclick="saveHouseName()">Save Changes</button>
+      <button class="btn-tonal" onclick="saveHouseDetails()">Save Changes</button>
       <button class="btn-filled" onclick="openModal('modal-create-house')"
               style="background:var(--md-secondary);color:var(--md-on-secondary);">
         + Create New House

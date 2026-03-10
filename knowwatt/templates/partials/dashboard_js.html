@@ -116,7 +116,7 @@
      HOUSES
   ════════════════════════════════════════ */
   async function loadHouses() {
-    const res = await API.get('/api/house');
+    const res = await API.get('/api/houses/');
     const sel = document.getElementById('house-selector');
 
     if (!res.ok) {
@@ -132,7 +132,7 @@
     }
 
     sel.innerHTML = houses.map(h =>
-      `<option value="${h.id}">${h.name || 'House ' + h.id}</option>`
+      `<option value="${h.id}">${h.house_name || 'House ' + h.id}${h.address ? ' - ' + h.address : ''}</option>`
     ).join('');
 
     currentHouse = houses[0];
@@ -455,8 +455,32 @@
      SETTINGS PAGE
   ════════════════════════════════════════ */
   function loadSettings() {
-    if (currentHouse)
-      document.getElementById('settings-house-name').value = currentHouse.name || '';
+    if (currentHouse) {
+      document.getElementById('settings-house-name').value = currentHouse.house_name || '';
+      document.getElementById('settings-house-address').value = currentHouse.address || '';
+    }
+  }
+
+  async function saveHouseDetails() {
+    const name  = document.getElementById('settings-house-name').value.trim();
+    const address = document.getElementById('settings-house-address').value.trim();
+    const msgEl = document.getElementById('settings-house-msg');
+    msgEl.textContent = '';
+
+    if (!name || !currentHouse) return;
+
+    const res  = await API.patch(`/api/houses/${currentHouse.id}/`, { house_name: name, address: address });
+    const data = await res.json();
+
+    if (res.ok) {
+      currentHouse.house_name = name;
+      currentHouse.address = address;
+      msgEl.textContent = 'House details updated.';
+      loadHouses();
+    } else {
+      msgEl.style.color = 'var(--md-error)';
+      msgEl.textContent = data.error || 'Failed to update.';
+    }
   }
 
   async function saveHouseName() {
@@ -466,11 +490,11 @@
 
     if (!name || !currentHouse) return;
 
-    const res  = await API.patch(`/api/house/${currentHouse.id}`, { name });
+    const res  = await API.patch(`/api/houses/${currentHouse.id}/`, { house_name: name });
     const data = await res.json();
 
     if (res.ok) {
-      currentHouse.name = name;
+      currentHouse.house_name = name;
       msgEl.textContent = 'House name updated.';
       loadHouses();
     } else {
@@ -481,17 +505,21 @@
 
   async function createHouse() {
     const name  = document.getElementById('new-house-name').value.trim();
+    const address = document.getElementById('new-house-address') ? document.getElementById('new-house-address').value.trim() : '';
     const errEl = document.getElementById('create-house-error');
     errEl.textContent = '';
 
     if (!name) { errEl.textContent = 'House name is required.'; return; }
 
-    const res  = await API.post('/api/house', { name });
+    const res  = await API.post('/api/houses/', { house_name: name, address: address });
     const data = await res.json();
 
     if (res.ok) {
       closeModal('modal-create-house');
       document.getElementById('new-house-name').value = '';
+      if (document.getElementById('new-house-address')) {
+        document.getElementById('new-house-address').value = '';
+      }
       await loadHouses();
     } else {
       errEl.textContent = data.error || data.detail || 'Failed to create house.';

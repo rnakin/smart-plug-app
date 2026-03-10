@@ -4,19 +4,6 @@ from django.conf import settings
 
 
 class House(models.Model):
-    """
-    House model - represents a house/property
-    
-    Fields (from documentation):
-        id (PK) UUID - house ID
-        house_name VARCHAR - house name
-        address TEXT - address
-        created_at TIMESTAMP - created date
-    
-    Additional fields:
-        lat FLOAT - latitude
-        long FLOAT - longitude
-    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     house_name = models.CharField(max_length=255)
     address = models.TextField()
@@ -35,12 +22,10 @@ class House(models.Model):
 
 
 class HouseMember(models.Model):
-    """
-    HouseMember model representing membership of a user in a house.
-    """
     ROLE_CHOICES = [
         ('owner', 'Owner'),
         ('member', 'Member'),
+        ('guest', 'guest'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
