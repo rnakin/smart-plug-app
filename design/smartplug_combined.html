@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlugSafe</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* =====================================================
+   SHARED TOKENS
+   ===================================================== */
+:root {
+  --bg: #0d0d10;
+  --surface: #16161a;
+  --surface2: #1e1e24;
+  --surface3: #25252d;
+  --border: #2c2c36;
+  --accent: #00d98b;
+  --accent-dim: rgba(0,217,139,0.10);
+  --accent2: #4d9fff;
+  --warn: #ffaa3a;
+  --danger: #ff4d6a;
+  --text: #eeeef2;
+  --text2: #888898;
+  --text3: #4a4a58;
+  --shadow: rgba(0,0,0,0.4);
+  --room-bg: rgba(255,255,255,0.018);
+  --room-border: rgba(255,255,255,0.065);
+  --plug-glow: rgba(0,217,139,0.28);
+  --on: #00d98b;
+  --off: #3a3a44;
+}
+[data-theme="light"] {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface2: #f5f6f9;
+  --surface3: #eaeaf0;
+  --border: #dde0e8;
+  --accent: #00a86b;
+  --accent-dim: rgba(0,168,107,0.08);
+  --accent2: #2478e0;
+  --warn: #e08020;
+  --danger: #d63050;
+  --text: #0e0e14;
+  --text2: #5a5a70;
+  --text3: #aaaabc;
+  --shadow: rgba(0,0,0,0.07);
+  --room-bg: rgba(0,0,0,0.018);
+  --room-border: rgba(0,0,0,0.08);
+  --plug-glow: rgba(0,168,107,0.22);
+  --on: #00a86b;
+  --off: #c8cad4;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;overflow:hidden;transition:background .3s,color .3s;}
+*,*::before,*::after{transition:background-color .22s,border-color .22s,box-shadow .22s,color .18s;}
+
+/* =====================================================
+   SIDEBAR
+   ===================================================== */
+.sidebar{width:66px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:4px;flex-shrink:0;z-index:20;}
+.logo{width:38px;height:38px;background:var(--accent);border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;cursor:pointer;flex-shrink:0;}
+.logo svg{color:#000;}
+.nav-btn{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);border:none;background:none;font-family:'DM Sans',sans-serif;position:relative;}
+.nav-btn:hover{background:var(--surface2);color:var(--text2);}
+.nav-btn.active{background:var(--accent-dim);color:var(--accent);}
+.nav-btn .bdg{position:absolute;top:7px;right:7px;width:7px;height:7px;background:var(--danger);border-radius:50%;border:1.5px solid var(--surface);}
+.sidebar-gap{flex:1;}
+.theme-btn{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);border:none;background:none;position:relative;overflow:hidden;margin-bottom:6px;}
+.theme-btn:hover{background:var(--surface2);color:var(--text2);}
+.i-sun,.i-moon{position:absolute;transition:opacity .3s,transform .4s;}
+[data-theme="dark"] .i-sun{opacity:1;transform:scale(1) rotate(0);}
+[data-theme="dark"] .i-moon{opacity:0;transform:scale(0.5) rotate(-90deg);}
+[data-theme="light"] .i-moon{opacity:1;transform:scale(1) rotate(0);}
+[data-theme="light"] .i-sun{opacity:0;transform:scale(0.5) rotate(90deg);}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#000;cursor:pointer;}
+
+/* =====================================================
+   PAGE SYSTEM
+   ===================================================== */
+.page{display:none;flex:1;overflow:hidden;}
+.page.active{display:flex;}
+
+/* =====================================================
+   HOME PAGE — Digital Twin
+   ===================================================== */
+#page-home{flex-direction:column;overflow-y:auto;}
+#page-home::-webkit-scrollbar{width:4px;}
+#page-home::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.home-header{padding:28px 36px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
+.greeting{font-size:24px;font-weight:600;letter-spacing:-0.7px;line-height:1.2;}
+.greeting em{color:var(--accent);font-style:normal;}
+.greeting-sub{font-size:13px;color:var(--text2);margin-top:3px;font-weight:300;display:flex;align-items:center;gap:6px;}
+.live-dot-home{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;animation:ldot 1.5s infinite;}
+@keyframes ldot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.8);}}
+.qs-row{display:flex;gap:8px;align-items:center;}
+.qs{display:flex;align-items:center;gap:5px;padding:6px 11px;background:var(--surface);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:500;color:var(--text2);}
+.qs .dot{width:6px;height:6px;border-radius:50%;}
+.qs .v{color:var(--text);font-family:'DM Mono',monospace;}
+
+.house-row{padding:20px 36px 0;display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.htab{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);}
+.htab.active{background:var(--accent-dim);border-color:rgba(0,217,139,.28);color:var(--accent);}
+.htab:hover:not(.active){border-color:var(--text3);color:var(--text);}
+.htab-add{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:9px;font-size:12px;color:var(--text3);border:1px dashed var(--border);cursor:pointer;background:none;font-family:'DM Sans',sans-serif;}
+.htab-add:hover{border-color:var(--accent);color:var(--accent);}
+
+.alerts-zone{padding:16px 36px 0;flex-shrink:0;display:flex;flex-direction:column;gap:6px;}
+.apill{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:9px;font-size:12px;cursor:pointer;}
+.apill.warn{background:rgba(255,170,58,.08);border:1px solid rgba(255,170,58,.22);color:var(--warn);}
+.apill.warn:hover{background:rgba(255,170,58,.14);}
+.apill.danger{background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.22);color:var(--danger);}
+.apill.danger:hover{background:rgba(255,77,106,.14);}
+.apill-txt{flex:1;}
+.apill-act{font-size:11px;opacity:.7;}
+
+.twin-section{flex:1;padding:16px 36px 0;display:flex;flex-direction:column;min-height:420px;}
+.twin-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.tb-left{display:flex;gap:6px;}
+.tbtn{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:'DM Sans',sans-serif;}
+.tbtn:hover{color:var(--text);border-color:var(--text3);}
+.tbtn.primary{background:var(--accent);color:#000;border-color:transparent;font-weight:600;}
+.tbtn.primary:hover{filter:brightness(1.08);}
+.tbtn.on{background:var(--accent-dim);border-color:rgba(0,217,139,.3);color:var(--accent);}
+.mode-lbl{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.6px;}
+
+.twin-canvas{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;position:relative;overflow:hidden;min-height:360px;cursor:default;}
+[data-theme="light"] .twin-canvas{box-shadow:inset 0 0 0 1px var(--border);}
+.twin-canvas::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--room-border) 1px,transparent 1px),linear-gradient(90deg,var(--room-border) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+
+.cempty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;}
+.cempty.hide{display:none;}
+.cempty-ico{width:56px;height:56px;border:2px dashed var(--border);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--text3);}
+.cempty p{font-size:13px;color:var(--text3);}
+.cempty small{font-size:11px;color:var(--text3);opacity:.6;}
+
+.room-block{position:absolute;background:var(--room-bg);border:1.5px solid var(--room-border);border-radius:13px;display:flex;flex-direction:column;user-select:none;min-width:130px;min-height:110px;}
+.room-block:hover{border-color:rgba(255,255,255,.12);}
+[data-theme="light"] .room-block:hover{border-color:rgba(0,0,0,.15);}
+.room-block.selected{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(77,159,255,.14);}
+.room-block.dragging{opacity:.88;box-shadow:0 16px 48px var(--shadow);z-index:100;}
+.room-block.has-warn{border-color:rgba(255,170,58,.35)!important;}
+
+.rbar{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 7px;border-bottom:1px solid var(--room-border);cursor:default;}
+.rbar.editable{cursor:grab;}
+.rlabel{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--text2);}
+.rlabel .em{font-size:14px;}
+.ract{display:flex;gap:1px;opacity:0;}
+.room-block:hover .ract,.room-block.selected .ract{opacity:1;}
+.ract-btn{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:11px;border:none;background:none;font-family:'DM Sans',sans-serif;}
+.ract-btn:hover{background:var(--surface3);color:var(--text);}
+.ract-btn.del:hover{background:rgba(255,77,106,.15);color:var(--danger);}
+.rbody{flex:1;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;position:relative;}
+
+.rresize{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;display:flex;align-items:flex-end;justify-content:flex-end;padding:3px;}
+.rresize::after{content:'';width:8px;height:8px;border-right:1.5px solid var(--border);border-bottom:1.5px solid var(--border);border-radius:1px;}
+.room-block:hover .rresize::after,.room-block.selected .rresize::after{border-color:var(--text3);}
+
+.plug-node{position:relative;width:52px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;}
+.pico{width:42px;height:42px;border-radius:11px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;position:relative;}
+.plug-node:hover .pico{border-color:var(--accent);background:var(--accent-dim);}
+.plug-node.on .pico{border-color:var(--accent);box-shadow:0 0 10px var(--plug-glow);}
+.plug-node.warn .pico{border-color:var(--warn);box-shadow:0 0 8px rgba(255,170,58,.3);}
+.plug-node.off .pico{opacity:.4;}
+.pring{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;border:2px solid var(--surface2);}
+.plug-node.on .pring{background:var(--accent);animation:ldot 2s infinite;}
+.plug-node.warn .pring{background:var(--warn);animation:ldot 1s infinite;}
+.plug-node.off .pring{background:var(--text3);}
+.pname{font-size:9px;font-weight:500;color:var(--text2);text-align:center;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;}
+.pwatt{font-size:8px;font-family:'DM Mono',monospace;color:var(--accent);line-height:1;}
+.plug-node.off .pwatt{color:var(--text3);}
+.plug-node.warn .pwatt{color:var(--warn);}
+.ptip{position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;white-space:nowrap;color:var(--text);pointer-events:none;opacity:0;z-index:50;}
+.plug-node:hover .ptip{opacity:1;}
+.aplug-cell{width:42px;height:42px;border-radius:11px;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:20px;font-weight:300;}
+.aplug-cell:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+
+.sum-bar{flex-shrink:0;padding:12px 36px;border-top:1px solid var(--border);display:flex;align-items:center;gap:18px;background:var(--surface);margin-top:16px;}
+.ss{display:flex;flex-direction:column;gap:1px;}
+.ssl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;}
+.ssv{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;}
+.ssv.acc{color:var(--accent);}
+.ssv.wrn{color:var(--warn);}
+.sdiv{width:1px;height:24px;background:var(--border);}
+.sr{margin-left:auto;display:flex;gap:8px;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.room-block{animation:fadeUp .22s ease both;}
+
+/* =====================================================
+   OVERLAY & DRAWERS (Home)
+   ===================================================== */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:50;backdrop-filter:blur(2px);}
+.overlay.open{display:block;}
+.drawer{position:fixed;right:-420px;top:0;bottom:0;width:400px;background:var(--surface);border-left:1px solid var(--border);z-index:51;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.drawer.open{right:0;}
+.dh{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.dh-title{font-size:15px;font-weight:600;letter-spacing:-.2px;}
+.dclose{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);border:1px solid var(--border);background:none;font-size:13px;font-family:'DM Sans',sans-serif;}
+.dclose:hover{background:var(--surface2);}
+.dbody{flex:1;overflow-y:auto;padding:18px;}
+.dbody::-webkit-scrollbar{width:4px;}
+.dbody::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.rpgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.ropt{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 8px;border:1px solid var(--border);border-radius:12px;cursor:pointer;background:var(--surface2);}
+.ropt:hover{border-color:var(--accent);background:var(--accent-dim);}
+.ropt-em{font-size:22px;}
+.ropt-nm{font-size:12px;font-weight:500;color:var(--text2);}
+
+.pplist{display:flex;flex-direction:column;gap:6px;}
+.popt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2);}
+.popt:hover{border-color:var(--accent);background:var(--accent-dim);}
+.popt-em{font-size:20px;}
+.popt-info{flex:1;}
+.popt-nm{font-size:13px;font-weight:500;}
+.popt-ds{font-size:11px;color:var(--text2);margin-top:1px;}
+.risk{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;}
+.r-high{background:rgba(255,77,106,.12);color:var(--danger);}
+.r-med{background:rgba(255,170,58,.12);color:var(--warn);}
+.r-low{background:rgba(0,217,139,.1);color:var(--accent);}
+
+.dsec{background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:10px;}
+.dsec-lbl{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.dmet{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.dm{display:flex;flex-direction:column;gap:2px;}
+.dml{font-size:10px;color:var(--text3);}
+.dmv{font-family:'DM Mono',monospace;font-size:16px;font-weight:500;}
+.dmu{font-size:10px;color:var(--text2);}
+.big-tog{width:100%;padding:11px 14px;border-radius:10px;background:var(--surface3);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px;}
+.big-tog.on{background:var(--accent-dim);border-color:rgba(0,217,139,.3);}
+.bt-info{display:flex;flex-direction:column;gap:1px;}
+.bt-lbl{font-size:13px;font-weight:500;}
+.bt-st{font-size:11px;color:var(--text2);}
+.big-tog.on .bt-st{color:var(--accent);}
+.sw{width:38px;height:22px;background:var(--text3);border-radius:11px;position:relative;flex-shrink:0;}
+.sw.on{background:var(--accent);}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:transform .22s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
+.sw.on::after{transform:translateX(16px);}
+.arow{display:flex;gap:7px;margin-top:4px;}
+.ab{flex:1;padding:10px 8px;border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:4px;}
+.ab-ghost{background:var(--surface3);color:var(--text2);border:1px solid var(--border);}
+.ab-ghost:hover{color:var(--text);}
+.ab-dng{background:rgba(255,77,106,.1);color:var(--danger);border:1px solid rgba(255,77,106,.2);}
+.ab-dng:hover{background:rgba(255,77,106,.18);}
+
+/* =====================================================
+   DASHBOARD PAGE
+   ===================================================== */
+#page-dashboard{overflow:hidden;}
+
+/* light mode tweaks */
+[data-theme="light"] .left-panel{box-shadow:2px 0 8px rgba(0,0,0,0.05);}
+[data-theme="light"] .card{box-shadow:0 1px 4px rgba(0,0,0,0.07);}
+[data-theme="light"] .stat-card{box-shadow:0 1px 4px rgba(0,0,0,0.07);}
+[data-theme="light"] .plug-card.active{background:rgba(0,168,107,0.06);border-color:rgba(0,168,107,0.25);}
+[data-theme="light"] .house-btn{background:var(--surface2);}
+
+.dash-main{flex:1;display:flex;overflow:hidden;}
+
+/* LEFT PANEL */
+.left-panel{width:296px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.panel-header{padding:22px 20px 14px;border-bottom:1px solid var(--border);}
+.panel-header h2{font-size:17px;font-weight:600;letter-spacing:-0.3px;}
+.panel-header p{font-size:12px;color:var(--text2);margin-top:2px;}
+
+.house-selector{padding:14px 20px;border-bottom:1px solid var(--border);}
+.house-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--surface2);cursor:pointer;border:1px solid var(--border);width:100%;}
+.house-btn:hover{border-color:var(--accent);}
+.house-icon{width:32px;height:32px;background:var(--accent-dim);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:16px;flex-shrink:0;}
+.house-info{flex:1;text-align:left;}
+.house-info .name{font-size:13px;font-weight:500;}
+.house-info .role{font-size:11px;color:var(--text2);}
+.chevron{color:var(--text3);flex-shrink:0;}
+
+.plug-list{flex:1;overflow-y:auto;padding:12px;}
+.plug-list::-webkit-scrollbar{width:4px;}
+.plug-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.section-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--text3);text-transform:uppercase;padding:8px 8px 6px;}
+
+.plug-card{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;}
+.plug-card:hover{background:var(--surface2);}
+.plug-card.active{background:rgba(0,217,139,0.06);border-color:rgba(0,217,139,0.2);}
+
+.plug-status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.plug-status-dot.online{background:var(--accent);box-shadow:0 0 6px var(--accent);animation:pulse-dot 2s ease-in-out infinite;}
+.plug-status-dot.offline{background:var(--text3);}
+.plug-status-dot.warn{background:var(--warn);box-shadow:0 0 6px var(--warn);}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.8);}}
+
+.plug-card-info{flex:1;}
+.plug-card-info .pname{font-size:13px;font-weight:500;}
+.plug-card-info .pdevice{font-size:11px;color:var(--text2);margin-top:1px;}
+.plug-power{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);flex-shrink:0;}
+.plug-power.active{color:var(--accent);}
+
+.toggle{width:36px;height:20px;background:var(--off);border-radius:10px;position:relative;cursor:pointer;flex-shrink:0;}
+.toggle.on{background:var(--on);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;background:white;border-radius:50%;transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.toggle.on::after{transform:translateX(16px);}
+
+.add-plug-btn{margin:0 12px 12px;padding:10px;border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--text3);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;background:none;width:calc(100% - 24px);}
+.add-plug-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* NFC area */
+.nfc-area{margin:12px 20px;padding:14px;border:1px dashed var(--border);border-radius:12px;display:flex;align-items:center;gap:12px;cursor:pointer;}
+.nfc-area:hover{border-color:var(--accent2);background:rgba(77,159,255,.03);}
+.nfc-icon{width:34px;height:34px;background:rgba(77,159,255,.08);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:17px;flex-shrink:0;}
+.nfc-text .t1{font-size:12px;font-weight:500;color:var(--text2);}
+.nfc-text .t2{font-size:11px;color:var(--text3);margin-top:1px;}
+
+/* CENTER PANEL */
+.center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+.top-bar{padding:18px 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;}
+.top-bar-title{font-size:16px;font-weight:600;letter-spacing:-0.2px;}
+.top-bar-sub{font-size:12px;color:var(--text2);margin-top:1px;}
+.top-bar-actions{display:flex;gap:8px;align-items:center;}
+
+.btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+.btn-ghost:hover{color:var(--text);border-color:var(--text3);}
+.btn-accent{background:var(--accent);color:#000;}
+.btn-accent:hover{filter:brightness(1.08);}
+.btn-danger{background:rgba(255,77,106,.1);color:var(--danger);border:1px solid rgba(255,77,106,.2);}
+.btn-danger:hover{background:rgba(255,77,106,.2);}
+
+.dashboard-content{flex:1;overflow-y:auto;padding:22px 26px;}
+.dashboard-content::-webkit-scrollbar{width:4px;}
+.dashboard-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;animation:fadeUp .4s ease both;}
+.stat-card:nth-child(1){animation-delay:.05s;}
+.stat-card:nth-child(2){animation-delay:.1s;}
+.stat-card:nth-child(3){animation-delay:.15s;}
+.stat-card:nth-child(4){animation-delay:.2s;}
+.stat-card:hover{border-color:var(--text3);}
+.stat-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.stat-value{font-size:26px;font-weight:600;letter-spacing:-1px;line-height:1;font-family:'DM Mono',monospace;}
+.stat-unit{font-size:13px;color:var(--text2);font-weight:400;margin-left:3px;}
+.stat-change{font-size:11px;color:var(--text2);margin-top:6px;}
+.stat-change.up{color:var(--accent);}
+.stat-change.down{color:var(--danger);}
+
+/* CONTENT GRID */
+.content-grid{display:grid;grid-template-columns:1fr 336px;gap:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;animation:fadeUp .4s ease both;animation-delay:.25s;}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:13px;font-weight:600;letter-spacing:-0.1px;}
+.card-action{font-size:12px;color:var(--accent);cursor:pointer;opacity:.8;}
+.card-action:hover{opacity:1;}
+
+/* CHART */
+.chart-tabs{display:flex;gap:0;padding:14px 20px 0;}
+.tab{padding:6px 14px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;border-radius:20px;}
+.tab.active{background:var(--accent-dim);color:var(--accent);}
+.chart-area{padding:14px 20px 18px;height:196px;position:relative;}
+.chart-svg{width:100%;height:100%;}
+
+/* PLUG DETAIL */
+.plug-detail{padding:20px;}
+.plug-detail-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+.plug-detail-name{font-size:16px;font-weight:600;letter-spacing:-0.3px;}
+.plug-detail-device{font-size:12px;color:var(--text2);margin-top:2px;}
+.status-pill{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;}
+.status-pill.online{background:var(--accent-dim);color:var(--accent);}
+.status-pill.offline{background:rgba(255,255,255,.05);color:var(--text3);}
+.status-pill.warn{background:rgba(255,170,58,.1);color:var(--warn);}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.metric-item{background:var(--surface2);border-radius:10px;padding:12px;}
+.metric-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.metric-value{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;}
+.metric-unit{font-size:11px;color:var(--text2);}
+
+.autooff-bar{background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px;}
+.autooff-top{display:flex;justify-content:space-between;margin-bottom:8px;}
+.autooff-label{font-size:12px;color:var(--text2);}
+.autooff-time{font-size:12px;font-family:'DM Mono',monospace;color:var(--warn);font-weight:500;}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 1s linear;}
+.progress-fill.warn{background:linear-gradient(90deg,var(--warn),var(--danger));animation:pulse-bar 1s infinite;}
+@keyframes pulse-bar{0%,100%{opacity:1;}50%{opacity:.6;}}
+
+.risk-badge{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;}
+.risk-badge.high{background:rgba(255,77,106,.12);color:var(--danger);}
+.risk-badge.medium{background:rgba(255,170,58,.12);color:var(--warn);}
+.risk-badge.low{background:var(--accent-dim);color:var(--accent);}
+
+/* ALERTS */
+.alert-list{padding:8px 0;}
+.alert-item{display:flex;gap:12px;padding:12px 20px;cursor:pointer;border-bottom:1px solid var(--border);}
+.alert-item:last-child{border-bottom:none;}
+.alert-item:hover{background:var(--surface2);}
+.alert-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;}
+.alert-icon.warn{background:rgba(255,170,58,.1);}
+.alert-icon.danger{background:rgba(255,77,106,.1);}
+.alert-icon.info{background:rgba(77,159,255,.1);}
+.alert-body{flex:1;}
+.alert-title{font-size:12px;font-weight:500;margin-bottom:2px;}
+.alert-sub{font-size:11px;color:var(--text2);}
+.alert-time{font-size:10px;color:var(--text3);flex-shrink:0;padding-top:2px;font-family:'DM Mono',monospace;}
+.unread-dot{width:6px;height:6px;background:var(--accent2);border-radius:50%;margin-top:4px;flex-shrink:0;}
+
+/* SESSION HISTORY */
+.session-row{display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--border);cursor:pointer;}
+.session-row:last-child{border-bottom:none;}
+.session-row:hover{background:var(--surface2);}
+.session-device-icon{width:28px;height:28px;background:var(--surface2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.session-info{flex:1;}
+.session-name{font-size:12px;font-weight:500;}
+.session-time{font-size:11px;color:var(--text2);margin-top:1px;}
+.session-kwh{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);}
+
+/* LIVE BADGE */
+.live-badge{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;}
+.live-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse-dot 1.5s ease-in-out infinite;}
+
+@media(max-width:1200px){.stats-grid{grid-template-columns:repeat(2,1fr);}.content-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- =====================================================
+     SIDEBAR
+     ===================================================== -->
+<nav class="sidebar">
+  <div class="logo" onclick="showPage('home')">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+  <button class="nav-btn active" onclick="showPage('home')" title="หน้าหลัก">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.8"/></svg>
+  </button>
+  <button class="nav-btn" onclick="showPage('dashboard')" title="Dashboard">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+  </button>
+  <button class="nav-btn" title="Energy">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M3 3v18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m7 16 4-5 4 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="nav-btn" title="Alerts">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <div class="bdg"></div>
+  </button>
+  <div class="sidebar-gap"></div>
+  <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
+    <svg class="i-sun" width="17" height="17" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <svg class="i-moon" width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="avatar">ส</div>
+</nav>
+
+<!-- =====================================================
+     PAGE: HOME — Digital Twin
+     ===================================================== -->
+<div class="page active" id="page-home">
+
+  <div class="home-header">
+    <div>
+      <div class="greeting">สวัสดี, <em>คุณสมชาย</em> 👋</div>
+      <div class="greeting-sub"><div class="live-dot-home"></div> อัพเดทสดทุก 5 วินาที · บ้านทุกหลังปกติดี</div>
+    </div>
+    <div class="qs-row">
+      <div class="qs"><div class="dot" style="background:var(--accent)"></div>ออนไลน์ <span class="v">4</span></div>
+      <div class="qs"><div class="dot" style="background:var(--warn)"></div>แจ้งเตือน <span class="v">2</span></div>
+      <div class="qs">⚡ <span class="v" id="qs-power">3,255</span> W</div>
+    </div>
+  </div>
+
+  <div class="house-row">
+    <div class="htab active">🏠 บ้านสุขสบาย</div>
+    <div class="htab">🏢 ออฟฟิศ</div>
+    <button class="htab-add">
+      <svg width="11" height="11" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      เพิ่มบ้าน
+    </button>
+  </div>
+
+  <div class="alerts-zone">
+    <div class="apill warn" onclick="openPlugDetail('เตารีด','👔','warn')">
+      <span>⚠️</span><span class="apill-txt">เตารีดในห้องนอนเปิดทิ้งไว้เกิน 30 นาที</span><span class="apill-act">ปิดทันที →</span>
+    </div>
+    <div class="apill danger" onclick="openPlugDetail('เตาไฟฟ้า','🍳','warn')">
+      <span>🔴</span><span class="apill-txt">ตรวจพบพลังงานผิดปกติ — ครัว A1 สูงกว่าปกติ 40%</span><span class="apill-act">ดูรายละเอียด →</span>
+    </div>
+  </div>
+
+  <div class="twin-section">
+    <div class="twin-toolbar">
+      <div class="tb-left">
+        <button class="tbtn primary" onclick="openAddRoom()">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          เพิ่มห้อง
+        </button>
+        <button class="tbtn" id="btn-edit" onclick="toggleEdit()">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8"/></svg>
+          จัดเรียง
+        </button>
+        <button class="tbtn" onclick="autoArrange()">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg>
+          จัดอัตโนมัติ
+        </button>
+      </div>
+      <span class="mode-lbl" id="mode-lbl">VIEW MODE</span>
+    </div>
+    <div class="twin-canvas" id="canvas">
+      <div class="cempty" id="cempty">
+        <div class="cempty-ico">🏠</div>
+        <p>ยังไม่มีห้อง</p>
+        <small>คลิก "เพิ่มห้อง" เพื่อเริ่มสร้างแผนผังบ้าน</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="sum-bar">
+    <div class="ss"><div class="ssl">ห้อง</div><div class="ssv" id="sb-r">4</div></div>
+    <div class="sdiv"></div>
+    <div class="ss"><div class="ssl">ปลั๊ก</div><div class="ssv" id="sb-p">7</div></div>
+    <div class="sdiv"></div>
+    <div class="ss"><div class="ssl">กำลังไฟ</div><div class="ssv acc" id="sb-w">3,255 W</div></div>
+    <div class="sdiv"></div>
+    <div class="ss"><div class="ssl">วันนี้</div><div class="ssv">12.4 kWh</div></div>
+    <div class="sdiv"></div>
+    <div class="ss"><div class="ssl">แจ้งเตือน</div><div class="ssv wrn">2 รายการ</div></div>
+    <div class="sr">
+      <button class="tbtn" onclick="showPage('dashboard')">ดู Dashboard →</button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     PAGE: DASHBOARD
+     ===================================================== -->
+<div class="page" id="page-dashboard">
+  <div class="dash-main">
+
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <h2>ปลั๊กอัจฉริยะ</h2>
+        <p>บ้านสุขสบาย</p>
+      </div>
+
+      <div class="house-selector">
+        <button class="house-btn">
+          <div class="house-icon">🏠</div>
+          <div class="house-info">
+            <div class="name">บ้านสุขสบาย</div>
+            <div class="role">เจ้าของ (Owner)</div>
+          </div>
+          <svg class="chevron" width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+
+      <!-- NFC -->
+      <div class="nfc-area">
+        <div class="nfc-icon">⬡</div>
+        <div class="nfc-text">
+          <div class="t1">แตะ NFC เพื่อลงทะเบียน</div>
+          <div class="t2">วาง Tag ใกล้อุปกรณ์</div>
+        </div>
+      </div>
+
+      <div class="plug-list">
+        <div class="section-label">ออนไลน์ · 4 ตัว</div>
+
+        <div class="plug-card active" onclick="selectPlug(this,'เตาไฟฟ้า','ครัว','1,240','warn','high')">
+          <div class="plug-status-dot warn"></div>
+          <div class="plug-card-info">
+            <div class="pname">ปลั๊กครัว A1</div>
+            <div class="pdevice">🍳 เตาไฟฟ้า ⚠️</div>
+          </div>
+          <span class="plug-power active">1,240W</span>
+          <div class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="plug-card" onclick="selectPlug(this,'ตู้เย็น','ครัว','150','online','low')">
+          <div class="plug-status-dot online"></div>
+          <div class="plug-card-info">
+            <div class="pname">ปลั๊กครัว A2</div>
+            <div class="pdevice">🧊 ตู้เย็น</div>
+          </div>
+          <span class="plug-power active">150W</span>
+          <div class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="plug-card" onclick="selectPlug(this,'เครื่องซักผ้า','ห้องซัก','850','online','medium')">
+          <div class="plug-status-dot online"></div>
+          <div class="plug-card-info">
+            <div class="pname">ปลั๊กห้องซัก B2</div>
+            <div class="pdevice">🫧 เครื่องซักผ้า</div>
+          </div>
+          <span class="plug-power active">850W</span>
+          <div class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="plug-card" onclick="selectPlug(this,'เตารีด','ห้องนอน','1,100','warn','high')">
+          <div class="plug-status-dot warn"></div>
+          <div class="plug-card-info">
+            <div class="pname">ปลั๊กห้องนอน C1</div>
+            <div class="pdevice">👔 เตารีด ⚠️</div>
+          </div>
+          <span class="plug-power active">1,100W</span>
+          <div class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="section-label" style="margin-top:8px;">ออฟไลน์ · 2 ตัว</div>
+
+        <div class="plug-card" onclick="selectPlug(this,'ไม่มีอุปกรณ์','ห้องน้ำ','0','offline',null)">
+          <div class="plug-status-dot offline"></div>
+          <div class="plug-card-info">
+            <div class="pname">ปลั๊กห้องน้ำ E1</div>
+            <div class="pdevice" style="color:var(--text3)">ไม่มีอุปกรณ์</div>
+          </div>
+          <span class="plug-power">0W</span>
+          <div class="toggle" onclick="event.stopPropagation()"></div>
+        </div>
+
+        <div class="plug-card" onclick="selectPlug(this,'ไม่มีอุปกรณ์','ระเบียง','0','offline',null)">
+          <div class="plug-status-dot offline"></div>
+          <div class="plug-card-info">
+            <div class="pname">ปลั๊กระเบียง F1</div>
+            <div class="pdevice" style="color:var(--text3)">ไม่มีอุปกรณ์</div>
+          </div>
+          <span class="plug-power">0W</span>
+          <div class="toggle" onclick="event.stopPropagation()"></div>
+        </div>
+      </div>
+
+      <button class="add-plug-btn">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        เพิ่มปลั๊กใหม่
+      </button>
+    </div>
+
+    <!-- CENTER PANEL -->
+    <div class="center-panel">
+      <div class="top-bar">
+        <div>
+          <div class="top-bar-title">Dashboard — บ้านสุขสบาย</div>
+          <div class="top-bar-sub">อัพเดทล่าสุด 14:32 · <span style="color:var(--accent)">● Live</span></div>
+        </div>
+        <div class="top-bar-actions">
+          <div class="live-badge"><div class="live-dot"></div>Live</div>
+          <button class="btn btn-ghost" onclick="showPage('home')">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8"/></svg>
+            Digital Twin
+          </button>
+          <button class="btn btn-ghost">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4-4 4m0 0-4-4m4 4V4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export
+          </button>
+          <button class="btn btn-accent">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            เพิ่มอุปกรณ์
+          </button>
+        </div>
+      </div>
+
+      <div class="dashboard-content">
+        <!-- STATS ROW -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              พลังงานวันนี้
+            </div>
+            <div class="stat-value">12.4<span class="stat-unit">kWh</span></div>
+            <div class="stat-change up">↑ 8% จากเมื่อวาน</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              กำลังไฟ ตอนนี้
+            </div>
+            <div class="stat-value" id="dash-power">3,255<span class="stat-unit">W</span></div>
+            <div class="stat-change">4 ปลั๊กออนไลน์</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              ค่าไฟเดือนนี้
+            </div>
+            <div class="stat-value">284<span class="stat-unit">฿</span></div>
+            <div class="stat-change down">↑ 12% จากเดือนที่แล้ว</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.8"/><path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              การแจ้งเตือน
+            </div>
+            <div class="stat-value" style="color:var(--warn)">2<span class="stat-unit">รายการ</span></div>
+            <div class="stat-change" style="color:var(--warn)">⚠ ต้องการความสนใจ</div>
+          </div>
+        </div>
+
+        <!-- MAIN GRID -->
+        <div class="content-grid">
+          <!-- LEFT COL -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <!-- ENERGY CHART -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">การใช้พลังงาน</div>
+                <span class="card-action">ดูรายงาน →</span>
+              </div>
+              <div class="chart-tabs">
+                <div class="tab active">วันนี้</div>
+                <div class="tab">สัปดาห์</div>
+                <div class="tab">เดือน</div>
+              </div>
+              <div class="chart-area">
+                <svg class="chart-svg" viewBox="0 0 600 160" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#00d98b" stop-opacity="0.22"/>
+                      <stop offset="100%" stop-color="#00d98b" stop-opacity="0"/>
+                    </linearGradient>
+                    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#00d98b"/>
+                      <stop offset="100%" stop-color="#4d9fff"/>
+                    </linearGradient>
+                  </defs>
+                  <line x1="0" y1="40" x2="600" y2="40" stroke="var(--border)" stroke-width="1"/>
+                  <line x1="0" y1="80" x2="600" y2="80" stroke="var(--border)" stroke-width="1"/>
+                  <line x1="0" y1="120" x2="600" y2="120" stroke="var(--border)" stroke-width="1"/>
+                  <text x="8" y="44" fill="var(--text3)" font-size="10" font-family="DM Mono">3kW</text>
+                  <text x="8" y="84" fill="var(--text3)" font-size="10" font-family="DM Mono">2kW</text>
+                  <text x="8" y="124" fill="var(--text3)" font-size="10" font-family="DM Mono">1kW</text>
+                  <path d="M40,120 C80,110 100,90 140,70 C180,50 200,85 240,80 C280,75 300,55 340,45 C380,35 400,60 440,55 C480,50 510,30 560,25 L560,155 L40,155 Z" fill="url(#cg)"/>
+                  <path d="M40,120 C80,110 100,90 140,70 C180,50 200,85 240,80 C280,75 300,55 340,45 C380,35 400,60 440,55 C480,50 510,30 560,25" fill="none" stroke="url(#lg)" stroke-width="2.5" stroke-linecap="round"/>
+                  <circle cx="560" cy="25" r="4" fill="#4d9fff"/>
+                  <circle cx="560" cy="25" r="8" fill="#4d9fff" fill-opacity="0.2"/>
+                  <text x="35" y="155" fill="var(--text3)" font-size="10" font-family="DM Mono">00:00</text>
+                  <text x="170" y="155" fill="var(--text3)" font-size="10" font-family="DM Mono">06:00</text>
+                  <text x="305" y="155" fill="var(--text3)" font-size="10" font-family="DM Mono">12:00</text>
+                  <text x="440" y="155" fill="var(--text3)" font-size="10" font-family="DM Mono">18:00</text>
+                  <text x="540" y="155" fill="#4d9fff" font-size="10" font-family="DM Mono">Now</text>
+                </svg>
+              </div>
+            </div>
+
+            <!-- SESSION HISTORY -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">ประวัติการใช้งานล่าสุด</div>
+                <span class="card-action">ดูทั้งหมด →</span>
+              </div>
+              <div class="session-row"><div class="session-device-icon">🍳</div><div class="session-info"><div class="session-name">เตาไฟฟ้า · ปลั๊กครัว A1</div><div class="session-time">วันนี้ 12:30 – 13:15 · 45 นาที</div></div><div class="session-kwh">0.93 kWh</div></div>
+              <div class="session-row"><div class="session-device-icon">👔</div><div class="session-info"><div class="session-name">เตารีด · ปลั๊กห้องนอน C1</div><div class="session-time">วันนี้ 10:00 – 10:32 · 32 นาที</div></div><div class="session-kwh">0.59 kWh</div></div>
+              <div class="session-row"><div class="session-device-icon">🫧</div><div class="session-info"><div class="session-name">เครื่องซักผ้า · ปลั๊กห้องซัก B2</div><div class="session-time">วันนี้ 08:00 – 09:10 · 70 นาที</div></div><div class="session-kwh">0.99 kWh</div></div>
+              <div class="session-row"><div class="session-device-icon">🌀</div><div class="session-info"><div class="session-name">พัดลม · ปลั๊กห้องรับแขก D1</div><div class="session-time">เมื่อวาน 20:00 – 23:30 · 210 นาที</div></div><div class="session-kwh">0.23 kWh</div></div>
+            </div>
+          </div>
+
+          <!-- RIGHT COL -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <!-- PLUG DETAIL -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">รายละเอียดปลั๊ก</div>
+                <div class="live-badge"><div class="live-dot"></div>Live</div>
+              </div>
+              <div class="plug-detail">
+                <div class="plug-detail-header">
+                  <div>
+                    <div class="plug-detail-name" id="detail-name">ปลั๊กครัว A1</div>
+                    <div class="plug-detail-device" id="detail-device">🍳 เตาไฟฟ้า · ครัว</div>
+                  </div>
+                  <div class="status-pill warn" id="detail-status">
+                    <div class="plug-status-dot warn" style="animation:none;width:6px;height:6px;"></div>
+                    แจ้งเตือน
+                  </div>
+                </div>
+                <div class="metrics-grid">
+                  <div class="metric-item"><div class="metric-label">กำลังไฟ</div><div class="metric-value" id="detail-power">1,240<span class="metric-unit">W</span></div></div>
+                  <div class="metric-item"><div class="metric-label">แรงดันไฟ</div><div class="metric-value">220<span class="metric-unit">V</span></div></div>
+                  <div class="metric-item"><div class="metric-label">กระแสไฟ</div><div class="metric-value">5.6<span class="metric-unit">A</span></div></div>
+                  <div class="metric-item"><div class="metric-label">พลังงานสะสม</div><div class="metric-value">3.2<span class="metric-unit">kWh</span></div></div>
+                </div>
+                <div class="autooff-bar">
+                  <div class="autooff-top">
+                    <span class="autooff-label">⏱ ตัดไฟอัตโนมัติ</span>
+                    <span class="autooff-time" id="autooff-time">18:32 น.</span>
+                  </div>
+                  <div class="progress-bar"><div class="progress-fill warn" id="progress-fill" style="width:78%"></div></div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:5px;">เหลือ 12 นาที</div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                  <span style="font-size:12px;color:var(--text2)">ระดับความเสี่ยง</span>
+                  <span class="risk-badge high" id="detail-risk">สูง</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:12px;">แก้ไข</button>
+                  <button class="btn btn-danger" style="flex:1;justify-content:center;font-size:12px;">ปิดทันที</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ALERTS -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">การแจ้งเตือน</div>
+                <span class="card-action">ดูทั้งหมด →</span>
+              </div>
+              <div class="alert-list">
+                <div class="alert-item">
+                  <div class="alert-icon warn">⚠️</div>
+                  <div class="alert-body"><div class="alert-title">เตารีดเปิดทิ้งไว้นานเกินกำหนด</div><div class="alert-sub">ห้องนอน C1 · เกิน 30 นาที</div></div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><div class="alert-time">14:20</div><div class="unread-dot"></div></div>
+                </div>
+                <div class="alert-item">
+                  <div class="alert-icon danger">🔴</div>
+                  <div class="alert-body"><div class="alert-title">ตรวจพบพลังงานผิดปกติ</div><div class="alert-sub">ครัว A1 · สูงกว่าปกติ 40%</div></div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><div class="alert-time">13:58</div><div class="unread-dot"></div></div>
+                </div>
+                <div class="alert-item">
+                  <div class="alert-icon info">🔵</div>
+                  <div class="alert-body"><div class="alert-title">ตรวจพบแท็ก NFC ใหม่</div><div class="alert-sub">แตะเพื่อลงทะเบียนอุปกรณ์</div></div>
+                  <div class="alert-time">09:12</div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /right col -->
+        </div><!-- /content-grid -->
+      </div><!-- /dashboard-content -->
+    </div><!-- /center-panel -->
+  </div><!-- /dash-main -->
+</div>
+
+<!-- =====================================================
+     OVERLAY + DRAWERS (shared)
+     ===================================================== -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+
+<!-- ADD ROOM -->
+<div class="drawer" id="d-room">
+  <div class="dh"><div class="dh-title">เพิ่มห้องใหม่</div><button class="dclose" onclick="closeDrawer()">✕</button></div>
+  <div class="dbody">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">เลือกประเภทห้อง</div>
+    <div class="rpgrid">
+      <div class="ropt" onclick="addRoom('ครัว','🍳')"><div class="ropt-em">🍳</div><div class="ropt-nm">ครัว</div></div>
+      <div class="ropt" onclick="addRoom('ห้องนอน','🛏')"><div class="ropt-em">🛏</div><div class="ropt-nm">ห้องนอน</div></div>
+      <div class="ropt" onclick="addRoom('ห้องนั่งเล่น','🛋')"><div class="ropt-em">🛋</div><div class="ropt-nm">ห้องนั่งเล่น</div></div>
+      <div class="ropt" onclick="addRoom('ห้องน้ำ','🚿')"><div class="ropt-em">🚿</div><div class="ropt-nm">ห้องน้ำ</div></div>
+      <div class="ropt" onclick="addRoom('ระเบียง','🌿')"><div class="ropt-em">🌿</div><div class="ropt-nm">ระเบียง</div></div>
+      <div class="ropt" onclick="addRoom('ห้องซัก','🫧')"><div class="ropt-em">🫧</div><div class="ropt-nm">ห้องซัก</div></div>
+      <div class="ropt" onclick="addRoom('ห้องทำงาน','💻')"><div class="ropt-em">💻</div><div class="ropt-nm">ห้องทำงาน</div></div>
+      <div class="ropt" onclick="addRoom('โรงรถ','🚗')"><div class="ropt-em">🚗</div><div class="ropt-nm">โรงรถ</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PLUG -->
+<div class="drawer" id="d-plug">
+  <div class="dh"><div class="dh-title" id="d-plug-title">เพิ่มปลั๊ก</div><button class="dclose" onclick="closeDrawer()">✕</button></div>
+  <div class="dbody">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">เลือกอุปกรณ์</div>
+    <div class="pplist">
+      <div class="popt" onclick="doAddPlug('เตาไฟฟ้า','🍳','high',1240,'on')"><div class="popt-em">🍳</div><div class="popt-info"><div class="popt-nm">เตาไฟฟ้า</div><div class="popt-ds">1,240W · ตัดไฟ 30 นาที</div></div><div class="risk r-high">สูง</div></div>
+      <div class="popt" onclick="doAddPlug('เตารีด','👔','high',1100,'on')"><div class="popt-em">👔</div><div class="popt-info"><div class="popt-nm">เตารีด</div><div class="popt-ds">1,100W · ตัดไฟ 30 นาที</div></div><div class="risk r-high">สูง</div></div>
+      <div class="popt" onclick="doAddPlug('เครื่องซักผ้า','🫧','medium',850,'on')"><div class="popt-em">🫧</div><div class="popt-info"><div class="popt-nm">เครื่องซักผ้า</div><div class="popt-ds">850W</div></div><div class="risk r-med">กลาง</div></div>
+      <div class="popt" onclick="doAddPlug('แอร์','❄️','medium',900,'on')"><div class="popt-em">❄️</div><div class="popt-info"><div class="popt-nm">เครื่องปรับอากาศ</div><div class="popt-ds">900W</div></div><div class="risk r-med">กลาง</div></div>
+      <div class="popt" onclick="doAddPlug('ทีวี','📺','low',120,'on')"><div class="popt-em">📺</div><div class="popt-info"><div class="popt-nm">ทีวี</div><div class="popt-ds">120W</div></div><div class="risk r-low">ต่ำ</div></div>
+      <div class="popt" onclick="doAddPlug('พัดลม','🌀','low',65,'on')"><div class="popt-em">🌀</div><div class="popt-info"><div class="popt-nm">พัดลม</div><div class="popt-ds">65W</div></div><div class="risk r-low">ต่ำ</div></div>
+      <div class="popt" onclick="doAddPlug('ตู้เย็น','🧊','low',150,'on')"><div class="popt-em">🧊</div><div class="popt-info"><div class="popt-nm">ตู้เย็น</div><div class="popt-ds">150W · Always on</div></div><div class="risk r-low">ต่ำ</div></div>
+    </div>
+    <div style="margin-top:14px;">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:7px;">หรือสแกน NFC / QR Code</div>
+      <button class="tbtn" style="width:100%;justify-content:center;padding:11px;gap:7px;">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="16" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="16" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.8"/><path d="M16 16h5v5M16 21h5M21 16v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        สแกน NFC / QR Code
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PLUG DETAIL (home canvas) -->
+<div class="drawer" id="d-detail">
+  <div class="dh"><div class="dh-title" id="dd-title">🍳 เตาไฟฟ้า</div><button class="dclose" onclick="closeDrawer()">✕</button></div>
+  <div class="dbody">
+    <div class="dsec">
+      <div class="dsec-lbl">Real-time</div>
+      <div class="dmet">
+        <div class="dm"><div class="dml">กำลังไฟ</div><div class="dmv">1,240<span class="dmu">W</span></div></div>
+        <div class="dm"><div class="dml">แรงดัน</div><div class="dmv">220<span class="dmu">V</span></div></div>
+        <div class="dm"><div class="dml">กระแส</div><div class="dmv">5.6<span class="dmu">A</span></div></div>
+        <div class="dm"><div class="dml">พลังงานสะสม</div><div class="dmv">3.2<span class="dmu">kWh</span></div></div>
+      </div>
+    </div>
+    <div class="big-tog on" id="dd-tog" onclick="togglePower()">
+      <div class="bt-info"><div class="bt-lbl">สถานะการทำงาน</div><div class="bt-st" id="dd-st">เปิดอยู่</div></div>
+      <div class="sw on" id="dd-sw"></div>
+    </div>
+    <div class="dsec">
+      <div class="dsec-lbl">ตัดไฟอัตโนมัติ</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+        <span style="font-size:12px;color:var(--text2)">เหลือเวลา</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--warn)">12 นาที</span>
+      </div>
+      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:60%;background:linear-gradient(90deg,var(--warn),var(--danger));border-radius:2px;"></div>
+      </div>
+    </div>
+    <div class="dsec">
+      <div class="dsec-lbl">ข้อมูลอุปกรณ์</div>
+      <div style="display:flex;flex-direction:column;gap:7px;font-size:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:var(--text2)">ระดับความเสี่ยง</span><span class="risk r-high">สูง</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2)">ปลั๊กที่เชื่อมต่อ</span><span>ปลั๊กครัว A1</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2)">MAC</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text2)">AA:BB:CC:DD:EE:FF</span></div>
+      </div>
+    </div>
+    <div class="arow">
+      <button class="ab ab-ghost">⚙ ตั้งค่า</button>
+      <button class="ab ab-dng">⏹ ปิดทันที</button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SCRIPTS
+     ===================================================== -->
+<script>
+/* ---------- THEME ---------- */
+function toggleTheme(){
+  const h=document.documentElement;
+  const n=h.getAttribute('data-theme')==='dark'?'light':'dark';
+  h.setAttribute('data-theme',n);
+  localStorage.setItem('ps-theme',n);
+}
+const _st=localStorage.getItem('ps-theme');
+if(_st)document.documentElement.setAttribute('data-theme',_st);
+
+/* ---------- PAGE NAV ---------- */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const map={home:0,dashboard:1};
+  if(map[id]!==undefined)document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
+}
+
+/* ---------- DRAWERS ---------- */
+function openDrawer(id){
+  closeDrawer();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById(id).classList.add('open');
+}
+function closeDrawer(){
+  document.getElementById('overlay').classList.remove('open');
+  document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('open'));
+}
+function openAddRoom(){openDrawer('d-room');}
+
+/* ---------- HOME CANVAS ---------- */
+let rooms=[], editMode=false, targetRoom=null, pwrOn=true;
+
+const roomTints={
+  '🍳':'rgba(255,130,0,.055)','🛏':'rgba(100,100,255,.055)',
+  '🛋':'rgba(0,180,100,.055)','🚿':'rgba(0,180,255,.055)',
+  '🌿':'rgba(60,200,60,.055)','🫧':'rgba(0,200,220,.055)',
+  '💻':'rgba(160,100,255,.055)','🚗':'rgba(160,160,160,.055)',
+};
+
+function addRoom(name,emoji){
+  closeDrawer();
+  const c=document.getElementById('canvas');
+  const cw=c.clientWidth;
+  const id='r'+Date.now(), idx=rooms.length, cols=2, pad=20;
+  const w=Math.min(210,Math.floor((cw-pad*3)/cols));
+  const h=170, col=idx%cols, row=Math.floor(idx/cols);
+  rooms.push({id,name,emoji,plugs:[],x:pad+col*(w+pad),y:pad+row*(h+pad),w,h});
+  render();
+}
+
+function delRoom(id){rooms=rooms.filter(r=>r.id!==id);render();}
+
+function openAddPlug(rid){
+  targetRoom=rid;
+  const r=rooms.find(x=>x.id===rid);
+  document.getElementById('d-plug-title').textContent='เพิ่มปลั๊กใน '+r.emoji+' '+r.name;
+  openDrawer('d-plug');
+}
+
+function doAddPlug(name,emoji,risk,watt,status){
+  if(!targetRoom)return;
+  const r=rooms.find(x=>x.id===targetRoom);
+  if(!r)return;
+  r.plugs.push({id:'p'+Date.now(),name,emoji,risk,watt,status});
+  closeDrawer();render();
+}
+
+function openPlugDetail(name,emoji,status){
+  document.getElementById('dd-title').textContent=emoji+' '+name;
+  pwrOn=status!=='off';updatePwrUI();
+  openDrawer('d-detail');
+}
+
+function togglePower(){pwrOn=!pwrOn;updatePwrUI();}
+function updatePwrUI(){
+  document.getElementById('dd-tog').classList.toggle('on',pwrOn);
+  document.getElementById('dd-sw').classList.toggle('on',pwrOn);
+  document.getElementById('dd-st').textContent=pwrOn?'เปิดอยู่':'ปิดอยู่';
+}
+
+function render(){
+  const canvas=document.getElementById('canvas');
+  canvas.querySelectorAll('.room-block').forEach(e=>e.remove());
+  document.getElementById('cempty').classList.toggle('hide',rooms.length>0);
+  rooms.forEach(r=>renderRoom(r,canvas));
+  updateSummary();
+}
+
+function renderRoom(r,canvas){
+  const el=document.createElement('div');
+  el.className='room-block'+(r.plugs.some(p=>p.status==='warn')?' has-warn':'');
+  el.id=r.id;
+  el.style.cssText=`left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;`;
+  if(roomTints[r.emoji])el.style.background=roomTints[r.emoji];
+  const plugsHTML=r.plugs.map(p=>`
+    <div class="plug-node ${p.status}" onclick="openPlugDetail('${p.name}','${p.emoji}','${p.status}')">
+      <div class="pico">${p.emoji}<div class="pring"></div></div>
+      <div class="pname">${p.name}</div>
+      <div class="pwatt">${p.status!=='off'?p.watt+'W':'—'}</div>
+      <div class="ptip">${p.name} · ${p.watt}W</div>
+    </div>`).join('');
+  el.innerHTML=`
+    <div class="rbar${editMode?' editable':''}" data-id="${r.id}">
+      <div class="rlabel"><span class="em">${r.emoji}</span><span>${r.name}</span></div>
+      <div class="ract">
+        <button class="ract-btn" onclick="openAddPlug('${r.id}')">+</button>
+        <button class="ract-btn del" onclick="delRoom('${r.id}')">✕</button>
+      </div>
+    </div>
+    <div class="rbody">
+      ${plugsHTML}
+      ${r.plugs.length<6?`<div class="aplug-cell" onclick="openAddPlug('${r.id}')">+</div>`:''}
+    </div>
+    <div class="rresize" data-r="${r.id}"></div>`;
+  canvas.appendChild(el);
+  makeDrag(el,r);
+  makeResize(el,r);
+}
+
+function makeDrag(el,r){
+  const bar=el.querySelector('.rbar');
+  bar.addEventListener('mousedown',e=>{
+    if(!editMode||e.target.closest('.ract'))return;
+    e.preventDefault();
+    const sx=e.clientX,sy=e.clientY,ox=r.x,oy=r.y;
+    el.classList.add('dragging');
+    const mv=e=>{r.x=Math.max(0,ox+e.clientX-sx);r.y=Math.max(0,oy+e.clientY-sy);el.style.left=r.x+'px';el.style.top=r.y+'px';};
+    const up=()=>{el.classList.remove('dragging');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+}
+
+function makeResize(el,r){
+  const h=el.querySelector('.rresize');
+  h.addEventListener('mousedown',e=>{
+    if(!editMode)return;
+    e.preventDefault();e.stopPropagation();
+    const sx=e.clientX,sy=e.clientY,sw=r.w,sh=r.h;
+    const mv=e=>{r.w=Math.max(140,sw+e.clientX-sx);r.h=Math.max(110,sh+e.clientY-sy);el.style.width=r.w+'px';el.style.height=r.h+'px';};
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+}
+
+function toggleEdit(){
+  editMode=!editMode;
+  document.getElementById('btn-edit').classList.toggle('on',editMode);
+  document.getElementById('mode-lbl').textContent=editMode?'EDIT MODE — ลากห้องได้เลย':'VIEW MODE';
+  render();
+}
+
+function autoArrange(){
+  const c=document.getElementById('canvas');
+  const cw=c.clientWidth, cols=3, pad=20;
+  const w=Math.floor((cw-pad*(cols+1))/cols), h=165;
+  rooms.forEach((r,i)=>{const col=i%cols,row=Math.floor(i/cols);r.x=pad+col*(w+pad);r.y=pad+row*(h+pad);r.w=w;r.h=h;});
+  render();
+}
+
+function updateSummary(){
+  document.getElementById('sb-r').textContent=rooms.length;
+  document.getElementById('sb-p').textContent=rooms.reduce((a,r)=>a+r.plugs.length,0);
+}
+
+/* ---------- DASHBOARD: PLUG SELECT ---------- */
+function selectPlug(el,device,location,power,status,risk){
+  document.querySelectorAll('.plug-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('detail-name').textContent=el.querySelector('.pname').textContent;
+  document.getElementById('detail-device').textContent=el.querySelector('.pdevice').textContent+' · '+location;
+  document.getElementById('detail-power').innerHTML=power+'<span class="metric-unit">W</span>';
+  const sp=document.getElementById('detail-status');
+  if(status==='online') sp.className='status-pill online', sp.innerHTML='<div class="plug-status-dot online" style="animation:none;width:6px;height:6px;"></div> Online';
+  else if(status==='offline') sp.className='status-pill offline', sp.innerHTML='<div class="plug-status-dot offline" style="animation:none;width:6px;height:6px;"></div> Offline';
+  else if(status==='warn') sp.className='status-pill warn', sp.innerHTML='<div class="plug-status-dot warn" style="animation:none;width:6px;height:6px;"></div> แจ้งเตือน';
+  const rb=document.getElementById('detail-risk');
+  if(risk==='high'){rb.className='risk-badge high';rb.textContent='สูง';}
+  else if(risk==='medium'){rb.className='risk-badge medium';rb.textContent='ปานกลาง';}
+  else if(risk==='low'){rb.className='risk-badge low';rb.textContent='ต่ำ';}
+  else{rb.className='risk-badge';rb.textContent='ไม่ระบุ';}
+}
+
+/* ---------- CHART TABS ---------- */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',function(){
+    this.closest('.chart-tabs').querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+/* ---------- LIVE UPDATES ---------- */
+setInterval(()=>{
+  const v=3255+Math.floor(Math.random()*80)-40;
+  const f=v.toLocaleString();
+  const sbw=document.getElementById('sb-w');
+  const qsp=document.getElementById('qs-power');
+  const dp=document.getElementById('dash-power');
+  if(sbw)sbw.textContent=f+' W';
+  if(qsp)qsp.textContent=f;
+  if(dp)dp.innerHTML=f+'<span class="stat-unit">W</span>';
+},3000);
+
+/* auto-off countdown */
+let timeLeft=12;
+setInterval(()=>{
+  if(timeLeft>0)timeLeft--;
+  const fill=document.getElementById('progress-fill');
+  if(fill)fill.style.width=Math.max(0,(timeLeft/30)*100)+'%';
+  const te=document.getElementById('autooff-time');
+  if(te&&timeLeft<=5)te.style.color='var(--danger)';
+},10000);
+
+/* ---------- DEMO DATA ---------- */
+(function initDemo(){
+  rooms=[
+    {id:'r1',name:'ครัว',emoji:'🍳',x:20,y:20,w:210,h:180,plugs:[
+      {id:'p1',name:'เตาไฟฟ้า',emoji:'🍳',risk:'high',watt:1240,status:'warn'},
+      {id:'p2',name:'ตู้เย็น',emoji:'🧊',risk:'low',watt:150,status:'on'},
+    ]},
+    {id:'r2',name:'ห้องนอน',emoji:'🛏',x:250,y:20,w:210,h:180,plugs:[
+      {id:'p3',name:'เตารีด',emoji:'👔',risk:'high',watt:1100,status:'warn'},
+      {id:'p4',name:'แอร์',emoji:'❄️',risk:'medium',watt:900,status:'on'},
+    ]},
+    {id:'r3',name:'ห้องนั่งเล่น',emoji:'🛋',x:20,y:220,w:210,h:165,plugs:[
+      {id:'p5',name:'ทีวี',emoji:'📺',risk:'low',watt:120,status:'on'},
+      {id:'p6',name:'พัดลม',emoji:'🌀',risk:'low',watt:65,status:'on'},
+    ]},
+    {id:'r4',name:'ห้องซัก',emoji:'🫧',x:250,y:220,w:210,h:165,plugs:[
+      {id:'p7',name:'เครื่องซักผ้า',emoji:'🫧',risk:'medium',watt:850,status:'on'},
+    ]},
+  ];
+  render();
+})();
+</script>
+</body>
+</html>
