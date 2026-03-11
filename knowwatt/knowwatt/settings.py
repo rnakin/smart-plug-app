@@ -14,7 +14,7 @@ DEBUG = os.environ.get('DEBUG')
 if DEBUG is None:
     DEBUG = True
 
-ALLOWED_HOSTS = ["localhost","0.0.0.0"]
+ALLOWED_HOSTS = ["localhost","0.0.0.0","127.0.0.1"]
 
 # Application definition
 
@@ -68,17 +68,13 @@ WSGI_APPLICATION = 'knowwatt.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# settings.py
-
-
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB'),
-        'USER': os.environ.get('POSTGRES_USER'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'db'),
+        'NAME': os.environ.get('POSTGRES_DB','knowwatt'),
+        'USER': os.environ.get('POSTGRES_USER','knowwatt_user'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD','your_password'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
