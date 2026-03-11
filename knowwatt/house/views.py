@@ -232,16 +232,15 @@ class HouseUserInviteView(APIView):
 
     def post(self, request, house_id):
         """Invite a user to the house via email"""
-        # Check if user is owner of the house
+        # Check if user is owner or admin of the house
         membership = HouseMember.objects.filter(
             house_id=house_id,
-            user=request.user,
-            role='owner'
+            user=request.user
         ).first()
 
-        if not membership:
+        if not membership or membership.role not in ['owner', 'admin']:
             return Response(
-                {'error': 'Only owner can invite users'},
+                {'error': 'Only owner or admin can invite users'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -252,12 +251,25 @@ class HouseUserInviteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Get requested role (optional, defaults to member)
+        requested_role = request.data.get('role', 'member')
+        if requested_role not in ['admin', 'member', 'guest']:
+            return Response(
+                {'error': 'Role must be admin, member, or guest'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Only owner can invite admin
+        if requested_role == 'admin' and membership.role != 'owner':
+            return Response(
+                {'error': 'Only owner can invite admins'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         from django.contrib.auth.models import User
         try:
             invited_user = User.objects.get(email=email)
         except User.DoesNotExist:
-            # In a real app, you'd create an invitation record
-            # For now, we'll return an error
             return Response(
                 {'error': 'User with this email does not exist'},
                 status=status.HTTP_404_NOT_FOUND
@@ -275,11 +287,11 @@ class HouseUserInviteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Create membership as member
+        # Create membership with specified role
         HouseMember.objects.create(
             house_id=house_id,
             user=invited_user,
-            role='member'
+            role=requested_role
         )
 
         house = House.objects.get(id=house_id)
@@ -288,25 +300,25 @@ class HouseUserInviteView(APIView):
         try:
             send_mail(
                 subject=f'Invitation to join {house.house_name}',
-                message=f'You have been invited to join {house.house_name}. Accept the invitation to become a member.',
+                message=f'You have been invited to join {house.house_name} as {requested_role}. Accept the invitation to become a member.',
                 from_email='noreply@knowwatt.com',
                 recipient_list=[email],
                 fail_silently=True,
             )
         except Exception:
-            pass  # Don't fail if email fails
+            pass
 
         return Response({
             'message': 'User invited successfully',
             'user_id': str(invited_user.id),
             'email': email,
+            'role': requested_role,
         }, status=status.HTTP_201_CREATED)
 
 
-class HouseUserDetailView(APIView):
+class HouseUserManageView(APIView):
     """
-    PATCH /api/houses/:houseId/users/:userId - Edit user's role
-    DELETE /api/houses/:houseId/users/:userId - Remove user from house
+    POST /api/houses/:houseId/users/manage - Manage user (body: {action: 'remove'|'update', user_id, role})
     """
     permission_classes = [IsAuthenticated]
 
@@ -317,18 +329,27 @@ class HouseUserDetailView(APIView):
             user=user
         ).first()
 
-    def patch(self, request, house_id, user_id):
-        """Update a member's role"""
-        # Check if requester is owner
+    def post(self, request, house_id):
+        """Handle member removal or role update"""
+        action = request.data.get('action')
+        user_id = request.data.get('user_id')
+        
+        if not user_id:
+            return Response(
+                {'error': 'user_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if requester is owner or admin
         requester_membership = self.get_house_membership(house_id, request.user)
         
-        if not requester_membership or requester_membership.role != 'owner':
+        if not requester_membership or requester_membership.role not in ['owner', 'admin']:
             return Response(
-                {'error': 'Only owner can change member roles'},
+                {'error': 'Only owner or admin can manage members'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Get the member to update
+        # Get the target member
         target_membership = HouseMember.objects.filter(
             house_id=house_id,
             user_id=user_id
@@ -340,62 +361,70 @@ class HouseUserDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Cannot change owner's role
-        if target_membership.role == 'owner':
+        # Handle remove action
+        if action == 'remove':
+            # Cannot remove owner
+            if target_membership.role == 'owner':
+                return Response(
+                    {'error': 'Cannot remove owner'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Admin cannot remove another admin
+            if requester_membership.role == 'admin' and target_membership.role == 'admin':
+                return Response(
+                    {'error': 'Admin cannot remove another admin'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            target_membership.delete()
             return Response(
-                {'error': 'Cannot change owner role'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'message': 'Member removed successfully'},
+                status=status.HTTP_200_OK
             )
-
-        new_role = request.data.get('role')
-        if new_role not in ['member', 'admin']:
-            return Response(
-                {'error': 'Role must be member or admin'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        target_membership.role = new_role
-        target_membership.save()
-
-        return Response({
-            'message': 'Role updated successfully',
-            'user_id': str(target_membership.user.id),
-            'role': target_membership.role,
-        }, status=status.HTTP_200_OK)
-
-    def delete(self, request, house_id, user_id):
-        """Remove a user from the house"""
-        # Check if requester is owner
-        requester_membership = self.get_house_membership(house_id, request.user)
         
-        if not requester_membership or requester_membership.role != 'owner':
-            return Response(
-                {'error': 'Only owner can remove members'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # Handle update role action
+        elif action == 'update_role':
+            new_role = request.data.get('role')
+            
+            # Cannot change owner's role
+            if target_membership.role == 'owner':
+                return Response(
+                    {'error': 'Cannot change owner role'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        # Get the member to remove
-        target_membership = HouseMember.objects.filter(
-            house_id=house_id,
-            user_id=user_id
-        ).first()
+            # Admin cannot change another admin's role
+            if requester_membership.role == 'admin' and target_membership.role == 'admin':
+                return Response(
+                    {'error': 'Admin cannot change another admin\'s role'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
-        if not target_membership:
-            return Response(
-                {'error': 'Member not found in this house'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            if new_role not in ['admin', 'member', 'guest']:
+                return Response(
+                    {'error': 'Role must be admin, member, or guest'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        # Cannot remove owner
-        if target_membership.role == 'owner':
+            # Only owner can assign admin role
+            if new_role == 'admin' and requester_membership.role != 'owner':
+                return Response(
+                    {'error': 'Only owner can assign admin role'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            target_membership.role = new_role
+            target_membership.save()
+
+            return Response({
+                'message': 'Role updated successfully',
+                'user_id': str(target_membership.user.id),
+                'role': target_membership.role,
+            }, status=status.HTTP_200_OK)
+        
+        else:
             return Response(
-                {'error': 'Cannot remove owner'},
+                {'error': 'Invalid action. Use "remove" or "update_role"'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        target_membership.delete()
-
-        return Response(
-            {'message': 'Member removed successfully'},
-            status=status.HTTP_200_OK
-        )

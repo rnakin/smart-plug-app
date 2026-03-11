@@ -4,7 +4,7 @@ from .views import (
     HouseDetailView,
     HouseUserListView,
     HouseUserInviteView,
-    HouseUserDetailView,
+    HouseUserManageView,
 )
 
 urlpatterns = [
@@ -15,5 +15,5 @@ urlpatterns = [
     # User management endpoints (per documentation)
     path('<uuid:house_id>/users/', HouseUserListView.as_view(), name='house-user-list'),
     path('<uuid:house_id>/users/invite/', HouseUserInviteView.as_view(), name='house-user-invite'),
-    path('<uuid:house_id>/users/<uuid:user_id>/', HouseUserDetailView.as_view(), name='house-user-detail'),
+    path('<uuid:house_id>/users/manage/', HouseUserManageView.as_view(), name='house-user-manage'),
 ]

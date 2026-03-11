@@ -24,9 +24,62 @@ class House(models.Model):
 class HouseMember(models.Model):
     ROLE_CHOICES = [
         ('owner', 'Owner'),
+        ('admin', 'Admin'),
         ('member', 'Member'),
-        ('guest', 'guest'),
+        ('guest', 'Guest'),
     ]
+    
+    # Role permissions mapping
+    PERMISSIONS = {
+        'owner': {
+            'can_create_house': True,
+            'can_edit_house': True,
+            'can_delete_house': True,
+            'can_manage_members': True,
+            'can_remove_owner': False,
+            'can_control_devices': True,
+            'can_view_devices': True,
+            'can_view_members': True,
+        },
+        'admin': {
+            'can_create_house': False,
+            'can_edit_house': False,
+            'can_delete_house': False,
+            'can_manage_members': True,
+            'can_remove_owner': False,
+            'can_remove_admin': False,
+            'can_control_devices': True,
+            'can_view_devices': True,
+            'can_view_members': True,
+        },
+        'member': {
+            'can_create_house': False,
+            'can_edit_house': False,
+            'can_delete_house': False,
+            'can_manage_members': False,
+            'can_remove_owner': False,
+            'can_control_devices': True,
+            'can_view_devices': True,
+            'can_view_members': True,
+        },
+        'guest': {
+            'can_create_house': False,
+            'can_edit_house': False,
+            'can_delete_house': False,
+            'can_manage_members': False,
+            'can_control_devices': False,
+            'can_view_devices': True,
+            'can_view_members': True,
+        },
+    }
+    
+    @classmethod
+    def has_permission(cls, membership, permission):
+        """Check if membership has a specific permission"""
+        if not membership:
+            return False
+        role_perms = cls.PERMISSIONS.get(membership.role, {})
+        return role_perms.get(permission, False)
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     house = models.ForeignKey(
