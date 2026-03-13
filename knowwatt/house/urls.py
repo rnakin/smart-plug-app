@@ -17,6 +17,9 @@ urlpatterns = [
     path('<uuid:house_id>/users/invite/', HouseUserInviteView.as_view(), name='house-user-invite'),
     path('<uuid:house_id>/users/manage/', HouseUserManageView.as_view(), name='house-user-manage'),
 
-    # Device & NFC (scoped to house) — include device app's house-scoped urls
+    # Device & NFC (scoped to house)
     path('<uuid:house_id>/', include('device.house_urls')),
+
+    # Energy (scoped to house)
+    path('<uuid:house_id>/', include('energy.urls')),
 ]

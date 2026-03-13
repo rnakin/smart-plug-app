@@ -1,189 +1,144 @@
-## Smart Plug NFC Demo (Simple App)
+# KnowWatt — Smart Home Energy Management System
 
-This is a **very small, easy-to-run demo app** for your project  
-“Smart Home Energy Management System with Security Alert using NFC-Based Device Identification”.
-
-It focuses only on:
-
-- **A simple backend API** to manage:
-  - homes (houses)
-  - smart plugs
-  - electrical devices
-  - NFC tags linked to devices
-- **A minimal web frontend** to:
-  - create a home
-  - add smart plugs and devices
-  - link an NFC tag UID to a device
-  - simulate “tapping” a tag on a plug to identify which device is connected
-
-This matches the core idea in the project document but keeps the implementation **small and easy to understand**.
+Django + PostgreSQL backend with JWT auth, multi-household support, NFC device identification, and energy monitoring.
 
 ---
 
-### 1. Backend service (Node + Express + SQLite)
+## Project Progress
 
-Location: `backend/`
+| Phase | Status | Progress |
+|-------|--------|----------|
+| **Phase 1: Django + PostgreSQL Setup** | ✅ Complete | 100% |
+| **Phase 2: Auth Service** | ✅ Complete | 100% |
+| **Phase 3: User & House Service** | ✅ Complete | 100% |
+| **Phase 4: Device Service** | ✅ Complete | 100% |
+| **Phase 5: Energy Service** | ✅ Complete | 100% |
+| Phase 6: Alert Service | ⏳ Pending | 0% |
 
-Tech stack:
+---
 
-- Node.js (ES modules)
-- Express
-- better-sqlite3 (single-file SQLite database)
-- CORS
-
-#### Install & run
-
-From the project root:
+## Running the App
 
 ```bash
-cd backend
-npm install
-npm run start   # or: npm run dev
+# Copy env file
+cp .env_example .env
+
+# Start with Docker Compose
+docker compose up --build
+
+# Apply migrations (first time)
+docker compose exec web python manage.py migrate
+
+# Create superuser
+docker compose exec web python manage.py createsuperuser
 ```
 
-The backend will listen on `http://localhost:4000` and create `data.db` in the `backend` folder.
-
-#### Main endpoints (all JSON)
-
-- `GET /health`  
-  Simple health check.
-
-- `GET /api/houses`  
-  List all homes.
-
-- `POST /api/houses`  
-  Create a home.
-
-  Body:
-
-  ```json
-  { "house_name": "My Home" }
-  ```
-
-- `GET /api/houses/:houseId/plugs`  
-  List smart plugs in a home.
-
-- `POST /api/houses/:houseId/plugs`  
-  Add a smart plug.
-
-  Body:
-
-  ```json
-  { "plug_name": "Iron plug" }
-  ```
-
-- `POST /api/plugs/:plugId/toggle`  
-  Toggle plug status (`on`/`off`). This is **simulated** (no MQTT/hardware).
-
-- `GET /api/houses/:houseId/devices`  
-  List devices in a home.
-
-- `POST /api/houses/:houseId/devices`  
-  Add an electrical device.
-
-  Example body:
-
-  ```json
-  {
-    "device_name": "Steam iron",
-    "device_type": "iron",
-    "rated_power_w": 2000,
-    "risk_level": "high",
-    "auto_off_minutes": 30
-  }
-  ```
-
-- `POST /api/devices/:deviceId/nfc-tags`  
-  Link an NFC tag UID to a device.
-
-  Body:
-
-  ```json
-  { "uid": "04A1B2C3D4" }
-  ```
-
-- `GET /api/nfc-tags/:uid`  
-  Look up which device is associated with a tag UID.
-
-- `POST /api/mock/nfc-detected`  
-  **Simple “NFC tap” simulation** for the frontend.
-
-  Body:
-
-  ```json
-  {
-    "plugId": "<smart_plug_id>",
-    "uid": "04A1B2C3D4"
-  }
-  ```
-
-  Response:
-
-  ```json
-  {
-    "plug": { ... },
-    "device": { ... }
-  }
-  ```
-
-This is enough to demonstrate the **device identification with NFC + basic control context** without implementing the full microservice or MQTT architecture yet.
+App runs at `http://localhost:8000`
 
 ---
 
-### 2. Frontend app (HTML + vanilla JS)
+## API Overview
 
-Location: `frontend/`
+All API endpoints require JWT authentication unless noted.
 
-Tech stack:
+### Auth (`/auth/`)
 
-- Plain `index.html`
-- `app.js` with `fetch()` calls to the backend
-- No build tools required
+| Method | URL | Description |
+|--------|-----|-------------|
+| POST | `/auth/register/` | Register with email + password |
+| POST | `/auth/login/` | Login → returns access + refresh tokens |
+| POST | `/auth/logout/` | Logout (blacklist refresh token) |
+| POST | `/auth/token/refresh/` | Refresh access token |
+| POST | `/auth/verify-email/` | Verify email with token |
+| POST | `/auth/forgot-password/` | Send password reset email |
+| POST | `/auth/reset-password/` | Reset password with token |
+| GET  | `/auth/me/` | Get current user info |
 
-You can open `frontend/index.html` directly in a browser, or serve it with any static file server.
+### Houses (`/api/houses/`)
 
-#### Usage flow
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/api/houses/` | List user's houses |
+| POST | `/api/houses/` | Create house (creator = owner) |
+| GET | `/api/houses/<id>/` | House details |
+| PATCH | `/api/houses/<id>/` | Update house (owner only) |
+| DELETE | `/api/houses/<id>/` | Delete house (owner only) |
+| GET | `/api/houses/<id>/users/` | List members |
+| POST | `/api/houses/<id>/users/invite/` | Invite member by email |
+| POST | `/api/houses/<id>/users/manage/` | Remove / update role |
 
-1. **Start the backend** on `http://localhost:4000`.
-2. Open `frontend/index.html` in a browser.
-3. In the “Backend URL” field, keep `http://localhost:4000` and click **Check**.
-4. **Create a home**:
-   - Enter a home name.
-   - Click **Create home**.
-5. **Add a smart plug**:
-   - Select your home.
-   - Enter a plug name (e.g. “Iron plug”).
-   - Click **Add plug**.
-6. **Register a device**:
-   - Fill device name, type, power, risk level, and auto-off time.
-   - Click **Save device**.
-7. **Link an NFC tag**:
-   - Choose a device in “Link NFC tag → device”.
-   - Enter a fake NFC UID (e.g. `04A1B2C3D4`).
-   - Click **Link tag**.
-8. **Simulate a tap**:
-   - Choose a plug.
-   - Enter the same UID.
-   - Click **Simulate tap** to see which device is identified.
+### Smart Plugs
 
-All API calls and events are logged in the small “Activity” panel on the right.
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/api/houses/<id>/plugs/` | List plugs |
+| POST | `/api/houses/<id>/plugs/` | Register plug (QR/manual code) |
+| GET/PATCH/DELETE | `/api/houses/<id>/plugs/<plug_id>/` | Plug detail |
+| POST | `/api/houses/<id>/plugs/<plug_id>/control/` | Remote on/off |
+
+### Electrical Devices
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/api/houses/<id>/devices/` | List devices |
+| POST | `/api/houses/<id>/devices/` | Create device |
+| GET/PATCH/DELETE | `/api/houses/<id>/devices/<device_id>/` | Device detail |
+
+### NFC Tags
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/api/houses/<id>/nfc/` | List NFC tags |
+| POST | `/api/houses/<id>/nfc/register/` | Register NFC tag |
+| GET/PATCH/DELETE | `/api/houses/<id>/nfc/<tag_id>/` | Tag detail |
+| POST | `/api/nfc/scan/` | NFC tap event (returns device or unknown signal) |
+
+### Energy (`/api/houses/<id>/energy/`)
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| POST | `.../energy/ingest/` | Ingest reading from plug firmware |
+| GET | `.../energy/realtime/` | Latest reading per plug |
+| GET | `.../energy/dashboard/` | Combined dashboard (today/week/month kWh, top devices) |
+| GET | `.../energy/summary/?period=daily\|weekly\|monthly` | Aggregated summary |
+| GET | `.../energy/by-device/` | Energy breakdown per device |
+| GET | `.../energy/by-plug/` | Energy breakdown per plug |
+| GET | `.../energy/readings/` | Raw readings (paginated) |
+| GET | `.../energy/export/?format=csv\|json` | Export readings as CSV or JSON |
+
+**Common query params:** `start=YYYY-MM-DD`, `end=YYYY-MM-DD`, `plug_id`, `device_id`
 
 ---
 
-### 3. How this matches your project document
+## Role Permissions
 
-- Uses a **backend service** with a relational-style schema:
-  - `houses`, `smart_plugs`, `electrical_devices`, `nfc_tags`
-- Supports **NFC-based device identification**:
-  - Tag UID → Device profile (risk, auto-off minutes, etc.)
-- Demonstrates **core user flows** from the document in a simplified way:
-  - manage home, plugs, devices
-  - register NFC tags
-  - simulate plugging in / tapping a device
+| Role | Permissions |
+|------|-------------|
+| **Owner** | Full access, manage members, delete house |
+| **Admin** | Manage devices/plugs, manage members (except owner) |
+| **Member** | View & control devices, view members |
+| **Guest** | View only (read-only) |
 
-Next steps if you want to go further:
+---
 
-- Add **Authentication + multi-user / multi-household** the way the document describes.
-- Split the backend into real **microservices** and introduce **MQTT** for communicating with your ESP32-based hardware.
-- Replace the simple web frontend with a full **mobile app** (e.g. React Native or Flutter) using the same REST API.
+## Data Models
 
+```
+House
+  └── HouseMember (owner/admin/member/guest)
+  └── SmartPlug (plug_code, name, location, is_on, online_status)
+       └── PlugSession (active device session via NFC)
+       └── EnergyReading (voltage, current, power, energy_kwh, recorded_at)
+  └── ElectricalDevice (name, type, rated_power_w, risk_level, auto_cutoff_minutes)
+       └── NFCTag (tag_uid, label) — one device → many tags
+  └── DailyEnergySummary (pre-aggregated per plug per day)
+```
+
+---
+
+## Tech Stack
+
+- **Backend:** Django 5, Django REST Framework, SimpleJWT
+- **Database:** PostgreSQL
+- **Auth:** JWT (access + refresh tokens), email verification
+- **Containerization:** Docker + Docker Compose
