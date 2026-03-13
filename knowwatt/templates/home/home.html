@@ -1,0 +1,418 @@
+{% extends "home/base.html" %}
+{% load static %}
+
+
+{% block title %}Home control{% endblock %}
+{% block header %}
+<link rel="stylesheet" href="{% static 'css/home/home.css' %}">
+<link rel="stylesheet" href="{% static 'css/home/page.css' %}">
+<link rel="stylesheet" href="{% static 'css/home/sidebar.css' %}">
+<link rel="stylesheet" href="{% static 'css/home/digital_twin.css' %}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+{% block content %}
+<div class="page active" id="page-home">
+
+    <div class="home-header">
+        <div>
+            <div id="greeting" class="greeting">สวัสดี, คุณ<p id="username"></p>
+            </div>
+            <div class="greeting-sub">
+                <div class="live-dot-home"></div>
+                <p class="live-dot-status">Live dot status here <br /> Everthing is fine (last updated time)</p>
+            </div>
+        </div>
+
+
+
+        <div class="alerts-zone">
+            <div class="apill warn" onclick="openPlugDetail('เตารีด','👔','warn')">
+                <span>⚠️</span><span class="apill-txt">เตารีดในห้องนอนเปิดทิ้งไว้เกิน 30 นาที</span><span
+                    class="apill-act">ปิดทันที →</span>
+            </div>
+            <div class="apill danger" onclick="openPlugDetail('เตาไฟฟ้า','🍳','warn')">
+                <span>🔴</span><span class="apill-txt">ตรวจพบพลังงานผิดปกติ — ครัว A1 สูง
+            </div>
+        </div>
+    </div>
+    <div class="house-row">
+        <div id="house-row"></div>
+        <button class="htab-add" onclick=toggleAddHomePopup()>
+            <svg width="11" height="11" fill="none" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"></path>
+            </svg>
+            เพิ่มบ้าน
+        </button>
+        <div class="popup-overlay" id="popup-overlay" style="display:none;"></div>
+        <div id="add-home-popup" class="popup" style="display:none;">
+            Add your home!
+            <form>
+                <label for="house_name">House name:</label><br>
+                <input type="text" id="house_name" name="house_name"><br>
+                <label for="address">Address</label><br>
+                <input type="text" id="address" name="address"><br>
+
+                <!-- Map -->
+                <label>Pick location:</label>
+                <div id="map" style="height: 300px; width: 100%; border-radius: 8px;"></div>
+
+                <!-- Hidden lat/lng fields -->
+                <input type="hidden" id="lat" name="lat">
+                <input type="hidden" id="lng" name="lng">
+                <small id="coords-display">No location selected</small><br><br>
+
+                <button onclick="addHomeCommit()">Add</button>
+            </form>
+            <button onclick="toggleAddHomePopup()">close</button>
+        </div>
+    </div>
+
+
+    <div class="twin-section">
+        <div class="qs-row">
+            <div class="qs">
+                <div class="dot" style="background:var(--accent)"></div>ออนไลน์ <span class="v">4</span>
+            </div>
+            <div class="qs">
+                <div class="dot" style="background:var(--warn)"></div>แจ้งเตือน <span class="v">2</span>
+            </div>
+            <div class="qs">⚡ <span class="v" id="qs-power">3,240</span> W</div>
+        </div>
+        <div class="twin-toolbar">
+            <div class="tb-left">
+                <button class="tbtn primary" onclick="openAddRoom()">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24">
+                        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        </path>
+                    </svg>
+                    เพิ่มห้อง
+                </button>
+                <button class="tbtn secondary" onclick="openAddFloor()">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24">
+                        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        </path>
+                    </svg>
+                    เพิ่มชั้น
+                </button>
+                <button class="tbtn" id="btn-edit" onclick="toggleEdit()">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24">
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor"
+                            stroke-width="1.8" stroke-linecap="round"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor"
+                            stroke-width="1.8"></path>
+                    </svg>
+                    จัดเรียง
+                </button>
+                <button class="tbtn" onclick="autoArrange()">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"></rect>
+                    </svg>
+                    จัดอัตโนมัติ
+                </button>
+            </div>
+            <span class="mode-lbl" id="mode-lbl">VIEW MODE</span>
+        </div>
+
+        <div class="twin-canvas" id="canvas">
+            <div class="cempty hide" id="cempty">
+                <div class="cempty-ico">🏠</div>
+                <p>ยังไม่มีห้อง</p>
+                <small>คลิก "เพิ่มห้อง" เพื่อเริ่มสร้างแผนผังบ้าน</small>
+            </div>
+            <div class="room-block has-warn" id="r1"
+                style="left: 20px; top: 20px; width: 210px; height: 180px; background: rgba(255, 130, 0, 0.055);">
+                <div class="rbar" data-id="r1">
+                    <div class="rlabel"><span class="em">🍳</span><span>ครัว</span></div>
+                    <div class="ract">
+                        <button class="ract-btn" onclick="openAddPlug('r1')">+</button>
+                        <button class="ract-btn del" onclick="delRoom('r1')">✕</button>
+                    </div>
+                </div>
+                <div class="rbody">
+
+                    <div class="plug-node warn" onclick="openPlugDetail('เตาไฟฟ้า','🍳','warn')">
+                        <div class="pico">🍳<div class="pring"></div>
+                        </div>
+                        <div class="pname">เตาไฟฟ้า</div>
+                        <div class="pwatt">1240W</div>
+                        <div class="ptip">เตาไฟฟ้า · 1240W</div>
+                    </div>
+                    <div class="plug-node on" onclick="openPlugDetail('ตู้เย็น','🧊','on')">
+                        <div class="pico">🧊<div class="pring"></div>
+                        </div>
+                        <div class="pname">ตู้เย็น</div>
+                        <div class="pwatt">150W</div>
+                        <div class="ptip">ตู้เย็น · 150W</div>
+                    </div>
+                    <div class="aplug-cell" onclick="openAddPlug('r1')">+</div>
+                </div>
+                <div class="rresize" data-r="r1"></div>
+            </div>
+            <div class="room-block has-warn" id="r2"
+                style="left: 250px; top: 20px; width: 210px; height: 180px; background: rgba(100, 100, 255, 0.055);">
+                <div class="rbar" data-id="r2">
+                    <div class="rlabel"><span class="em">🛏</span><span>ห้องนอน</span></div>
+                    <div class="ract">
+                        <button class="ract-btn" onclick="openAddPlug('r2')">+</button>
+                        <button class="ract-btn del" onclick="delRoom('r2')">✕</button>
+                    </div>
+                </div>
+                <div class="rbody">
+
+                    <div class="plug-node warn" onclick="openPlugDetail('เตารีด','👔','warn')">
+                        <div class="pico">👔<div class="pring"></div>
+                        </div>
+                        <div class="pname">เตารีด</div>
+                        <div class="pwatt">1100W</div>
+                        <div class="ptip">เตารีด · 1100W</div>
+                    </div>
+                    <div class="plug-node on" onclick="openPlugDetail('แอร์','❄️','on')">
+                        <div class="pico">❄️<div class="pring"></div>
+                        </div>
+                        <div class="pname">แอร์</div>
+                        <div class="pwatt">900W</div>
+                        <div class="ptip">แอร์ · 900W</div>
+                    </div>
+                    <div class="aplug-cell" onclick="openAddPlug('r2')">+</div>
+                </div>
+                <div class="rresize" data-r="r2"></div>
+            </div>
+            <div class="room-block" id="r3"
+                style="left: 20px; top: 220px; width: 210px; height: 165px; background: rgba(0, 180, 100, 0.055);">
+                <div class="rbar" data-id="r3">
+                    <div class="rlabel"><span class="em">🛋</span><span>ห้องนั่งเล่น</span></div>
+                    <div class="ract">
+                        <button class="ract-btn" onclick="openAddPlug('r3')">+</button>
+                        <button class="ract-btn del" onclick="delRoom('r3')">✕</button>
+                    </div>
+                </div>
+                <div class="rbody">
+
+                    <div class="plug-node on" onclick="openPlugDetail('ทีวี','📺','on')">
+                        <div class="pico">📺<div class="pring"></div>
+                        </div>
+                        <div class="pname">ทีวี</div>
+                        <div class="pwatt">120W</div>
+                        <div class="ptip">ทีวี · 120W</div>
+                    </div>
+                    <div class="plug-node on" onclick="openPlugDetail('พัดลม','🌀','on')">
+                        <div class="pico">🌀<div class="pring"></div>
+                        </div>
+                        <div class="pname">พัดลม</div>
+                        <div class="pwatt">65W</div>
+                        <div class="ptip">พัดลม · 65W</div>
+                    </div>
+                    <div class="aplug-cell" onclick="openAddPlug('r3')">+</div>
+                </div>
+                <div class="rresize" data-r="r3"></div>
+            </div>
+            <div class="room-block" id="r4"
+                style="left: 250px; top: 220px; width: 210px; height: 165px; background: rgba(0, 200, 220, 0.055);">
+                <div class="rbar" data-id="r4">
+                    <div class="rlabel"><span class="em">🫧</span><span>ห้องซัก</span></div>
+                    <div class="ract">
+                        <button class="ract-btn" onclick="openAddPlug('r4')">+</button>
+                        <button class="ract-btn del" onclick="delRoom('r4')">✕</button>
+                    </div>
+                </div>
+                <div class="rbody">
+
+                    <div class="plug-node on" onclick="openPlugDetail('เครื่องซักผ้า','🫧','on')">
+                        <div class="pico">🫧<div class="pring"></div>
+                        </div>
+                        <div class="pname">เครื่องซักผ้า</div>
+                        <div class="pwatt">850W</div>
+                        <div class="ptip">เครื่องซักผ้า · 850W</div>
+                    </div>
+                    <div class="aplug-cell" onclick="openAddPlug('r4')">+</div>
+                </div>
+                <div class="rresize" data-r="r4"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sum-bar">
+        <div class="ss">
+            <div class="ssl">ห้อง</div>
+            <div class="ssv" id="sb-r">4</div>
+        </div>
+        <div class="sdiv"></div>
+        <div class="ss">
+            <div class="ssl">ปลั๊ก</div>
+            <div class="ssv" id="sb-p">7</div>
+        </div>
+        <div class="sdiv"></div>
+        <div class="ss">
+            <div class="ssl">กำลังไฟ</div>
+            <div class="ssv acc" id="sb-w">3,240 W</div>
+        </div>
+        <div class="sdiv"></div>
+        <div class="ss">
+            <div class="ssl">วันนี้</div>
+            <div class="ssv">12.4 kWh</div>
+        </div>
+        <div class="sdiv"></div>
+        <div class="ss">
+            <div class="ssl">แจ้งเตือน</div>
+            <div class="ssv wrn">2 รายการ</div>
+        </div>
+        <div class="sr">
+            <button class="tbtn" onclick="showPage('dashboard')">ดู Dashboard →</button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    const token = localStorage.getItem('access');
+
+    if (!token) {
+        window.location = '/login/';
+    }
+
+    // test connection, Authorization by try to fetch a restricted api auth/me to obtain username
+    fetch('/auth/me/', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+        .then(res => {
+            if (res.status === 401) {
+                // Token expired or invalid
+                localStorage.clear();
+                window.location = '/login/';
+            } else if (res.status === 403) {
+                // Not allowed
+                window.location = '/login/';
+            } else if (res.status === 500) {
+                // Server error
+                console.error('Server error');
+            } else if (!res.ok) {
+                // Any other error
+                console.error('Unexpected error:', res.status);
+            }
+            return res.json();
+        })
+        .then(data => {
+            document.getElementById('username').textContent = data.username;
+        })
+        .catch(err => {
+            // Network error, server down, no internet
+            console.error('Network error:', err);
+            document.getElementById('username').textContent = 'Offline';
+        });
+
+
+    //get avaliable house
+    fetch('/api/houses/', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+        .then(res => {
+            if (res.status === 401) {
+                // Token expired or invalid
+                console.error('Token expired or invalid');
+                localStorage.clear();
+            } else if (res.status === 403) {
+                // Not allowed
+                console.error('Not allowed');
+            } else if (res.status === 500) {
+                // Server error
+                console.error('Server error');
+            } else if (!res.ok) {
+                // Any other error
+                console.error('Unexpected error:', res.status);
+            }
+            return res.json();
+        })
+        .then(data => {
+            const houseRow = document.getElementById('house-row');
+
+            // Build house tabs from API data
+            const houseTabs = data.map((house, index) =>
+                `<div class="htab ${index === 0 ? 'active' : ''}" data-id="${house.id}">
+            ${house.emoji} ${house.house_name}
+        </div>`
+            ).join('');
+
+
+
+            houseRow.innerHTML = houseTabs;
+        })
+        .catch(err => {
+            // Network error, server down, no internet
+            console.error('cannot fetch houses due to network error:', err);
+            document.getElementById('house-row').innerHTML = '<div class="htab-add">offline</div>';
+        });
+
+    let displayAddHomePopup = false;
+
+    function toggleAddHomePopup() {
+        displayAddHomePopup = !displayAddHomePopup;
+
+        const popup = document.getElementById('add-home-popup');
+        const overlay = document.getElementById('popup-overlay');
+
+        popup.style.display = displayAddHomePopup ? 'flex' : 'none';
+        overlay.style.display = displayAddHomePopup ? 'block' : 'none';
+    }
+
+    function addHomeCommit() {
+        const hosuename = document.getElementById('house_name').value;
+        const address = document.getElementById('address').value;
+        const lat = document.getElementById('lat').value;
+        const lng = document.getElementById('lng').value;
+        fetch("/api/houses/", {
+            method: "POST",
+
+            body: JSON.stringify({
+                house_name : hosuename,
+                address : address,
+                lat : lat,
+                long : lng,
+            }),
+            headers: {
+                headers: { 'Authorization': 'Bearer ' + token },
+            }
+        });
+    }
+
+
+
+    //below are openstreet map scripts
+    let map = null;
+let marker = null;
+
+function initMap() {
+    if (map) return; // prevent re-initializing
+
+    map = L.map('map').setView([51.505, -0.09], 13); // default location
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // click to place marker
+    map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+
+        // move marker or create new one
+        if (marker) {
+            marker.setLatLng(e.latlng);
+        } else {
+            marker = L.marker(e.latlng).addTo(map);
+        }
+
+        // update hidden inputs
+        document.getElementById('lat').value = lat.toFixed(6);
+        document.getElementById('lng').value = lng.toFixed(6);
+        document.getElementById('coords-display').textContent = `Selected: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    });
+}
+
+</script>
+{% endblock %}
+
+{% block scrpit %} {% endblock %}

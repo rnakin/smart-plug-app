@@ -13,8 +13,8 @@ import uuid
 
 class HouseListCreateView(APIView):
     """
-    GET /api/house - List all houses where user is a member
-    POST /api/house - Create a new house, creator becomes owner
+    GET /api/houses - List all houses where user is a member
+    POST /api/houses - Create a new house, creator becomes owner
     """
     permission_classes = [IsAuthenticated]
 
@@ -30,6 +30,7 @@ class HouseListCreateView(APIView):
                 'lat': membership.house.lat,
                 'long': membership.house.long,
                 'role': membership.role,
+                'emoji':membership.house.emoji,
                 'created_at': membership.house.created_at.isoformat(),
             })
         return Response(houses, status=status.HTTP_200_OK)

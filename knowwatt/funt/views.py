@@ -10,8 +10,14 @@ def register_page(request):
     return render(request, 'register.html')
 
 def dashboard_page(request):
-    return render(request, 'dashboard.html')
+    return render(request, 'home/dashboard.html')
 
+def home_page(request):
+    context = {
+        'user': request.user,
+    }
+    return render(request, 'home/home.html', context)
+    
 def verify_email_page(request):
     return render(request, 'verify_email.html')
 

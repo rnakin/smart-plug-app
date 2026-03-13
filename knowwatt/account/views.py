@@ -227,7 +227,7 @@ class MeView(APIView):
     def get(self, request):
         return Response({
             'username': request.user.username,
-            'email':    request.user.email,
+            'email': request.user.email,
         })
 
 

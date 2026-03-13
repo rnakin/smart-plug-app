@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{% static 'css/home/home.css' %}">
+    <title>{% block title %}KnowWatt{% endblock %}</title>
+    {% block header %}{% endblock %}
+</head>
+
+<body>
+    <nav class="sidebar">
+  <div class="logo" onclick="showPage('home')">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</div>
+  <button class="nav-btn active" onclick="showPage('home')" title="หน้าหลัก">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.8"/></svg>
+  </button>
+  <button class="nav-btn" onclick="showPage('dashboard')" title="Dashboard">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+  </button>
+  <button class="nav-btn" onclick="showPage('energy')" title="Energy">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M3 3v18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m7 16 4-5 4 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="nav-btn" title="Alerts">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <div class="bdg"></div>
+  </button>
+  <div class="sidebar-gap"></div>
+  <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
+    <svg class="i-sun" width="17" height="17" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <svg class="i-moon" width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="avatar">ส</div>
+</nav>
+
+    <div id="content" style="width: 100%;">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+<script>
+ const token = localStorage.getItem('access');
+  console.log(token)
+    if (!token) {
+        pass
+        // window.location = '/';
+    } else {
+        fetch('/auth/me/', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(res => {
+            if (!res.ok) {
+                // localStorage.clear();
+                // window.location = '/login/';
+            }
+            return res.json();
+        })
+        .then(data => {
+            document.getElementById('username').textContent = data.username;
+        });
+    }
+</script>
+{% block script %}{% endblock %}
+</html>

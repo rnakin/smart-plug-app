@@ -10,7 +10,8 @@ class House(models.Model):
     lat = models.FloatField(null=True, blank=True)
     long = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    emoji = models.CharField(max_length=10, default='🏠')
+    # deleted = models.BooleanField(default=False)
     class Meta:
         db_table = 'house'
         verbose_name = 'House'
@@ -82,16 +83,8 @@ class HouseMember(models.Model):
         return role_perms.get(permission, False)
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    house = models.ForeignKey(
-        House,
-        on_delete=models.CASCADE,
-        related_name='members'
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='house_memberships'
-    )
+    house = models.ForeignKey( House, on_delete=models.CASCADE, related_name='members')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.SET_NULL,related_name='house_memberships',null=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
     joined_at = models.DateTimeField(auto_now_add=True)
 

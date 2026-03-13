@@ -1,0 +1,133 @@
+/* =====================================================
+   SIDEBAR
+   ===================================================== */
+.sidebar {
+   width:66px;
+   background: var(--surface);
+   border-right: 1px solid var(--border);
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   padding: 16px 0;
+   gap: 4px;
+   flex-shrink: 0;
+   z-index: 20;
+}
+
+.logo {
+   width: 38px;
+   height: 38px;
+   background: var(--accent);
+   border-radius: 11px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   margin-bottom: 16px;
+   cursor: pointer;
+   flex-shrink: 0;
+}
+
+.logo svg {
+   color: #000;
+}
+
+.nav-btn {
+   width: 42px;
+   height: 42px;
+   border-radius: 11px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   cursor: pointer;
+   color: var(--text3);
+   border: none;
+   background: none;
+   font-family: 'DM Sans', sans-serif;
+   position: relative;
+}
+
+.nav-btn:hover {
+   background: var(--surface2);
+   color: var(--text2);
+}
+
+.nav-btn.active {
+   background: var(--accent-dim);
+   color: var(--accent);
+}
+
+.nav-btn .bdg {
+   position: absolute;
+   top: 7px;
+   right: 7px;
+   width: 7px;
+   height: 7px;
+   background: var(--danger);
+   border-radius: 50%;
+   border: 1.5px solid var(--surface);
+}
+
+.sidebar-gap {
+   flex: 1;
+}
+
+.theme-btn {
+   width: 42px;
+   height: 42px;
+   border-radius: 11px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   cursor: pointer;
+   color: var(--text3);
+   border: none;
+   background: none;
+   position: relative;
+   overflow: hidden;
+   margin-bottom: 6px;
+}
+
+.theme-btn:hover {
+   background: var(--surface2);
+   color: var(--text2);
+}
+
+.i-sun,
+.i-moon {
+   position: absolute;
+   transition: opacity .3s, transform .4s;
+}
+
+[data-theme="dark"] .i-sun {
+   opacity: 1;
+   transform: scale(1) rotate(0);
+}
+
+[data-theme="dark"] .i-moon {
+   opacity: 0;
+   transform: scale(0.5) rotate(-90deg);
+}
+
+[data-theme="light"] .i-moon {
+   opacity: 1;
+   transform: scale(1) rotate(0);
+}
+
+[data-theme="light"] .i-sun {
+   opacity: 0;
+   transform: scale(0.5) rotate(90deg);
+}
+
+.avatar {
+   width: 34px;
+   height: 34px;
+   border-radius: 50%;
+   background: linear-gradient(135deg, var(--accent), var(--accent2));
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-size: 12px;
+   font-weight: 600;
+   color: #000;
+   cursor: pointer;
+}
