@@ -8,4 +8,5 @@ urlpatterns = [
     path("", include("funt.urls")),
     path("api/houses/", include("house.urls")),
     path("api/", include("device.urls")),
+    path("api/", include("alert.urls")),
 ]

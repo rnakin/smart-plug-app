@@ -1,0 +1,804 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KnowWatt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/home/home.css' %}">
+  <link rel="stylesheet" href="{% static 'css/home/sidebar.css' %}">
+  <link rel="stylesheet" href="{% static 'css/home/page.css' %}">
+  <link rel="stylesheet" href="{% static 'css/home/digital_twin.css' %}">
+  <link rel="stylesheet" href="{% static 'css/home/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'css/home/chart.css' %}">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="logo" onclick="showPage('home')" style="cursor:pointer;">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <button class="nav-btn active" id="nav-home" onclick="showPage('home')" title="หน้าหลัก">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.8"/></svg>
+  </button>
+  <button class="nav-btn" id="nav-dashboard" onclick="showPage('dashboard')" title="Dashboard">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+  </button>
+  <button class="nav-btn" id="nav-energy" onclick="showPage('energy')" title="พลังงาน">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M3 3v18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m7 16 4-5 4 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="nav-btn" id="nav-alerts" onclick="showPage('alerts')" title="การแจ้งเตือน" style="position:relative;">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <div class="bdg" id="alert-badge" style="display:none;"></div>
+  </button>
+  <div class="sidebar-gap"></div>
+  <button class="theme-btn" onclick="toggleTheme()" title="สลับธีม">
+    <svg class="i-sun" width="17" height="17" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <svg class="i-moon" width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="avatar" id="avatar-initials" title="โปรไฟล์">?</div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════════════════════════════ -->
+<div id="content" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
+
+<!-- ─────────────────────────────────────────────────────────────
+     PAGE: HOME
+───────────────────────────────────────────────────────────── -->
+<div class="page active" id="page-home">
+  <div class="home-header">
+    <div>
+      <div class="greeting">สวัสดี, <span id="username">...</span></div>
+      <div class="greeting-sub">
+        <div class="live-dot-home"></div>
+        <span id="live-status">กำลังโหลด...</span>
+      </div>
+    </div>
+    <div class="alerts-zone" id="alerts-zone"></div>
+  </div>
+
+  <div class="house-row">
+    <div id="house-row"></div>
+    <button class="htab-add" onclick="toggleAddHomePopup()">
+      <svg width="11" height="11" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      เพิ่มบ้าน
+    </button>
+  </div>
+
+  <div class="twin-section">
+    <div class="qs-row">
+      <div class="qs"><div class="dot" style="background:var(--accent)"></div>เปิดอยู่ <span class="v" id="qs-online">—</span></div>
+      <div class="qs"><div class="dot" style="background:var(--warn)"></div>แจ้งเตือน <span class="v" id="qs-alerts">—</span></div>
+      <div class="qs">⚡ <span class="v" id="qs-power">—</span> W</div>
+    </div>
+    <div class="twin-toolbar">
+      <div class="tb-left">
+        <button class="tbtn primary" onclick="openAddPlugModal()">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          เพิ่มปลั๊ก
+        </button>
+      </div>
+      <span id="house-role-badge" style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px;"></span>
+    </div>
+    <div id="plug-grid" style="display:flex; flex-wrap:wrap; gap:14px; padding:20px; overflow-y:auto; flex:1; align-content:flex-start;">
+      <div id="plug-empty" style="width:100%; text-align:center; padding:60px 20px; color:var(--text3);">
+        <div style="font-size:40px; margin-bottom:12px;">🔌</div>
+        <p style="font-size:14px;">ยังไม่มีปลั๊กในบ้านนี้</p>
+        <small>คลิก "เพิ่มปลั๊ก" เพื่อลงทะเบียนปลั๊กอัจฉริยะ</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="sum-bar">
+    <div class="ss"><div class="ssl">ปลั๊ก</div><div class="ssv" id="sb-p">—</div></div>
+    <div class="sdiv"></div>
+    <div class="ss"><div class="ssl">กำลังไฟ</div><div class="ssv acc" id="sb-w">— W</div></div>
+    <div class="sdiv"></div>
+    <div class="ss"><div class="ssl">วันนี้</div><div class="ssv" id="sb-kwh">— kWh</div></div>
+    <div class="sdiv"></div>
+    <div class="ss"><div class="ssl">แจ้งเตือน</div><div class="ssv wrn" id="sb-alerts">—</div></div>
+    <div class="sr"><button class="tbtn" onclick="showPage('dashboard')">Dashboard →</button></div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────
+     PAGE: DASHBOARD (real-time plug status)
+───────────────────────────────────────────────────────────── -->
+<div class="page" id="page-dashboard">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">📊 Dashboard</div>
+        <div class="top-bar-sub" id="dash-house-name">—</div>
+      </div>
+      <div class="top-bar-actions">
+        <button class="btn btn-ghost" onclick="loadDashboardPage()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          รีเฟรช
+        </button>
+      </div>
+    </div>
+    <div class="dashboard-content">
+      <div class="stats-grid" id="dash-kpi">
+        <div class="stat-card"><div class="stat-label">ปลั๊กทั้งหมด</div><div class="stat-value" id="dash-total-plugs">—</div></div>
+        <div class="stat-card"><div class="stat-label">เปิดอยู่</div><div class="stat-value" id="dash-on-plugs" style="color:var(--accent)">—</div></div>
+        <div class="stat-card"><div class="stat-label">กำลังไฟรวม</div><div class="stat-value" id="dash-power">—<span class="stat-unit">W</span></div></div>
+        <div class="stat-card"><div class="stat-label">วันนี้</div><div class="stat-value" id="dash-today">—<span class="stat-unit">kWh</span></div></div>
+      </div>
+      <div id="dash-plug-list" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:4px;">
+        <div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text3);">กำลังโหลด...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────
+     PAGE: ENERGY
+───────────────────────────────────────────────────────────── -->
+<div class="page" id="page-energy">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">⚡ การใช้พลังงาน</div>
+        <div class="top-bar-sub" id="energy-house-name">—</div>
+      </div>
+      <div class="top-bar-actions">
+        <select id="energy-period" onchange="loadEnergyPage()"
+          style="padding:7px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer;">
+          <option value="daily">รายวัน</option>
+          <option value="weekly">รายสัปดาห์</option>
+          <option value="monthly">รายเดือน</option>
+        </select>
+        <button class="btn btn-ghost" onclick="exportEnergy('csv')">⬇ CSV</button>
+        <button class="btn btn-ghost" onclick="exportEnergy('json')">⬇ JSON</button>
+      </div>
+    </div>
+    <div class="dashboard-content">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">วันนี้</div><div class="stat-value" id="kpi-today">—<span class="stat-unit">kWh</span></div></div>
+        <div class="stat-card"><div class="stat-label">สัปดาห์นี้</div><div class="stat-value" id="kpi-week">—<span class="stat-unit">kWh</span></div></div>
+        <div class="stat-card"><div class="stat-label">เดือนนี้</div><div class="stat-value" id="kpi-month">—<span class="stat-unit">kWh</span></div></div>
+        <div class="stat-card"><div class="stat-label">กำลังไฟปัจจุบัน</div><div class="stat-value" id="kpi-power">—<span class="stat-unit">W</span></div></div>
+      </div>
+      <div class="content-grid">
+        <div class="card">
+          <div class="card-header"><div class="card-title">กราฟการใช้พลังงาน</div></div>
+          <div style="padding:16px; height:260px;"><canvas id="energy-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">อุปกรณ์ใช้ไฟสูงสุด</div></div>
+          <div id="top-devices-list" style="padding:8px 0;"><div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">กำลังโหลด...</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><div class="card-title">การใช้พลังงานแยกตามปลั๊ก</div></div>
+        <div id="plug-breakdown" style="padding:8px 0;"><div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">กำลังโหลด...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────
+     PAGE: ALERTS
+───────────────────────────────────────────────────────────── -->
+<div class="page" id="page-alerts">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">🔔 การแจ้งเตือน</div>
+        <div class="top-bar-sub" id="alerts-house-name">—</div>
+      </div>
+      <div class="top-bar-actions">
+        <select id="alert-status-filter" onchange="loadAlertsPage()"
+          style="padding:7px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer;">
+          <option value="pending">รอดำเนินการ</option>
+          <option value="acknowledged">รับทราบแล้ว</option>
+          <option value="snoozed">เลื่อนแจ้งเตือน</option>
+          <option value="dismissed">ยกเลิกแล้ว</option>
+          <option value="all">ทั้งหมด</option>
+        </select>
+        <button class="btn btn-ghost" onclick="loadAlertsPage()">รีเฟรช</button>
+      </div>
+    </div>
+    <div class="dashboard-content">
+      <div id="alerts-list">
+        <div style="text-align:center; padding:40px; color:var(--text3);">กำลังโหลด...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end #content -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════════════════════ -->
+
+<!-- Add Home overlay + popup -->
+<div class="popup-overlay" id="popup-overlay" style="display:none;" onclick="toggleAddHomePopup()"></div>
+<div id="add-home-popup" class="popup" style="display:none; flex-direction:column; gap:0; max-height:90vh; overflow-y:auto;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+    <div style="font-size:15px; font-weight:700; color:var(--text);">🏠 เพิ่มบ้านใหม่</div>
+    <button onclick="toggleAddHomePopup()" style="background:none; border:none; color:var(--text2); cursor:pointer; font-size:20px;">&times;</button>
+  </div>
+  <div style="margin-bottom:14px;">
+    <div style="font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px;">ไอคอน</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="emoji-picker">
+      {% for em in "🏠🏡🏢🏣🏤🏥🏦🏨🏩🏪🏫🏬🏭🏯🏰"|make_list %}
+      <button class="emoji-btn" onclick="selectEmoji('{{ em }}')" style="font-size:20px; background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center;">{{ em }}</button>
+      {% endfor %}
+    </div>
+    <input type="hidden" id="house_emoji" value="🏠">
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ชื่อบ้าน *</label>
+    <input id="house_name" type="text" placeholder="เช่น บ้านหลังใหญ่" class="modal-input">
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ที่อยู่ *</label>
+    <input id="address" type="text" placeholder="เช่น 123 ถนนสุขุมวิท กรุงเทพฯ" class="modal-input">
+  </div>
+  <div style="margin-bottom:6px;">
+    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ตำแหน่ง (ไม่บังคับ)</label>
+    <div id="map" style="height:200px; width:100%; border-radius:10px; border:1px solid var(--border); overflow:hidden;"></div>
+    <div id="coords-display" style="font-size:11px; color:var(--text3); margin-top:5px;">คลิกบนแผนที่เพื่อปักหมุด</div>
+  </div>
+  <input type="hidden" id="lat">
+  <input type="hidden" id="lng">
+  <p id="popup-error" style="font-size:12px; color:var(--danger); min-height:16px; margin:4px 0 0;"></p>
+  <div style="display:flex; gap:10px; margin-top:16px;">
+    <button onclick="toggleAddHomePopup()" class="modal-btn-cancel">ยกเลิก</button>
+    <button id="add-home-btn" onclick="addHomeCommit()" class="modal-btn-primary">เพิ่มบ้าน</button>
+  </div>
+</div>
+
+<!-- Add Plug overlay + popup -->
+<div class="popup-overlay" id="plug-overlay" style="display:none;" onclick="closeAddPlugModal()"></div>
+<div id="add-plug-popup" class="popup" style="display:none; flex-direction:column; gap:0;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+    <div style="font-size:15px; font-weight:700; color:var(--text);">🔌 เพิ่มปลั๊กอัจฉริยะ</div>
+    <button onclick="closeAddPlugModal()" style="background:none; border:none; color:var(--text2); cursor:pointer; font-size:20px;">&times;</button>
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">รหัสปลั๊ก *</label>
+    <input id="plug_code" type="text" placeholder="เช่น KW-001" class="modal-input">
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ชื่อปลั๊ก *</label>
+    <input id="plug_name" type="text" placeholder="เช่น ปลั๊กครัว A1" class="modal-input">
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ตำแหน่ง</label>
+    <input id="plug_location" type="text" placeholder="เช่น ครัว, ห้องนอน" class="modal-input">
+  </div>
+  <p id="plug-error" style="font-size:12px; color:var(--danger); min-height:16px; margin:4px 0 0;"></p>
+  <div style="display:flex; gap:10px; margin-top:16px;">
+    <button onclick="closeAddPlugModal()" class="modal-btn-cancel">ยกเลิก</button>
+    <button id="add-plug-btn" onclick="addPlugCommit()" class="modal-btn-primary">เพิ่มปลั๊ก</button>
+  </div>
+</div>
+
+<style>
+.modal-input {
+  width:100%; padding:10px 12px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:10px; color:var(--text); font-size:14px;
+  font-family:'DM Sans',sans-serif; outline:none;
+}
+.modal-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+.modal-input::placeholder { color:var(--text3); }
+.modal-btn-cancel {
+  flex:1; padding:10px; background:var(--surface2); border:1px solid var(--border);
+  border-radius:10px; color:var(--text2); font-size:13px; font-weight:500;
+  cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.modal-btn-primary {
+  flex:2; padding:10px; background:var(--accent); border:none;
+  border-radius:10px; color:#000; font-size:13px; font-weight:600;
+  cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.modal-btn-primary:hover { filter:brightness(1.08); }
+.modal-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+</style>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════════════════════════ -->
+<script>
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const token = localStorage.getItem('access');
+if (!token) window.location = '/login/';
+
+fetch('/auth/me/', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(res => { if (res.status === 401) { localStorage.clear(); window.location = '/login/'; } return res.json(); })
+  .then(data => {
+    if (!data?.username) return;
+    document.getElementById('avatar-initials').textContent = data.username.slice(0,1).toUpperCase();
+    document.getElementById('username').textContent = data.username;
+  }).catch(() => {});
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+async function apiGet(url) {
+  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  if (res.status === 401) { localStorage.clear(); window.location = '/login/'; }
+  return res.json();
+}
+async function apiPost(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body),
+  });
+  return { ok: res.ok, status: res.status, data: await res.json() };
+}
+
+// ── Page navigation ───────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  const btn  = document.getElementById('nav-' + name);
+  if (page) page.classList.add('active');
+  if (btn)  btn.classList.add('active');
+  if (name === 'energy')    loadEnergyPage();
+  if (name === 'alerts')    loadAlertsPage();
+  if (name === 'dashboard') loadDashboardPage();
+}
+
+// ── Shared state ──────────────────────────────────────────────────────────────
+let houses = [], currentPlugs = [], activeHouseId = null, activeHouseName = '', activeHouseRole = '';
+
+function setActiveHouse(id, name, role) {
+  activeHouseId = id; activeHouseName = name; activeHouseRole = role;
+  loadPlugs(); loadAlertPills(); loadEnergyStats();
+}
+
+// ── Alert badge ───────────────────────────────────────────────────────────────
+async function refreshAlertBadge() {
+  if (!activeHouseId) return;
+  try {
+    const data = await apiGet(`/api/houses/${activeHouseId}/alerts/events/?status=pending&limit=1`);
+    const badge = document.getElementById('alert-badge');
+    if (data.total > 0) { badge.style.display = 'block'; badge.textContent = data.total > 9 ? '9+' : data.total; }
+    else badge.style.display = 'none';
+  } catch (e) {}
+}
+setInterval(refreshAlertBadge, 30000);
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: HOME
+// ══════════════════════════════════════════════════════════════════
+async function loadHouses() {
+  try {
+    houses = await apiGet('/api/houses/');
+    renderHouseTabs();
+    if (houses.length > 0) {
+      const h = houses[0];
+      setActiveHouse(h.id, h.house_name, h.role);
+    } else {
+      document.getElementById('live-status').textContent = 'ยังไม่มีบ้าน — เพิ่มบ้านเพื่อเริ่มต้น';
+    }
+  } catch (e) {
+    document.getElementById('live-status').textContent = 'ไม่สามารถเชื่อมต่อได้';
+  }
+}
+
+function renderHouseTabs() {
+  const row = document.getElementById('house-row');
+  row.innerHTML = houses.map((h, i) =>
+    `<div class="htab ${i === 0 ? 'active' : ''}" data-id="${h.id}"
+      onclick="selectHouseTab('${h.id}','${h.house_name.replace(/'/g,"\\'")}','${h.role}',this)">
+      ${h.emoji || '🏠'} ${h.house_name}
+    </div>`
+  ).join('');
+}
+
+function selectHouseTab(id, name, role, el) {
+  document.querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  setActiveHouse(id, name, role);
+}
+
+async function loadPlugs() {
+  if (!activeHouseId) return;
+  try {
+    currentPlugs = await apiGet(`/api/houses/${activeHouseId}/plugs/`);
+    renderPlugGrid();
+    document.getElementById('house-role-badge').textContent = { owner:'เจ้าของ', admin:'ผู้ดูแล', member:'สมาชิก', guest:'แขก' }[activeHouseRole] || activeHouseRole;
+  } catch (e) {}
+}
+
+function renderPlugGrid() {
+  const grid = document.getElementById('plug-grid');
+  document.getElementById('plug-empty').style.display = currentPlugs.length === 0 ? 'block' : 'none';
+  grid.querySelectorAll('.plug-card').forEach(c => c.remove());
+  document.getElementById('sb-p').textContent = currentPlugs.length;
+
+  currentPlugs.forEach(plug => {
+    const card = document.createElement('div');
+    card.className = 'plug-card';
+    card.dataset.plugId = plug.id;
+    card.style.cssText = 'background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; width:160px; cursor:pointer;';
+    card.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100px;">${plug.location || 'ไม่ระบุ'}</div>
+        <div style="width:8px; height:8px; border-radius:50%; flex-shrink:0; background:${plug.online_status === 'online' ? 'var(--accent)' : 'var(--text3)'};" title="${plug.online_status}"></div>
+      </div>
+      <div style="font-size:22px; margin-bottom:6px;">🔌</div>
+      <div style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${plug.name}</div>
+      <div style="font-size:11px; color:var(--text3); margin-bottom:12px;">${plug.plug_code}</div>
+      <button onclick="togglePlug('${plug.id}',${plug.is_on},event)"
+        style="width:100%; padding:7px; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;
+               background:${plug.is_on ? 'var(--accent)' : 'var(--surface2)'}; color:${plug.is_on ? '#000' : 'var(--text2)'}; border:1px solid ${plug.is_on ? 'transparent' : 'var(--border)'};">
+        ${plug.is_on ? '⚡ เปิดอยู่' : '○ ปิดอยู่'}
+      </button>
+    `;
+    card.addEventListener('mouseenter', () => card.style.borderColor = 'var(--text3)');
+    card.addEventListener('mouseleave', () => card.style.borderColor = 'var(--border)');
+    grid.appendChild(card);
+  });
+}
+
+async function togglePlug(plugId, currentState, event) {
+  event.stopPropagation();
+  const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/plugs/${plugId}/control/`, { action: currentState ? 'off' : 'on' });
+  if (ok) {
+    const plug = currentPlugs.find(p => p.id === plugId);
+    if (plug) plug.is_on = data.is_on;
+    renderPlugGrid();
+  }
+}
+
+async function loadAlertPills() {
+  if (!activeHouseId) return;
+  try {
+    const data = await apiGet(`/api/houses/${activeHouseId}/alerts/events/?status=pending&limit=3`);
+    const zone = document.getElementById('alerts-zone');
+    zone.innerHTML = '';
+    document.getElementById('qs-alerts').textContent = data.total || '0';
+    document.getElementById('sb-alerts').textContent = `${data.total || '0'} รายการ`;
+    document.getElementById('live-status').textContent = data.total > 0 ? `มีการแจ้งเตือน ${data.total} รายการ` : 'ทุกอย่างปกติดี ✓';
+    (data.results || []).forEach(ev => {
+      const pill = document.createElement('div');
+      pill.className = 'apill warn';
+      pill.innerHTML = `<span>⚠️</span><span class="apill-txt">${ev.title}</span><span class="apill-act" onclick="acknowledgeAlert('${ev.id}',this)">รับทราบ →</span>`;
+      zone.appendChild(pill);
+    });
+    refreshAlertBadge();
+  } catch (e) {}
+}
+
+async function acknowledgeAlert(eventId, el) {
+  const { ok } = await apiPost(`/api/houses/${activeHouseId}/alerts/events/${eventId}/action/`, { action: 'acknowledge' });
+  if (ok) { el.closest('.apill').remove(); loadAlertPills(); }
+}
+
+async function loadEnergyStats() {
+  if (!activeHouseId) return;
+  try {
+    const data = await apiGet(`/api/houses/${activeHouseId}/energy/dashboard/`);
+    document.getElementById('qs-power').textContent = data.current_power_w?.toFixed(0) || '0';
+    document.getElementById('sb-w').textContent = `${data.current_power_w?.toFixed(0) || '0'} W`;
+    document.getElementById('sb-kwh').textContent = `${data.today_kwh?.toFixed(2) || '0'} kWh`;
+    document.getElementById('qs-online').textContent = data.plugs?.filter(p => p.is_on).length || '0';
+  } catch (e) {}
+}
+
+// ── Add Home ──────────────────────────────────────────────────────────────────
+let displayAddHomePopup = false, selectedEmoji = '🏠', map = null, marker = null;
+
+function selectEmoji(em) {
+  selectedEmoji = em;
+  document.getElementById('house_emoji').value = em;
+  document.querySelectorAll('.emoji-btn').forEach(btn => {
+    const match = btn.textContent.trim() === em;
+    btn.style.borderColor = match ? 'var(--accent)' : 'var(--border)';
+    btn.style.background  = match ? 'var(--accent-dim)' : 'var(--surface2)';
+  });
+}
+
+function toggleAddHomePopup() {
+  displayAddHomePopup = !displayAddHomePopup;
+  document.getElementById('add-home-popup').style.display = displayAddHomePopup ? 'flex' : 'none';
+  document.getElementById('popup-overlay').style.display  = displayAddHomePopup ? 'block' : 'none';
+  if (displayAddHomePopup) {
+    ['house_name','address','lat','lng'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('popup-error').textContent = '';
+    document.getElementById('coords-display').textContent = 'คลิกบนแผนที่เพื่อปักหมุด';
+    selectEmoji('🏠');
+    setTimeout(initMap, 100);
+  }
+}
+
+async function addHomeCommit() {
+  const houseName = document.getElementById('house_name').value.trim();
+  const address   = document.getElementById('address').value.trim();
+  const lat       = document.getElementById('lat').value;
+  const lng       = document.getElementById('lng').value;
+  const emoji     = document.getElementById('house_emoji').value || '🏠';
+  const errorEl   = document.getElementById('popup-error');
+  const btn       = document.getElementById('add-home-btn');
+  errorEl.textContent = '';
+  if (!houseName) { errorEl.textContent = 'กรุณากรอกชื่อบ้าน'; return; }
+  if (!address)   { errorEl.textContent = 'กรุณากรอกที่อยู่'; return; }
+  btn.disabled = true; btn.textContent = 'กำลังเพิ่ม…';
+  const { ok, data } = await apiPost('/api/houses/', { house_name: houseName, address, lat: lat ? parseFloat(lat) : null, long: lng ? parseFloat(lng) : null, emoji });
+  btn.disabled = false; btn.textContent = 'เพิ่มบ้าน';
+  if (ok) {
+    houses.push(data);
+    renderHouseTabs();
+    toggleAddHomePopup();
+    setActiveHouse(data.id, data.house_name, data.role);
+    document.querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.htab')[houses.length - 1]?.classList.add('active');
+  } else {
+    errorEl.textContent = data.error || 'เกิดข้อผิดพลาด';
+  }
+}
+
+function initMap() {
+  if (map) { map.invalidateSize(); return; }
+  map = L.map('map').setView([13.7563, 100.5018], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
+  map.on('click', e => {
+    const { lat, lng } = e.latlng;
+    if (marker) marker.setLatLng(e.latlng); else marker = L.marker(e.latlng).addTo(map);
+    document.getElementById('lat').value = lat.toFixed(6);
+    document.getElementById('lng').value = lng.toFixed(6);
+    document.getElementById('coords-display').textContent = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    document.getElementById('coords-display').style.color = 'var(--accent)';
+  });
+  if (navigator.geolocation) navigator.geolocation.getCurrentPosition(pos => map.setView([pos.coords.latitude, pos.coords.longitude], 14));
+}
+
+// ── Add Plug ──────────────────────────────────────────────────────────────────
+function openAddPlugModal() {
+  if (!activeHouseId) { alert('กรุณาเลือกบ้านก่อน'); return; }
+  if (['member','guest'].includes(activeHouseRole)) { alert('เฉพาะเจ้าของหรือผู้ดูแลเท่านั้น'); return; }
+  ['plug_code','plug_name','plug_location'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('plug-error').textContent = '';
+  document.getElementById('add-plug-popup').style.display = 'flex';
+  document.getElementById('plug-overlay').style.display   = 'block';
+}
+function closeAddPlugModal() {
+  document.getElementById('add-plug-popup').style.display = 'none';
+  document.getElementById('plug-overlay').style.display   = 'none';
+}
+async function addPlugCommit() {
+  const plug_code = document.getElementById('plug_code').value.trim();
+  const name      = document.getElementById('plug_name').value.trim();
+  const location  = document.getElementById('plug_location').value.trim();
+  const errorEl   = document.getElementById('plug-error');
+  const btn       = document.getElementById('add-plug-btn');
+  errorEl.textContent = '';
+  if (!plug_code) { errorEl.textContent = 'กรุณากรอกรหัสปลั๊ก'; return; }
+  if (!name)      { errorEl.textContent = 'กรุณากรอกชื่อปลั๊ก'; return; }
+  btn.disabled = true; btn.textContent = 'กำลังเพิ่ม…';
+  const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/plugs/`, { plug_code, name, location });
+  btn.disabled = false; btn.textContent = 'เพิ่มปลั๊ก';
+  if (ok) { currentPlugs.push(data); renderPlugGrid(); closeAddPlugModal(); }
+  else errorEl.textContent = data.error || 'เกิดข้อผิดพลาด';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+async function loadDashboardPage() {
+  if (!activeHouseId) return;
+  document.getElementById('dash-house-name').textContent = activeHouseName;
+  try {
+    const data = await apiGet(`/api/houses/${activeHouseId}/energy/dashboard/`);
+    document.getElementById('dash-total-plugs').textContent = data.plug_count || '0';
+    document.getElementById('dash-on-plugs').textContent    = data.plugs?.filter(p => p.is_on).length || '0';
+    document.getElementById('dash-power').innerHTML         = `${data.current_power_w?.toFixed(0) || '0'}<span class="stat-unit">W</span>`;
+    document.getElementById('dash-today').innerHTML         = `${data.today_kwh?.toFixed(2) || '0'}<span class="stat-unit">kWh</span>`;
+
+    const list = document.getElementById('dash-plug-list');
+    if (data.plugs && data.plugs.length > 0) {
+      list.innerHTML = data.plugs.map(p => `
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <div style="font-size:13px; font-weight:600; color:var(--text);">${p.plug_name}</div>
+            <div style="width:8px; height:8px; border-radius:50%; background:${p.is_on ? 'var(--accent)' : 'var(--text3)'};" title="${p.is_on ? 'เปิด' : 'ปิด'}"></div>
+          </div>
+          <div style="font-size:11px; color:var(--text3); margin-bottom:10px;">${p.location || 'ไม่ระบุตำแหน่ง'}</div>
+          <div style="font-size:22px; font-weight:700; color:var(--accent); font-family:'DM Mono',monospace;">${p.power_w?.toFixed(0) || '0'}<span style="font-size:12px; font-weight:400; color:var(--text2); margin-left:3px;">W</span></div>
+          ${p.recorded_at ? `<div style="font-size:10px; color:var(--text3); margin-top:4px;">อัพเดท ${new Date(p.recorded_at).toLocaleTimeString('th-TH')}</div>` : ''}
+          <button onclick="togglePlugById('${p.plug_id}', ${p.is_on})"
+            style="width:100%; margin-top:10px; padding:7px; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;
+                   background:${p.is_on ? 'var(--accent)' : 'var(--surface2)'}; color:${p.is_on ? '#000' : 'var(--text2)'}; border:1px solid ${p.is_on ? 'transparent' : 'var(--border)'};">
+            ${p.is_on ? '⚡ เปิดอยู่ — คลิกเพื่อปิด' : '○ ปิดอยู่ — คลิกเพื่อเปิด'}
+          </button>
+        </div>
+      `).join('');
+    } else {
+      list.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text3);">ยังไม่มีปลั๊กในบ้านนี้</div>';
+    }
+  } catch (e) {}
+}
+
+async function togglePlugById(plugId, currentState) {
+  const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/plugs/${plugId}/control/`, { action: currentState ? 'off' : 'on' });
+  if (ok) loadDashboardPage();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: ENERGY
+// ══════════════════════════════════════════════════════════════════
+let energyChart = null;
+
+async function loadEnergyPage() {
+  if (!activeHouseId) return;
+  document.getElementById('energy-house-name').textContent = activeHouseName;
+  const period = document.getElementById('energy-period').value;
+
+  try {
+    const dash = await apiGet(`/api/houses/${activeHouseId}/energy/dashboard/`);
+    document.getElementById('kpi-today').innerHTML  = `${dash.today_kwh?.toFixed(2) || '0'}<span class="stat-unit">kWh</span>`;
+    document.getElementById('kpi-week').innerHTML   = `${dash.week_kwh?.toFixed(2) || '0'}<span class="stat-unit">kWh</span>`;
+    document.getElementById('kpi-month').innerHTML  = `${dash.month_kwh?.toFixed(2) || '0'}<span class="stat-unit">kWh</span>`;
+    document.getElementById('kpi-power').innerHTML  = `${dash.current_power_w?.toFixed(0) || '0'}<span class="stat-unit">W</span>`;
+
+    const devList = document.getElementById('top-devices-list');
+    if (dash.top_devices?.length > 0) {
+      const maxKwh = Math.max(...dash.top_devices.map(d => d.total_kwh));
+      devList.innerHTML = dash.top_devices.map(d => `
+        <div style="padding:10px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border);">
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:500; color:var(--text);">${d.device_name}</div>
+            <div style="height:4px; background:var(--surface3); border-radius:2px; margin-top:4px; overflow:hidden;">
+              <div style="height:100%; width:${maxKwh > 0 ? (d.total_kwh/maxKwh*100).toFixed(0) : 0}%; background:var(--accent); border-radius:2px;"></div>
+            </div>
+          </div>
+          <div style="font-size:13px; font-weight:600; color:var(--accent); font-family:'DM Mono',monospace;">${d.total_kwh.toFixed(3)} kWh</div>
+        </div>
+      `).join('');
+    } else {
+      devList.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">ยังไม่มีข้อมูล</div>';
+    }
+  } catch (e) {}
+
+  try {
+    const today = new Date(), start = new Date(today);
+    start.setDate(today.getDate() - (period === 'monthly' ? 180 : period === 'weekly' ? 84 : 30));
+    const summary = await apiGet(`/api/houses/${activeHouseId}/energy/summary/?period=${period}&start=${start.toISOString().split('T')[0]}&end=${today.toISOString().split('T')[0]}`);
+    renderEnergyChart(summary, period);
+  } catch (e) {}
+
+  try {
+    const byPlug = await apiGet(`/api/houses/${activeHouseId}/energy/by-plug/`);
+    const plugDiv = document.getElementById('plug-breakdown');
+    if (byPlug.length > 0) {
+      const maxKwh = Math.max(...byPlug.map(p => p.total_kwh));
+      plugDiv.innerHTML = byPlug.map(p => `
+        <div style="padding:12px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border);">
+          <div style="font-size:18px;">🔌</div>
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:500; color:var(--text);">${p.plug_name}</div>
+            <div style="font-size:11px; color:var(--text3);">${p.location || 'ไม่ระบุ'} · เฉลี่ย ${p.avg_power_w.toFixed(0)}W · สูงสุด ${p.peak_power_w.toFixed(0)}W</div>
+            <div style="height:4px; background:var(--surface3); border-radius:2px; margin-top:5px; overflow:hidden;">
+              <div style="height:100%; width:${maxKwh > 0 ? (p.total_kwh/maxKwh*100).toFixed(0) : 0}%; background:var(--accent2); border-radius:2px;"></div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px; font-weight:600; color:var(--accent2); font-family:'DM Mono',monospace;">${p.total_kwh.toFixed(3)}</div>
+            <div style="font-size:10px; color:var(--text3);">kWh</div>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      plugDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">ยังไม่มีข้อมูล</div>';
+    }
+  } catch (e) {}
+}
+
+function renderEnergyChart(data, period) {
+  const ctx = document.getElementById('energy-chart').getContext('2d');
+  if (energyChart) energyChart.destroy();
+  const labels = data.map(d => {
+    const dt = new Date(d.period);
+    if (period === 'monthly') return dt.toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+    if (period === 'weekly')  return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  });
+  energyChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'kWh', data: data.map(d => d.total_kwh), backgroundColor: 'rgba(0,217,139,0.25)', borderColor: 'rgba(0,217,139,0.8)', borderWidth: 1.5, borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#888898', font: { size: 11 } } }, y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#888898', font: { size: 11 } } } } }
+  });
+}
+
+function exportEnergy(fmt) {
+  if (!activeHouseId) return;
+  const today = new Date().toISOString().split('T')[0];
+  const start = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+  window.open(`/api/houses/${activeHouseId}/energy/export/?format=${fmt}&start=${start}&end=${today}`, '_blank');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: ALERTS
+// ══════════════════════════════════════════════════════════════════
+async function loadAlertsPage() {
+  if (!activeHouseId) return;
+  document.getElementById('alerts-house-name').textContent = activeHouseName;
+  const statusFilter = document.getElementById('alert-status-filter').value;
+  const url = statusFilter === 'all'
+    ? `/api/houses/${activeHouseId}/alerts/events/?limit=50`
+    : `/api/houses/${activeHouseId}/alerts/events/?status=${statusFilter}&limit=50`;
+
+  try {
+    const data = await apiGet(url);
+    const list = document.getElementById('alerts-list');
+
+    if (!data.results || data.results.length === 0) {
+      list.innerHTML = `<div style="text-align:center; padding:60px; color:var(--text3);">
+        <div style="font-size:40px; margin-bottom:12px;">🔔</div>
+        <p>ไม่มีการแจ้งเตือน</p>
+      </div>`;
+      return;
+    }
+
+    const statusLabel = { pending:'รอดำเนินการ', acknowledged:'รับทราบแล้ว', snoozed:'เลื่อนแจ้งเตือน', dismissed:'ยกเลิกแล้ว', auto_resolved:'ระบบดำเนินการแล้ว' };
+    const statusColor = { pending:'var(--warn)', acknowledged:'var(--accent)', snoozed:'var(--accent2)', dismissed:'var(--text3)', auto_resolved:'var(--text3)' };
+
+    list.innerHTML = data.results.map(ev => `
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:10px;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+          <div style="flex:1;">
+            <div style="font-size:14px; font-weight:600; color:var(--text); margin-bottom:4px;">${ev.title}</div>
+            <div style="font-size:12px; color:var(--text2); margin-bottom:8px;">${ev.message}</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <span style="font-size:11px; padding:2px 8px; border-radius:20px; background:${statusColor[ev.status]}22; color:${statusColor[ev.status]};">${statusLabel[ev.status] || ev.status}</span>
+              ${ev.plug_name ? `<span style="font-size:11px; color:var(--text3);">🔌 ${ev.plug_name}</span>` : ''}
+              ${ev.device_name ? `<span style="font-size:11px; color:var(--text3);">📱 ${ev.device_name}</span>` : ''}
+              <span style="font-size:11px; color:var(--text3);">${new Date(ev.triggered_at).toLocaleString('th-TH')}</span>
+            </div>
+          </div>
+          ${ev.status === 'pending' ? `
+          <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+            <button onclick="alertAction('${ev.id}','acknowledge')" style="padding:5px 10px; background:var(--accent); border:none; border-radius:6px; color:#000; font-size:11px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;">รับทราบ</button>
+            <button onclick="alertAction('${ev.id}','snooze')" style="padding:5px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text2); font-size:11px; cursor:pointer; font-family:'DM Sans',sans-serif;">เลื่อน 30 นาที</button>
+            ${ev.plug_id ? `<button onclick="alertAction('${ev.id}','auto_off')" style="padding:5px 10px; background:rgba(255,77,106,.1); border:1px solid rgba(255,77,106,.2); border-radius:6px; color:var(--danger); font-size:11px; cursor:pointer; font-family:'DM Sans',sans-serif;">ปิดทันที</button>` : ''}
+          </div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('alerts-list').innerHTML = '<div style="text-align:center; padding:40px; color:var(--danger);">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
+  }
+}
+
+async function alertAction(eventId, action) {
+  const body = action === 'snooze' ? { action, snooze_minutes: 30 } : { action };
+  const { ok } = await apiPost(`/api/houses/${activeHouseId}/alerts/events/${eventId}/action/`, body);
+  if (ok) { loadAlertsPage(); refreshAlertBadge(); loadAlertPills(); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadHouses();
+</script>
+</body>
+</html>

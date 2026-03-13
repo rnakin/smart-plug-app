@@ -1,63 +1,204 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th" data-theme="dark">
 <head>
-    <link rel="stylesheet" href="{% static 'css/home/home.css' %}">
-    <title>{% block title %}KnowWatt{% endblock %}</title>
-    {% block header %}{% endblock %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}KnowWatt{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/home/home.css' %}">
+  <link rel="stylesheet" href="{% static 'css/home/sidebar.css' %}">
+  <link rel="stylesheet" href="{% static 'css/home/page.css' %}">
+  {% block header %}{% endblock %}
 </head>
-
 <body>
-    <nav class="sidebar">
-  <div class="logo" onclick="showPage('home')">
-    <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-</div>
-  <button class="nav-btn active" onclick="showPage('home')" title="หน้าหลัก">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.8"/></svg>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="logo" onclick="showPage('home')" style="cursor:pointer;">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <button class="nav-btn" id="nav-home" onclick="showPage('home')" title="หน้าหลัก">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8"/>
+      <polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.8"/>
+    </svg>
   </button>
-  <button class="nav-btn" onclick="showPage('dashboard')" title="Dashboard">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+
+  <button class="nav-btn" id="nav-dashboard" onclick="showPage('dashboard')" title="Dashboard">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
+      <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
+    </svg>
   </button>
-  <button class="nav-btn" onclick="showPage('energy')" title="Energy">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M3 3v18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m7 16 4-5 4 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+  <button class="nav-btn" id="nav-energy" onclick="showPage('energy')" title="พลังงาน">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24">
+      <path d="M3 3v18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="m7 16 4-5 4 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
   </button>
-  <button class="nav-btn" title="Alerts">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <div class="bdg"></div>
+
+  <button class="nav-btn" id="nav-alerts" onclick="showPage('alerts')" title="การแจ้งเตือน" style="position:relative;">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    <div class="bdg" id="alert-badge" style="display:none;"></div>
   </button>
+
   <div class="sidebar-gap"></div>
-  <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
-    <svg class="i-sun" width="17" height="17" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <svg class="i-moon" width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+  <button class="theme-btn" onclick="toggleTheme()" title="สลับธีม">
+    <svg class="i-sun" width="17" height="17" fill="none" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    <svg class="i-moon" width="17" height="17" fill="none" viewBox="0 0 24 24">
+      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
   </button>
-  <div class="avatar">ส</div>
+
+  <div class="avatar" id="avatar-initials" title="โปรไฟล์">?</div>
 </nav>
 
-    <div id="content" style="width: 100%;">
-        {% block content %}{% endblock %}
-    </div>
-</body>
+<!-- Main content area -->
+<div id="content" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
+  {% block content %}{% endblock %}
+</div>
+
 <script>
- const token = localStorage.getItem('access');
-  console.log(token)
-    if (!token) {
-        pass
-        // window.location = '/';
-    } else {
-        fetch('/auth/me/', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        })
-        .then(res => {
-            if (!res.ok) {
-                // localStorage.clear();
-                // window.location = '/login/';
-            }
-            return res.json();
-        })
-        .then(data => {
-            document.getElementById('username').textContent = data.username;
-        });
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const token = localStorage.getItem('access');
+
+if (!token) {
+  window.location = '/login/';
+}
+
+// Fetch current user info
+fetch('/auth/me/', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(res => {
+    if (res.status === 401) {
+      localStorage.clear();
+      window.location = '/login/';
     }
+    return res.json();
+  })
+  .then(data => {
+    if (!data || !data.username) return;
+    // Set avatar initials
+    const initials = data.username.slice(0, 1).toUpperCase();
+    document.getElementById('avatar-initials').textContent = initials;
+    // Set username in greeting if present
+    const usernameEl = document.getElementById('username');
+    if (usernameEl) usernameEl.textContent = data.username;
+  })
+  .catch(() => {});
+
+// ── Page navigation ───────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  const page = document.getElementById('page-' + name);
+  const btn  = document.getElementById('nav-' + name);
+  if (page) page.classList.add('active');
+  if (btn)  btn.classList.add('active');
+
+  // Trigger page-specific load
+  if (name === 'energy' && typeof loadEnergyPage === 'function') loadEnergyPage();
+  if (name === 'alerts' && typeof loadAlertsPage === 'function') loadAlertsPage();
+  if (name === 'dashboard' && typeof loadDashboardPage === 'function') loadDashboardPage();
+}
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+
+// Restore saved theme
+const savedTheme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+
+// ── Alert badge ───────────────────────────────────────────────────────────────
+async function refreshAlertBadge() {
+  try {
+    const res = await fetch('/api/alerts/notifications/?status=pending&limit=1', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const badge = document.getElementById('alert-badge');
+    if (data.total > 0) {
+      badge.style.display = 'block';
+      badge.textContent = data.total > 9 ? '9+' : data.total;
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch (e) {}
+}
+
+// Refresh badge every 30s
+refreshAlertBadge();
+setInterval(refreshAlertBadge, 30000);
+
+// ── Shared API helper ─────────────────────────────────────────────────────────
+async function apiGet(url) {
+  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  if (res.status === 401) { localStorage.clear(); window.location = '/login/'; }
+  return res.json();
+}
+
+async function apiPost(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body),
+  });
+  return { ok: res.ok, status: res.status, data: await res.json() };
+}
+
+async function apiPatch(url, body) {
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body),
+  });
+  return { ok: res.ok, data: await res.json() };
+}
+
+async function apiDelete(url) {
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token },
+  });
+  return { ok: res.ok };
+}
+
+// Active house state (shared across pages)
+let activeHouseId = null;
+let activeHouseName = '';
+let activeHouseRole = '';
+
+function setActiveHouse(id, name, role) {
+  activeHouseId = id;
+  activeHouseName = name;
+  activeHouseRole = role;
+  // Notify pages
+  document.dispatchEvent(new CustomEvent('houseChanged', { detail: { id, name, role } }));
+}
 </script>
+
 {% block script %}{% endblock %}
+</body>
 </html>

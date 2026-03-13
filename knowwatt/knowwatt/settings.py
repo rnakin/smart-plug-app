@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'house',
     'device',
     'energy',
+    'alert',
 ]
 
 MIDDLEWARE = [

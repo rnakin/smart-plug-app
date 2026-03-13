@@ -13,7 +13,7 @@ Django + PostgreSQL backend with JWT auth, multi-household support, NFC device i
 | **Phase 3: User & House Service** | ✅ Complete | 100% |
 | **Phase 4: Device Service** | ✅ Complete | 100% |
 | **Phase 5: Energy Service** | ✅ Complete | 100% |
-| Phase 6: Alert Service | ⏳ Pending | 0% |
+| **Phase 6: Alert Service** | ✅ Complete | 100% |
 
 ---
 
@@ -107,6 +107,24 @@ All API endpoints require JWT authentication unless noted.
 | GET | `.../energy/export/?format=csv\|json` | Export readings as CSV or JSON |
 
 **Common query params:** `start=YYYY-MM-DD`, `end=YYYY-MM-DD`, `plug_id`, `device_id`
+
+### Alerts
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | `/api/houses/<id>/alerts/rules/` | List alert rules |
+| POST | `/api/houses/<id>/alerts/rules/` | Create alert rule |
+| GET/PATCH/DELETE | `/api/houses/<id>/alerts/rules/<rule_id>/` | Rule detail |
+| GET | `/api/houses/<id>/alerts/events/` | List alert events |
+| POST | `/api/houses/<id>/alerts/events/<event_id>/action/` | Acknowledge / snooze / dismiss / auto_off |
+| POST | `/api/houses/<id>/alerts/trigger/` | Trigger check (called after energy ingest) |
+| POST | `/api/alerts/push-token/` | Register FCM/APNs push token |
+| DELETE | `/api/alerts/push-token/` | Remove push token |
+| GET | `/api/alerts/notifications/` | All pending alerts across user's houses |
+
+**Alert triggers:** `power_above`, `power_below`, `duration_above`, `device_plugged_in`, `device_unplugged`, `offline`
+**Alert actions:** `notify` (in-app + push), `auto_off` (turn off plug immediately)
+**Event actions:** `acknowledge`, `snooze` (+ `snooze_minutes`), `dismiss`, `auto_off`
 
 ---
 

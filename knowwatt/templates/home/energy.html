@@ -1,0 +1,230 @@
+{% extends "home/base.html" %}
+{% load static %}
+
+{% block title %}พลังงาน — KnowWatt{% endblock %}
+
+{% block header %}
+<link rel="stylesheet" href="{% static 'css/home/chart.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page" id="page-energy">
+  <div class="center-panel">
+
+    <!-- Top bar -->
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">⚡ การใช้พลังงาน</div>
+        <div class="top-bar-sub" id="energy-house-name">เลือกบ้านจากหน้าหลัก</div>
+      </div>
+      <div class="top-bar-actions">
+        <select id="energy-period" onchange="loadEnergyPage()"
+          style="padding:7px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer;">
+          <option value="daily">รายวัน</option>
+          <option value="weekly">รายสัปดาห์</option>
+          <option value="monthly">รายเดือน</option>
+        </select>
+        <button class="btn btn-ghost" onclick="exportEnergy('csv')">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          CSV
+        </button>
+        <button class="btn btn-ghost" onclick="exportEnergy('json')">JSON</button>
+      </div>
+    </div>
+
+    <div class="dashboard-content">
+
+      <!-- KPI cards -->
+      <div class="stats-grid" id="energy-kpi">
+        <div class="stat-card">
+          <div class="stat-label">วันนี้</div>
+          <div class="stat-value" id="kpi-today">—<span class="stat-unit">kWh</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">สัปดาห์นี้</div>
+          <div class="stat-value" id="kpi-week">—<span class="stat-unit">kWh</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">เดือนนี้</div>
+          <div class="stat-value" id="kpi-month">—<span class="stat-unit">kWh</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">กำลังไฟปัจจุบัน</div>
+          <div class="stat-value" id="kpi-power">—<span class="stat-unit">W</span></div>
+        </div>
+      </div>
+
+      <!-- Chart + breakdown -->
+      <div class="content-grid">
+        <!-- Usage chart -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">กราฟการใช้พลังงาน</div>
+          </div>
+          <div style="padding:16px; height:260px;">
+            <canvas id="energy-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Top devices -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">อุปกรณ์ใช้ไฟสูงสุด</div>
+          </div>
+          <div id="top-devices-list" style="padding:8px 0;">
+            <div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">กำลังโหลด...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-plug breakdown -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header">
+          <div class="card-title">การใช้พลังงานแยกตามปลั๊ก</div>
+        </div>
+        <div id="plug-breakdown" style="padding:8px 0;">
+          <div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">กำลังโหลด...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+let energyChart = null;
+
+async function loadEnergyPage() {
+  if (!activeHouseId) {
+    document.getElementById('energy-house-name').textContent = 'กรุณาเลือกบ้านจากหน้าหลัก';
+    return;
+  }
+  document.getElementById('energy-house-name').textContent = activeHouseName;
+
+  const period = document.getElementById('energy-period').value;
+
+  // Load dashboard KPIs
+  try {
+    const dash = await apiGet(`/api/houses/${activeHouseId}/energy/dashboard/`);
+    document.getElementById('kpi-today').innerHTML  = `${dash.today_kwh?.toFixed(2) || '0'}<span class="stat-unit">kWh</span>`;
+    document.getElementById('kpi-week').innerHTML   = `${dash.week_kwh?.toFixed(2) || '0'}<span class="stat-unit">kWh</span>`;
+    document.getElementById('kpi-month').innerHTML  = `${dash.month_kwh?.toFixed(2) || '0'}<span class="stat-unit">kWh</span>`;
+    document.getElementById('kpi-power').innerHTML  = `${dash.current_power_w?.toFixed(0) || '0'}<span class="stat-unit">W</span>`;
+
+    // Top devices
+    const devList = document.getElementById('top-devices-list');
+    if (dash.top_devices && dash.top_devices.length > 0) {
+      const maxKwh = Math.max(...dash.top_devices.map(d => d.total_kwh));
+      devList.innerHTML = dash.top_devices.map(d => `
+        <div style="padding:10px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border);">
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:500; color:var(--text);">${d.device_name}</div>
+            <div style="height:4px; background:var(--surface3); border-radius:2px; margin-top:4px; overflow:hidden;">
+              <div style="height:100%; width:${maxKwh > 0 ? (d.total_kwh/maxKwh*100).toFixed(0) : 0}%; background:var(--accent); border-radius:2px;"></div>
+            </div>
+          </div>
+          <div style="font-size:13px; font-weight:600; color:var(--accent); font-family:'DM Mono',monospace;">${d.total_kwh.toFixed(3)} kWh</div>
+        </div>
+      `).join('');
+    } else {
+      devList.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">ยังไม่มีข้อมูล</div>';
+    }
+  } catch (e) {
+    document.getElementById('kpi-today').innerHTML = '—<span class="stat-unit">kWh</span>';
+  }
+
+  // Load summary chart
+  try {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - (period === 'monthly' ? 180 : period === 'weekly' ? 84 : 30));
+    const startStr = start.toISOString().split('T')[0];
+    const endStr   = today.toISOString().split('T')[0];
+
+    const summary = await apiGet(`/api/houses/${activeHouseId}/energy/summary/?period=${period}&start=${startStr}&end=${endStr}`);
+    renderEnergyChart(summary, period);
+  } catch (e) {}
+
+  // Load plug breakdown
+  try {
+    const byPlug = await apiGet(`/api/houses/${activeHouseId}/energy/by-plug/`);
+    const plugDiv = document.getElementById('plug-breakdown');
+    if (byPlug.length > 0) {
+      const maxKwh = Math.max(...byPlug.map(p => p.total_kwh));
+      plugDiv.innerHTML = byPlug.map(p => `
+        <div style="padding:12px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border);">
+          <div style="font-size:18px;">🔌</div>
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:500; color:var(--text);">${p.plug_name}</div>
+            <div style="font-size:11px; color:var(--text3);">${p.location || 'ไม่ระบุตำแหน่ง'} · เฉลี่ย ${p.avg_power_w.toFixed(0)}W · สูงสุด ${p.peak_power_w.toFixed(0)}W</div>
+            <div style="height:4px; background:var(--surface3); border-radius:2px; margin-top:5px; overflow:hidden;">
+              <div style="height:100%; width:${maxKwh > 0 ? (p.total_kwh/maxKwh*100).toFixed(0) : 0}%; background:var(--accent2); border-radius:2px;"></div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px; font-weight:600; color:var(--accent2); font-family:'DM Mono',monospace;">${p.total_kwh.toFixed(3)}</div>
+            <div style="font-size:10px; color:var(--text3);">kWh</div>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      plugDiv.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">ยังไม่มีข้อมูล</div>';
+    }
+  } catch (e) {}
+}
+
+function renderEnergyChart(data, period) {
+  const ctx = document.getElementById('energy-chart').getContext('2d');
+  if (energyChart) energyChart.destroy();
+
+  const labels = data.map(d => {
+    const dt = new Date(d.period);
+    if (period === 'monthly') return dt.toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+    if (period === 'weekly')  return `สัปดาห์ ${dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`;
+    return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  });
+  const values = data.map(d => d.total_kwh);
+
+  energyChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'kWh',
+        data: values,
+        backgroundColor: 'rgba(0, 217, 139, 0.25)',
+        borderColor: 'rgba(0, 217, 139, 0.8)',
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#888898', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#888898', font: { size: 11 } } },
+      }
+    }
+  });
+}
+
+function exportEnergy(fmt) {
+  if (!activeHouseId) return;
+  const today = new Date().toISOString().split('T')[0];
+  const start = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+  window.open(`/api/houses/${activeHouseId}/energy/export/?format=${fmt}&start=${start}&end=${today}`, '_blank');
+}
+
+// Listen for house change
+document.addEventListener('houseChanged', () => {
+  if (document.getElementById('page-energy').classList.contains('active')) {
+    loadEnergyPage();
+  }
+});
+</script>
+{% endblock %}

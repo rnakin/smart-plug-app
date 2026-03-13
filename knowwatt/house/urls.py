@@ -22,4 +22,7 @@ urlpatterns = [
 
     # Energy (scoped to house)
     path('<uuid:house_id>/', include('energy.urls')),
+
+    # Alerts (scoped to house)
+    path('<uuid:house_id>/', include('alert.house_urls')),
 ]

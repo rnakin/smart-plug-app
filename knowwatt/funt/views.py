@@ -10,14 +10,13 @@ def register_page(request):
     return render(request, 'register.html')
 
 def dashboard_page(request):
-    return render(request, 'home/dashboard.html')
+    # Redirect to home SPA
+    from django.shortcuts import redirect
+    return redirect('/home/')
 
 def home_page(request):
-    context = {
-        'user': request.user,
-    }
-    return render(request, 'home/home.html', context)
-    
+    return render(request, 'home/app.html')
+
 def verify_email_page(request):
     return render(request, 'verify_email.html')
 
