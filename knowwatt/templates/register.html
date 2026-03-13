@@ -5,67 +5,126 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register — KnowWatt</title>
-  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/home/home.css' %}">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow: auto; }
+    .auth-wrap { width: 100%; max-width: 400px; padding: 24px 16px; }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 36px 32px;
+      animation: fadeUp .4s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .auth-logo {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 28px;
+    }
+    .auth-logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent-dim);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .auth-logo-name { font-size: 16px; font-weight: 700; color: var(--text); }
+    .auth-headline { font-size: 22px; font-weight: 700; letter-spacing: -.5px; margin-bottom: 4px; }
+    .auth-subhead  { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+    .field-group   { display: flex; flex-direction: column; gap: 14px; margin-bottom: 8px; }
+    .field label   { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .4px; }
+    .field input {
+      width: 100%; padding: 11px 14px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 14px;
+      font-family: 'DM Sans', sans-serif; outline: none;
+    }
+    .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    .field input::placeholder { color: var(--text3); }
+    .msg-error { font-size: 12px; color: var(--danger); min-height: 18px; margin: 8px 0; }
+    .btn-primary {
+      width: 100%; padding: 12px;
+      background: var(--accent); color: #000;
+      border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer; margin-top: 4px;
+    }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .auth-footer { margin-top: 18px; text-align: center; font-size: 13px; color: var(--text2); }
+    .auth-footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .auth-footer a:hover { text-decoration: underline; }
+    .success-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--accent-dim);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+  </style>
 </head>
 <body>
-<div class="auth-page">
-  <div class="auth-card m3-enter" id="register-card">
+<div class="auth-wrap">
+  <div class="auth-card" id="register-card">
 
     <div class="auth-logo">
       <div class="auth-logo-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--md-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
         </svg>
       </div>
       <span class="auth-logo-name">KnowWatt</span>
     </div>
 
-    <!-- ── Registration form ── -->
+    <!-- Registration form -->
     <div id="form-view">
       <h1 class="auth-headline">Create account</h1>
       <p class="auth-subhead">Start monitoring your energy usage</p>
 
       <div class="field-group">
         <div class="field">
-          <label class="field-label" for="username">Username</label>
-          <input class="field-input" id="username" type="text" placeholder="Choose a username" autocomplete="username">
+          <label for="username">Username</label>
+          <input id="username" type="text" placeholder="Choose a username" autocomplete="username">
         </div>
         <div class="field">
-          <label class="field-label" for="email">Email</label>
-          <input class="field-input" id="email" type="email" placeholder="your@email.com" autocomplete="email">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="your@email.com" autocomplete="email">
         </div>
         <div class="field">
-          <label class="field-label" for="password">Password</label>
-          <input class="field-input" id="password" type="password" placeholder="Create a password" autocomplete="new-password">
+          <label for="password">Password</label>
+          <input id="password" type="password" placeholder="Create a password" autocomplete="new-password">
         </div>
       </div>
 
       <p class="msg-error" id="error"></p>
 
-      <button class="btn-filled btn-full" onclick="register()">Create Account</button>
+      <button class="btn-primary" onclick="register()">Create Account</button>
 
       <div class="auth-footer">
         Already have an account? <a href="/login/">Sign in</a>
       </div>
     </div>
 
-    <!-- ── Check email state (shown after successful registration) ── -->
+    <!-- Check email state -->
     <div id="success-view" style="display:none; text-align:center;">
-      <div style="width:64px;height:64px;border-radius:var(--shape-full);background:var(--md-secondary-cont);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--md-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="success-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
           <polyline points="22,6 12,13 2,6"/>
         </svg>
       </div>
       <h1 class="auth-headline" style="margin-bottom:8px;">Check your email</h1>
       <p class="auth-subhead" style="margin-bottom:0;">
-        We sent a verification link to <strong id="sent-email"></strong>.<br>
-        Click the link to activate your account. <br>
-        if you don't get the link you can <a href="/auth/resend-verification/">resend</a>
+        We sent a verification link to <strong id="sent-email" style="color:var(--text)"></strong>.<br>
+        Click the link to activate your account.<br>
+        If you don't get it, <a href="/auth/resend-verification/" style="color:var(--accent)">resend</a>.
       </p>
       <div class="auth-footer" style="margin-top:24px;">
-        <a href="/login/">Back to sign in</a>
-
+        <a href="/login/">← Back to sign in</a>
       </div>
     </div>
 
@@ -78,7 +137,6 @@
     const email    = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const errorEl  = document.getElementById('error');
-
     errorEl.textContent = '';
 
     if (!username || !email || !password) {
@@ -91,11 +149,9 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, email, password })
     });
-
     const data = await res.json();
 
     if (res.ok) {
-      // Show "check your email" state
       document.getElementById('sent-email').textContent = email;
       document.getElementById('form-view').style.display    = 'none';
       document.getElementById('success-view').style.display = 'block';
@@ -104,9 +160,7 @@
     }
   }
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter') register();
-  });
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') register(); });
 </script>
 </body>
 </html>

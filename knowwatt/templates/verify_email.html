@@ -5,81 +5,108 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verify Email — KnowWatt</title>
-  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/home/home.css' %}">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow: auto; }
+    .auth-wrap { width: 100%; max-width: 400px; padding: 24px 16px; }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 36px 32px;
+      animation: fadeUp .4s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .auth-headline { font-size: 22px; font-weight: 700; letter-spacing: -.5px; margin-bottom: 8px; }
+    .auth-subhead  { font-size: 13px; color: var(--text2); }
+    .state-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .state-icon.loading {
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+      background: transparent;
+    }
+    .state-icon.success { background: var(--accent-dim); }
+    .state-icon.error   { background: rgba(255,77,106,.1); }
+    .btn-primary {
+      display: block; width: 100%; padding: 12px;
+      background: var(--accent); color: #000;
+      border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer; margin-top: 20px;
+      text-align: center; text-decoration: none;
+    }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .auth-footer { margin-top: 18px; text-align: center; font-size: 13px; color: var(--text2); }
+    .auth-footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
+  </style>
 </head>
 <body>
-<div class="auth-page">
-  <div class="auth-card m3-enter" id="verify-card">
+<div class="auth-wrap">
+  <div class="auth-card" id="verify-card" style="text-align:center;">
 
     <!-- Loading state -->
-    <div id="loading-view" style="text-align:center;">
-      <div class="spinner" style="width:40px;height:40px;border:3px solid var(--md-outline);border-top-color:var(--md-primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px;"></div>
-      <p class="auth-subhead">Verifying your email...</p>
+    <div id="loading-view">
+      <div class="state-icon loading"></div>
+      <p class="auth-subhead">Verifying your email…</p>
     </div>
 
     <!-- Success state -->
-    <div id="success-view" style="display:none; text-align:center;">
-      <div style="width:64px;height:64px;border-radius:var(--shape-full);background:var(--md-primary-container);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--md-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <div id="success-view" style="display:none;">
+      <div class="state-icon success">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </div>
-      <h1 class="auth-headline" style="margin-bottom:8px;">Email verified!</h1>
-      <p class="auth-subhead" style="margin-bottom:24px;">
-        Your account is now active. You can sign in to access your dashboard.
-      </p>
-      <a href="/login/" class="btn-filled btn-full">Sign In</a>
+      <h1 class="auth-headline">Email verified!</h1>
+      <p class="auth-subhead">Your account is now active. You can sign in to access your dashboard.</p>
+      <a href="/login/" class="btn-primary">Sign In</a>
     </div>
 
     <!-- Error state -->
-    <div id="error-view" style="display:none; text-align:center;">
-      <div style="width:64px;height:64px;border-radius:var(--shape-full);background:var(--md-error-container);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--md-error)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div id="error-view" style="display:none;">
+      <div class="state-icon error">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/>
           <line x1="15" y1="9" x2="9" y2="15"/>
           <line x1="9" y1="9" x2="15" y2="15"/>
         </svg>
       </div>
-      <h1 class="auth-headline" style="margin-bottom:8px;">Verification failed</h1>
-      <p class="auth-subhead" style="margin-bottom:24px;" id="error-msg">
-        The verification link is invalid or has expired.
-      </p>
-      <a href="/login/" class="btn-filled btn-full">Back to Sign In</a>
+      <h1 class="auth-headline">Verification failed</h1>
+      <p class="auth-subhead" id="error-msg">The verification link is invalid or has expired.</p>
+      <a href="/login/" class="btn-primary">Back to Sign In</a>
     </div>
 
   </div>
 </div>
 
-<style>
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-</style>
-
 <script>
 async function verifyEmail() {
   const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
+  const token  = params.get('token');
 
-  if (!token) {
-    showError('No verification token provided.');
-    return;
-  }
+  if (!token) { showError('No verification token provided.'); return; }
 
   try {
-    const res = await fetch('/auth/verify-email/', {
+    const res  = await fetch('/auth/verify-email/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token })
     });
-
     const data = await res.json();
-
-    if (res.ok) {
-      showSuccess();
-    } else {
-      showError(data.error || 'Verification failed. The link may be expired or invalid.');
-    }
+    res.ok ? showSuccess() : showError(data.error || 'Verification failed. The link may be expired or invalid.');
   } catch (e) {
     showError('An error occurred. Please try again.');
   }
@@ -92,11 +119,10 @@ function showSuccess() {
 
 function showError(msg) {
   document.getElementById('loading-view').style.display = 'none';
-  document.getElementById('error-view').style.display = 'block';
+  document.getElementById('error-view').style.display   = 'block';
   document.getElementById('error-msg').textContent = msg;
 }
 
-// Run on page load
 verifyEmail();
 </script>
 </body>

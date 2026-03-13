@@ -7,4 +7,5 @@ urlpatterns = [
     path("auth/", include("account.urls")),
     path("", include("funt.urls")),
     path("api/houses/", include("house.urls")),
+    path("api/", include("device.urls")),
 ]

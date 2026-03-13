@@ -41,6 +41,7 @@ class HouseListCreateView(APIView):
         address = request.data.get('address')
         lat = request.data.get('lat')
         long = request.data.get('long')
+        emoji = request.data.get('emoji', '🏠')
 
         if not house_name:
             return Response(
@@ -60,6 +61,7 @@ class HouseListCreateView(APIView):
             address=address,
             lat=lat,
             long=long,
+            emoji=emoji,
         )
 
         # Create owner membership
@@ -75,6 +77,7 @@ class HouseListCreateView(APIView):
             'address': house.address,
             'lat': house.lat,
             'long': house.long,
+            'emoji': house.emoji,
             'role': 'owner',
             'created_at': house.created_at.isoformat(),
         }, status=status.HTTP_201_CREATED)

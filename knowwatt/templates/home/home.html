@@ -44,27 +44,66 @@
             </svg>
             เพิ่มบ้าน
         </button>
-        <div class="popup-overlay" id="popup-overlay" style="display:none;"></div>
-        <div id="add-home-popup" class="popup" style="display:none;">
-            Add your home!
-            <form>
-                <label for="house_name">House name:</label><br>
-                <input type="text" id="house_name" name="house_name"><br>
-                <label for="address">Address</label><br>
-                <input type="text" id="address" name="address"><br>
+        <div class="popup-overlay" id="popup-overlay" style="display:none;" onclick="toggleAddHomePopup()"></div>
+        <div id="add-home-popup" class="popup" style="display:none; flex-direction:column; gap:0;">
 
-                <!-- Map -->
-                <label>Pick location:</label>
-                <div id="map" style="height: 300px; width: 100%; border-radius: 8px;"></div>
+            <!-- Header -->
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+                <div style="font-size:15px; font-weight:700; color:var(--text);">🏠 เพิ่มบ้านใหม่</div>
+                <button onclick="toggleAddHomePopup()" style="background:none; border:none; color:var(--text2); cursor:pointer; font-size:18px; line-height:1; padding:2px 6px;">&times;</button>
+            </div>
 
-                <!-- Hidden lat/lng fields -->
-                <input type="hidden" id="lat" name="lat">
-                <input type="hidden" id="lng" name="lng">
-                <small id="coords-display">No location selected</small><br><br>
+            <!-- Emoji picker row -->
+            <div style="margin-bottom:14px;">
+                <div style="font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px;">ไอคอน</div>
+                <div id="emoji-row" style="display:flex; gap:8px; flex-wrap:wrap;">
+                    {% for em in "🏠🏡🏢🏣🏤🏥🏦🏨🏩🏪🏫🏬🏭🏯🏰"|make_list %}
+                    <button class="emoji-btn" onclick="selectEmoji('{{ em }}')" style="font-size:20px; background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center;">{{ em }}</button>
+                    {% endfor %}
+                </div>
+                <input type="hidden" id="house_emoji" value="🏠">
+            </div>
 
-                <button onclick="addHomeCommit()">Add</button>
-            </form>
-            <button onclick="toggleAddHomePopup()">close</button>
+            <!-- House name -->
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ชื่อบ้าน *</label>
+                <input id="house_name" type="text" placeholder="เช่น บ้านหลังใหญ่"
+                    style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; outline:none;"
+                    onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+
+            <!-- Address -->
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ที่อยู่ *</label>
+                <input id="address" type="text" placeholder="เช่น 123 ถนนสุขุมวิท กรุงเทพฯ"
+                    style="width:100%; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; outline:none;"
+                    onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+
+            <!-- Map -->
+            <div style="margin-bottom:6px;">
+                <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ตำแหน่ง (ไม่บังคับ)</label>
+                <div id="map" style="height:220px; width:100%; border-radius:10px; border:1px solid var(--border); overflow:hidden;"></div>
+                <div id="coords-display" style="font-size:11px; color:var(--text3); margin-top:5px;">ยังไม่ได้เลือกตำแหน่ง — คลิกบนแผนที่เพื่อปักหมุด</div>
+            </div>
+            <input type="hidden" id="lat" name="lat">
+            <input type="hidden" id="lng" name="lng">
+
+            <!-- Error / notice -->
+            <p id="popup-error" style="font-size:12px; color:var(--danger); min-height:16px; margin:4px 0 0;"></p>
+
+            <!-- Actions -->
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button onclick="toggleAddHomePopup()"
+                    style="flex:1; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; color:var(--text2); font-size:13px; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif;">
+                    ยกเลิก
+                </button>
+                <button id="add-home-btn" onclick="addHomeCommit()"
+                    style="flex:2; padding:10px; background:var(--accent); border:none; border-radius:10px; color:#000; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;">
+                    เพิ่มบ้าน
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -348,69 +387,133 @@
         });
 
     let displayAddHomePopup = false;
+    let selectedEmoji = '🏠';
 
-    function toggleAddHomePopup() {
-        displayAddHomePopup = !displayAddHomePopup;
-
-        const popup = document.getElementById('add-home-popup');
-        const overlay = document.getElementById('popup-overlay');
-
-        popup.style.display = displayAddHomePopup ? 'flex' : 'none';
-        overlay.style.display = displayAddHomePopup ? 'block' : 'none';
-    }
-
-    function addHomeCommit() {
-        const hosuename = document.getElementById('house_name').value;
-        const address = document.getElementById('address').value;
-        const lat = document.getElementById('lat').value;
-        const lng = document.getElementById('lng').value;
-        fetch("/api/houses/", {
-            method: "POST",
-
-            body: JSON.stringify({
-                house_name : hosuename,
-                address : address,
-                lat : lat,
-                long : lng,
-            }),
-            headers: {
-                headers: { 'Authorization': 'Bearer ' + token },
-            }
+    function selectEmoji(em) {
+        selectedEmoji = em;
+        document.getElementById('house_emoji').value = em;
+        // highlight selected
+        document.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.style.borderColor = btn.textContent.trim() === em ? 'var(--accent)' : 'var(--border)';
+            btn.style.background  = btn.textContent.trim() === em ? 'var(--accent-dim)' : 'var(--surface2)';
         });
     }
 
+    function toggleAddHomePopup() {
+        displayAddHomePopup = !displayAddHomePopup;
+        const popup   = document.getElementById('add-home-popup');
+        const overlay = document.getElementById('popup-overlay');
+        popup.style.display   = displayAddHomePopup ? 'flex' : 'none';
+        overlay.style.display = displayAddHomePopup ? 'block' : 'none';
 
+        if (displayAddHomePopup) {
+            // reset form
+            document.getElementById('house_name').value = '';
+            document.getElementById('address').value    = '';
+            document.getElementById('lat').value        = '';
+            document.getElementById('lng').value        = '';
+            document.getElementById('popup-error').textContent = '';
+            document.getElementById('coords-display').textContent = 'ยังไม่ได้เลือกตำแหน่ง — คลิกบนแผนที่เพื่อปักหมุด';
+            selectEmoji('🏠');
+            // init map after popup is visible
+            setTimeout(initMap, 100);
+        }
+    }
 
-    //below are openstreet map scripts
+    async function addHomeCommit() {
+        const houseName = document.getElementById('house_name').value.trim();
+        const address   = document.getElementById('address').value.trim();
+        const lat       = document.getElementById('lat').value;
+        const lng       = document.getElementById('lng').value;
+        const emoji     = document.getElementById('house_emoji').value || '🏠';
+        const errorEl   = document.getElementById('popup-error');
+        const btn       = document.getElementById('add-home-btn');
+
+        errorEl.textContent = '';
+
+        if (!houseName) { errorEl.textContent = 'กรุณากรอกชื่อบ้าน'; return; }
+        if (!address)   { errorEl.textContent = 'กรุณากรอกที่อยู่'; return; }
+
+        btn.disabled = true;
+        btn.textContent = 'กำลังเพิ่ม…';
+
+        try {
+            const res = await fetch('/api/houses/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token,
+                },
+                body: JSON.stringify({
+                    house_name: houseName,
+                    address:    address,
+                    lat:        lat ? parseFloat(lat) : null,
+                    long:       lng ? parseFloat(lng) : null,
+                    emoji:      emoji,
+                }),
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                // Add new tab to house row
+                const houseRow = document.getElementById('house-row');
+                const tab = document.createElement('div');
+                tab.className = 'htab';
+                tab.dataset.id = data.id;
+                tab.textContent = `${data.emoji || emoji} ${data.house_name}`;
+                houseRow.appendChild(tab);
+                toggleAddHomePopup();
+            } else {
+                errorEl.textContent = data.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+            }
+        } catch (e) {
+            errorEl.textContent = 'ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'เพิ่มบ้าน';
+        }
+    }
+
+    // OpenStreetMap
     let map = null;
-let marker = null;
+    let marker = null;
 
-function initMap() {
-    if (map) return; // prevent re-initializing
-
-    map = L.map('map').setView([51.505, -0.09], 13); // default location
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    // click to place marker
-    map.on('click', (e) => {
-        const { lat, lng } = e.latlng;
-
-        // move marker or create new one
-        if (marker) {
-            marker.setLatLng(e.latlng);
-        } else {
-            marker = L.marker(e.latlng).addTo(map);
+    function initMap() {
+        if (map) {
+            // already initialized — just invalidate size in case popup resized
+            map.invalidateSize();
+            return;
         }
 
-        // update hidden inputs
-        document.getElementById('lat').value = lat.toFixed(6);
-        document.getElementById('lng').value = lng.toFixed(6);
-        document.getElementById('coords-display').textContent = `Selected: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    });
-}
+        // Try to use user's geolocation, fallback to Bangkok
+        const defaultLat = 13.7563, defaultLng = 100.5018;
+        map = L.map('map').setView([defaultLat, defaultLng], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        map.on('click', (e) => {
+            const { lat, lng } = e.latlng;
+            if (marker) {
+                marker.setLatLng(e.latlng);
+            } else {
+                marker = L.marker(e.latlng).addTo(map);
+            }
+            document.getElementById('lat').value = lat.toFixed(6);
+            document.getElementById('lng').value = lng.toFixed(6);
+            document.getElementById('coords-display').textContent =
+                `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            document.getElementById('coords-display').style.color = 'var(--accent)';
+        });
+
+        // Try geolocation
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+            });
+        }
+    }
 
 </script>
 {% endblock %}
