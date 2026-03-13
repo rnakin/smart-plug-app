@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import SmartPlug, ElectricalDevice, NFCTag, PlugSession
 from house.models import House, HouseMember
+from energy.models import EnergyReading
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -29,7 +30,17 @@ def require_membership(house_id, user, min_role=None):
     return m, None
 
 
+DEVICE_TYPE_EMOJI = {
+    'kitchen': '🍳', 'appliance': '🔌', 'entertainment': '📺',
+    'lighting': '💡', 'hvac': '❄️', 'office': '💻', 'other': '🔌',
+}
+
 def plug_to_dict(plug):
+    # Active session → detected device
+    active_session = plug.sessions.filter(is_active=True).select_related('device').first()
+    device = active_session.device if active_session else None
+    # Latest energy reading
+    latest = EnergyReading.objects.filter(plug=plug).order_by('-recorded_at').first()
     return {
         'id': str(plug.id),
         'house_id': str(plug.house_id),
@@ -39,6 +50,12 @@ def plug_to_dict(plug):
         'is_on': plug.is_on,
         'online_status': plug.online_status,
         'registered_at': plug.registered_at.isoformat(),
+        'current_power_w': round(latest.power_w, 1) if latest else None,
+        'device_id': str(device.id) if device else None,
+        'device_name': device.name if device else None,
+        'device_type': device.device_type if device else None,
+        'device_emoji': DEVICE_TYPE_EMOJI.get(device.device_type, '🔌') if device else None,
+        'device_risk': device.risk_level if device else None,
     }
 
 

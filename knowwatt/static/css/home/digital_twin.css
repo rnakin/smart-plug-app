@@ -18,11 +18,18 @@
 }
 
 .home-header {
-   padding: 28px 36px 0;
+   padding: 20px 36px 12px;
    display: flex;
    align-items: flex-start;
-   gap: 36px;
    flex-shrink: 0;
+   border-bottom: 1px solid var(--border);
+   background: var(--surface);
+}
+
+.home-header .house-row {
+   padding: 0;
+   margin-top: 6px;
+   flex-wrap: wrap;
 }
 
 

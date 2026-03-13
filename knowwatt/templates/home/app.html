@@ -59,45 +59,66 @@
      PAGE: HOME
 ───────────────────────────────────────────────────────────── -->
 <div class="page active" id="page-home">
+  <!-- Top bar: greeting + house tabs + quick stats -->
   <div class="home-header">
-    <div>
-      <div class="greeting">สวัสดี, <span id="username">...</span></div>
-      <div class="greeting-sub">
-        <div class="live-dot-home"></div>
-        <span id="live-status">กำลังโหลด...</span>
+    <div style="display:flex; flex-direction:column; gap:6px; flex:1; min-width:0;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div>
+          <div class="greeting">สวัสดี, <span id="username">...</span></div>
+          <div class="greeting-sub">
+            <div class="live-dot-home"></div>
+            <span id="live-status">กำลังโหลด...</span>
+          </div>
+        </div>
+        <div class="qs-row">
+          <div class="qs"><div class="dot" style="background:var(--accent)"></div>เปิดอยู่ <span class="v" id="qs-online">—</span></div>
+          <div class="qs"><div class="dot" style="background:var(--warn)"></div>แจ้งเตือน <span class="v" id="qs-alerts">—</span></div>
+          <div class="qs">⚡ <span class="v" id="qs-power">—</span> W</div>
+        </div>
+      </div>
+      <!-- House selection tabs inside topbar -->
+      <div class="house-row" style="padding:0; margin-top:4px;">
+        <div id="house-row" style="display:contents;"></div>
+        <button class="htab-add" onclick="toggleAddHomePopup()">
+          <svg width="11" height="11" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          เพิ่มบ้าน
+        </button>
       </div>
     </div>
-    <div class="alerts-zone" id="alerts-zone"></div>
   </div>
 
-  <div class="house-row">
-    <div id="house-row"></div>
-    <button class="htab-add" onclick="toggleAddHomePopup()">
-      <svg width="11" height="11" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-      เพิ่มบ้าน
-    </button>
-  </div>
+  <!-- Alert pills -->
+  <div class="alerts-zone" id="alerts-zone" style="padding:10px 36px 0; display:flex; flex-direction:column; gap:6px; flex-shrink:0;"></div>
 
+  <!-- Digital Twin section -->
   <div class="twin-section">
-    <div class="qs-row">
-      <div class="qs"><div class="dot" style="background:var(--accent)"></div>เปิดอยู่ <span class="v" id="qs-online">—</span></div>
-      <div class="qs"><div class="dot" style="background:var(--warn)"></div>แจ้งเตือน <span class="v" id="qs-alerts">—</span></div>
-      <div class="qs">⚡ <span class="v" id="qs-power">—</span> W</div>
-    </div>
     <div class="twin-toolbar">
       <div class="tb-left">
-        <button class="tbtn primary" onclick="openAddPlugModal()">
+        <button class="tbtn primary" onclick="openAddRoomDrawer()">
           <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          เพิ่มห้อง
+        </button>
+        <button class="tbtn" onclick="openAddPlugModal()">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           เพิ่มปลั๊ก
+        </button>
+        <button class="tbtn" id="btn-edit" onclick="toggleTwinEdit()">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8"/></svg>
+          จัดเรียง
+        </button>
+        <button class="tbtn" onclick="autoArrangeTwin()">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg>
+          จัดอัตโนมัติ
         </button>
       </div>
       <span id="house-role-badge" style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px;"></span>
+      <span class="mode-lbl" id="twin-mode-lbl">VIEW MODE</span>
     </div>
-    <div id="plug-grid" style="display:flex; flex-wrap:wrap; gap:14px; padding:20px; overflow-y:auto; flex:1; align-content:flex-start;">
-      <div id="plug-empty" style="width:100%; text-align:center; padding:60px 20px; color:var(--text3);">
-        <div style="font-size:40px; margin-bottom:12px;">🔌</div>
-        <p style="font-size:14px;">ยังไม่มีปลั๊กในบ้านนี้</p>
-        <small>คลิก "เพิ่มปลั๊ก" เพื่อลงทะเบียนปลั๊กอัจฉริยะ</small>
+    <div class="twin-canvas" id="twin-canvas">
+      <div class="cempty" id="twin-empty">
+        <div class="cempty-ico">🏠</div>
+        <p>ยังไม่มีห้องหรือปลั๊กในบ้านนี้</p>
+        <small>คลิก "เพิ่มห้อง" เพื่อเริ่มสร้างแผนผังบ้าน</small>
       </div>
     </div>
   </div>
@@ -224,6 +245,85 @@
 </div><!-- end #content -->
 
 <!-- ═══════════════════════════════════════════════════════════════
+     DRAWERS (Digital Twin)
+═══════════════════════════════════════════════════════════════ -->
+<div class="overlay" id="twin-overlay" onclick="closeTwinDrawer()"></div>
+
+<!-- ADD ROOM DRAWER -->
+<div class="drawer" id="d-add-room">
+  <div class="dh">
+    <div class="dh-title">เพิ่มห้องใหม่</div>
+    <button class="dclose" onclick="closeTwinDrawer()">✕</button>
+  </div>
+  <div class="dbody">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">เลือกประเภทห้อง</div>
+    <div class="rpgrid">
+      <div class="ropt" onclick="addRoomFromDrawer('ครัว','🍳')"><div class="ropt-em">🍳</div><div class="ropt-nm">ครัว</div></div>
+      <div class="ropt" onclick="addRoomFromDrawer('ห้องนอน','🛏')"><div class="ropt-em">🛏</div><div class="ropt-nm">ห้องนอน</div></div>
+      <div class="ropt" onclick="addRoomFromDrawer('ห้องนั่งเล่น','🛋')"><div class="ropt-em">🛋</div><div class="ropt-nm">ห้องนั่งเล่น</div></div>
+      <div class="ropt" onclick="addRoomFromDrawer('ห้องน้ำ','🚿')"><div class="ropt-em">🚿</div><div class="ropt-nm">ห้องน้ำ</div></div>
+      <div class="ropt" onclick="addRoomFromDrawer('ระเบียง','🌿')"><div class="ropt-em">🌿</div><div class="ropt-nm">ระเบียง</div></div>
+      <div class="ropt" onclick="addRoomFromDrawer('ห้องซัก','🫧')"><div class="ropt-em">🫧</div><div class="ropt-nm">ห้องซัก</div></div>
+      <div class="ropt" onclick="addRoomFromDrawer('ห้องทำงาน','💻')"><div class="ropt-em">💻</div><div class="ropt-nm">ห้องทำงาน</div></div>
+      <div class="ropt" onclick="addRoomFromDrawer('โรงรถ','🚗')"><div class="ropt-em">🚗</div><div class="ropt-nm">โรงรถ</div></div>
+    </div>
+    <div style="margin-top:12px;">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">หรือตั้งชื่อเอง</div>
+      <div style="display:flex;gap:8px;">
+        <input id="custom-room-name" type="text" placeholder="ชื่อห้อง..." class="modal-input" style="flex:1;">
+        <button onclick="addRoomCustom()" class="tbtn primary" style="flex-shrink:0;">เพิ่ม</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MOVE PLUG DRAWER -->
+<div class="drawer" id="d-move-plug">
+  <div class="dh">
+    <div class="dh-title" id="d-move-plug-title">ย้ายปลั๊ก</div>
+    <button class="dclose" onclick="closeTwinDrawer()">✕</button>
+  </div>
+  <div class="dbody">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">เลือกห้องปลายทาง</div>
+    <div id="move-room-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+  </div>
+</div>
+
+<!-- PLUG DETAIL DRAWER -->
+<div class="drawer" id="d-plug-detail">
+  <div class="dh">
+    <div class="dh-title" id="dd-plug-title">ปลั๊ก</div>
+    <button class="dclose" onclick="closeTwinDrawer()">✕</button>
+  </div>
+  <div class="dbody">
+    <div class="dsec">
+      <div class="dsec-lbl">Real-time</div>
+      <div class="dmet">
+        <div class="dm"><div class="dml">กำลังไฟ</div><div class="dmv" id="dd-power">—<span class="dmu">W</span></div></div>
+        <div class="dm"><div class="dml">สถานะ</div><div class="dmv" id="dd-status" style="font-size:13px;">—</div></div>
+        <div class="dm"><div class="dml">อุปกรณ์</div><div class="dmv" id="dd-device" style="font-size:13px;">—</div></div>
+        <div class="dm"><div class="dml">ความเสี่ยง</div><div class="dmv" id="dd-risk" style="font-size:13px;">—</div></div>
+      </div>
+    </div>
+    <div class="big-tog" id="dd-tog" onclick="togglePlugFromDrawer()">
+      <div class="bt-info"><div class="bt-lbl">สถานะการทำงาน</div><div class="bt-st" id="dd-st">—</div></div>
+      <div class="sw" id="dd-sw"></div>
+    </div>
+    <div class="dsec" style="margin-top:8px;">
+      <div class="dsec-lbl">ข้อมูลปลั๊ก</div>
+      <div style="display:flex;flex-direction:column;gap:7px;font-size:12px;">
+        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2)">รหัส</span><span id="dd-code" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);">—</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2)">ห้อง</span><span id="dd-room">—</span></div>
+      </div>
+    </div>
+    <div class="arow">
+      <button class="ab ab-ghost" onclick="openMovePlugDrawer()">↔ ย้ายห้อง</button>
+      <button class="ab ab-dng" onclick="togglePlugFromDrawer()">⏹ ปิดทันที</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      MODALS
 ═══════════════════════════════════════════════════════════════ -->
 
@@ -281,8 +381,10 @@
     <input id="plug_name" type="text" placeholder="เช่น ปลั๊กครัว A1" class="modal-input">
   </div>
   <div style="margin-bottom:12px;">
-    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ตำแหน่ง</label>
-    <input id="plug_location" type="text" placeholder="เช่น ครัว, ห้องนอน" class="modal-input">
+    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ห้อง</label>
+    <select id="plug_location" class="modal-input" style="cursor:pointer;">
+      <option value="">— ไม่ระบุ —</option>
+    </select>
   </div>
   <p id="plug-error" style="font-size:12px; color:var(--danger); min-height:16px; margin:4px 0 0;"></p>
   <div style="display:flex; gap:10px; margin-top:16px;">
@@ -406,17 +508,22 @@ async function loadHouses() {
 }
 
 function renderHouseTabs() {
-  const row = document.getElementById('house-row');
-  row.innerHTML = houses.map((h, i) =>
-    `<div class="htab ${i === 0 ? 'active' : ''}" data-id="${h.id}"
-      onclick="selectHouseTab('${h.id}','${h.house_name.replace(/'/g,"\\'")}','${h.role}',this)">
-      ${h.emoji || '🏠'} ${h.house_name}
-    </div>`
-  ).join('');
+  const container = document.getElementById('house-row').parentElement;
+  // Remove existing htabs (but keep the htab-add button)
+  container.querySelectorAll('.htab').forEach(t => t.remove());
+  const addBtn = container.querySelector('.htab-add');
+  houses.forEach((h, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'htab' + (i === 0 ? ' active' : '');
+    tab.dataset.id = h.id;
+    tab.textContent = (h.emoji || '🏠') + ' ' + h.house_name;
+    tab.onclick = function() { selectHouseTab(h.id, h.house_name, h.role, this); };
+    container.insertBefore(tab, addBtn);
+  });
 }
 
 function selectHouseTab(id, name, role, el) {
-  document.querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#page-home .htab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   setActiveHouse(id, name, role);
 }
@@ -425,50 +532,325 @@ async function loadPlugs() {
   if (!activeHouseId) return;
   try {
     currentPlugs = await apiGet(`/api/houses/${activeHouseId}/plugs/`);
-    renderPlugGrid();
+    renderDigitalTwin();
     document.getElementById('house-role-badge').textContent = { owner:'เจ้าของ', admin:'ผู้ดูแล', member:'สมาชิก', guest:'แขก' }[activeHouseRole] || activeHouseRole;
   } catch (e) {}
 }
 
-function renderPlugGrid() {
-  const grid = document.getElementById('plug-grid');
-  document.getElementById('plug-empty').style.display = currentPlugs.length === 0 ? 'block' : 'none';
-  grid.querySelectorAll('.plug-card').forEach(c => c.remove());
-  document.getElementById('sb-p').textContent = currentPlugs.length;
+// ── Digital Twin ──────────────────────────────────────────────────────────────
+let twinEditMode = false;
+let selectedPlugForDrawer = null;
+const roomTints = {
+  'ครัว':'rgba(255,130,0,.055)', 'ห้องนอน':'rgba(100,100,255,.055)',
+  'ห้องนั่งเล่น':'rgba(0,180,100,.055)', 'ห้องน้ำ':'rgba(0,180,255,.055)',
+  'ระเบียง':'rgba(60,200,60,.055)', 'ห้องซัก':'rgba(0,200,220,.055)',
+  'ห้องทำงาน':'rgba(160,100,255,.055)', 'โรงรถ':'rgba(160,160,160,.055)',
+};
+const roomEmoji = {
+  'ครัว':'🍳','ห้องนอน':'🛏','ห้องนั่งเล่น':'🛋','ห้องน้ำ':'🚿',
+  'ระเบียง':'🌿','ห้องซัก':'🫧','ห้องทำงาน':'💻','โรงรถ':'🚗',
+};
+const riskLabel = { high:'สูง', medium:'ปานกลาง', low:'ต่ำ' };
+const riskClass = { high:'r-high', medium:'r-med', low:'r-low' };
 
+// Rooms are stored in localStorage per house: { houseId: [{id,name,emoji,x,y,w,h}] }
+function getRoomStore() {
+  try { return JSON.parse(localStorage.getItem('twin-rooms') || '{}'); } catch { return {}; }
+}
+function saveRoomStore(store) {
+  localStorage.setItem('twin-rooms', JSON.stringify(store));
+}
+function getHouseRooms() {
+  if (!activeHouseId) return [];
+  return getRoomStore()[activeHouseId] || [];
+}
+function saveHouseRooms(rooms) {
+  const store = getRoomStore();
+  store[activeHouseId] = rooms.map(r => ({ id: r.id, name: r.name, emoji: r.emoji, x: r.x, y: r.y, w: r.w, h: r.h }));
+  saveRoomStore(store);
+}
+
+let twinRooms = []; // [{id, name, emoji, x, y, w, h, plugs:[]}]
+
+function buildTwinRooms() {
+  const savedRooms = getHouseRooms();
+  // Group plugs by location
+  const groups = {};
   currentPlugs.forEach(plug => {
-    const card = document.createElement('div');
-    card.className = 'plug-card';
-    card.dataset.plugId = plug.id;
-    card.style.cssText = 'background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; width:160px; cursor:pointer;';
-    card.innerHTML = `
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-        <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100px;">${plug.location || 'ไม่ระบุ'}</div>
-        <div style="width:8px; height:8px; border-radius:50%; flex-shrink:0; background:${plug.online_status === 'online' ? 'var(--accent)' : 'var(--text3)'};" title="${plug.online_status}"></div>
-      </div>
-      <div style="font-size:22px; margin-bottom:6px;">🔌</div>
-      <div style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${plug.name}</div>
-      <div style="font-size:11px; color:var(--text3); margin-bottom:12px;">${plug.plug_code}</div>
-      <button onclick="togglePlug('${plug.id}',${plug.is_on},event)"
-        style="width:100%; padding:7px; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;
-               background:${plug.is_on ? 'var(--accent)' : 'var(--surface2)'}; color:${plug.is_on ? '#000' : 'var(--text2)'}; border:1px solid ${plug.is_on ? 'transparent' : 'var(--border)'};">
-        ${plug.is_on ? '⚡ เปิดอยู่' : '○ ปิดอยู่'}
-      </button>
-    `;
-    card.addEventListener('mouseenter', () => card.style.borderColor = 'var(--text3)');
-    card.addEventListener('mouseleave', () => card.style.borderColor = 'var(--border)');
-    grid.appendChild(card);
+    const loc = plug.location || 'ไม่ระบุ';
+    if (!groups[loc]) groups[loc] = [];
+    groups[loc].push(plug);
+  });
+
+  const canvas = document.getElementById('twin-canvas');
+  const cw = canvas.clientWidth || 800;
+  const cols = 3, pad = 20;
+  const w = Math.floor((cw - pad * (cols + 1)) / cols);
+  const h = 175;
+
+  // Merge saved rooms + rooms from plug locations
+  const allRoomNames = new Set([
+    ...savedRooms.map(r => r.name),
+    ...Object.keys(groups),
+  ]);
+
+  let idx = 0;
+  twinRooms = Array.from(allRoomNames).map(name => {
+    const saved = savedRooms.find(r => r.name === name);
+    const col = idx % cols, row = Math.floor(idx / cols);
+    idx++;
+    return {
+      id: saved ? saved.id : 'room-' + name.replace(/\s/g,'_') + '-' + Date.now(),
+      name,
+      emoji: roomEmoji[name] || '🏠',
+      x: saved ? saved.x : pad + col * (w + pad),
+      y: saved ? saved.y : pad + row * (h + pad),
+      w: saved ? saved.w : w,
+      h: saved ? saved.h : h,
+      plugs: groups[name] || [],
+    };
   });
 }
 
-async function togglePlug(plugId, currentState, event) {
-  event.stopPropagation();
+function renderDigitalTwin() {
+  buildTwinRooms();
+  saveHouseRooms(twinRooms);
+  const canvas = document.getElementById('twin-canvas');
+  canvas.querySelectorAll('.room-block').forEach(e => e.remove());
+  const empty = document.getElementById('twin-empty');
+  empty.classList.toggle('hide', twinRooms.length > 0);
+  twinRooms.forEach(r => renderTwinRoom(r, canvas));
+  document.getElementById('sb-p').textContent = currentPlugs.length;
+}
+
+function renderTwinRoom(r, canvas) {
+  const el = document.createElement('div');
+  el.className = 'room-block';
+  el.id = r.id;
+  el.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;`;
+  if (roomTints[r.name]) el.style.background = roomTints[r.name];
+
+  const plugsHTML = r.plugs.map(p => {
+    const isOn = p.is_on;
+    const isOnline = p.online_status === 'online';
+    const cls = !isOnline ? 'off' : isOn ? 'on' : 'off';
+    const emoji = p.device_emoji || '🔌';
+    const deviceLabel = p.device_name ? `<div class="pwatt" style="color:var(--text3);font-size:7px;">${p.device_name}</div>` : '';
+    return `
+      <div class="plug-node ${cls}" onclick="openPlugDetailDrawer('${p.id}')">
+        <div class="pico">${emoji}<div class="pring"></div></div>
+        <div class="pname">${p.name}</div>
+        ${deviceLabel}
+        <div class="pwatt">${isOn && p.current_power_w != null ? p.current_power_w.toFixed(0)+'W' : '—'}</div>
+        <div class="ptip">${p.name}${p.device_name ? ' · '+p.device_name : ''} · ${p.plug_code}</div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="rbar${twinEditMode ? ' editable' : ''}" data-id="${r.id}">
+      <div class="rlabel"><span class="em">${r.emoji}</span><span>${r.name}</span></div>
+      <div class="ract">
+        <button class="ract-btn del" onclick="event.stopPropagation();deleteRoom('${r.id}')" title="ลบห้อง">✕</button>
+      </div>
+    </div>
+    <div class="rbody">
+      ${plugsHTML}
+    </div>
+    <div class="rresize" data-r="${r.id}"></div>`;
+  canvas.appendChild(el);
+  makeTwinDrag(el, r);
+  makeTwinResize(el, r);
+}
+
+async function apiPatch(url, body) {
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body),
+  });
+  return { ok: res.ok, data: await res.json() };
+}
+
+function deleteRoom(roomId) {
+  const room = twinRooms.find(r => r.id === roomId);
+  if (!room) return;
+  if (room.plugs.length > 0 && !confirm(`ลบห้อง "${room.name}"? ปลั๊กในห้องจะถูกย้ายไปที่ "ไม่ระบุ"`)) return;
+  // Move plugs to 'ไม่ระบุ' via PATCH
+  const movePromises = room.plugs.map(p =>
+    apiPatch(`/api/houses/${activeHouseId}/plugs/${p.id}/`, { location: '' }).catch(() => {})
+  );
+  Promise.all(movePromises).then(() => {
+    twinRooms = twinRooms.filter(r => r.id !== roomId);
+    saveHouseRooms(twinRooms);
+    loadPlugs();
+  });
+}
+
+function makeTwinDrag(el, r) {
+  const bar = el.querySelector('.rbar');
+  bar.addEventListener('mousedown', e => {
+    if (!twinEditMode || e.target.closest('.ract')) return;
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY, ox = r.x, oy = r.y;
+    el.classList.add('dragging');
+    const mv = e => { r.x = Math.max(0, ox + e.clientX - sx); r.y = Math.max(0, oy + e.clientY - sy); el.style.left = r.x + 'px'; el.style.top = r.y + 'px'; };
+    const up = () => { el.classList.remove('dragging'); saveHouseRooms(twinRooms); document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
+}
+
+function makeTwinResize(el, r) {
+  const handle = el.querySelector('.rresize');
+  handle.addEventListener('mousedown', e => {
+    if (!twinEditMode) return;
+    e.preventDefault(); e.stopPropagation();
+    const sx = e.clientX, sy = e.clientY, sw = r.w, sh = r.h;
+    const mv = e => { r.w = Math.max(140, sw + e.clientX - sx); r.h = Math.max(110, sh + e.clientY - sy); el.style.width = r.w + 'px'; el.style.height = r.h + 'px'; };
+    const up = () => { saveHouseRooms(twinRooms); document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
+}
+
+function toggleTwinEdit() {
+  twinEditMode = !twinEditMode;
+  document.getElementById('btn-edit').classList.toggle('on', twinEditMode);
+  document.getElementById('twin-mode-lbl').textContent = twinEditMode ? 'EDIT MODE — ลากห้องได้เลย' : 'VIEW MODE';
+  renderDigitalTwin();
+}
+
+function autoArrangeTwin() {
+  // Clear saved positions so they recalculate
+  const store = getRoomStore();
+  if (activeHouseId) delete store[activeHouseId];
+  saveRoomStore(store);
+  twinRooms = [];
+  renderDigitalTwin();
+}
+
+// ── Room Drawer ───────────────────────────────────────────────────────────────
+function openTwinDrawer(id) {
+  closeTwinDrawer();
+  document.getElementById('twin-overlay').classList.add('open');
+  document.getElementById(id).classList.add('open');
+}
+function closeTwinDrawer() {
+  document.getElementById('twin-overlay').classList.remove('open');
+  document.querySelectorAll('#d-add-room,#d-move-plug,#d-plug-detail').forEach(d => d.classList.remove('open'));
+}
+function openAddRoomDrawer() { openTwinDrawer('d-add-room'); }
+
+function addRoomFromDrawer(name, emoji) {
+  closeTwinDrawer();
+  _addRoom(name, emoji);
+}
+function addRoomCustom() {
+  const name = document.getElementById('custom-room-name').value.trim();
+  if (!name) return;
+  closeTwinDrawer();
+  _addRoom(name, roomEmoji[name] || '🏠');
+}
+function _addRoom(name, emoji) {
+  if (twinRooms.find(r => r.name === name)) {
+    alert(`ห้อง "${name}" มีอยู่แล้ว`); return;
+  }
+  const canvas = document.getElementById('twin-canvas');
+  const cw = canvas.clientWidth || 800;
+  const cols = 3, pad = 20;
+  const w = Math.floor((cw - pad * (cols + 1)) / cols);
+  const h = 175;
+  const idx = twinRooms.length;
+  const col = idx % cols, row = Math.floor(idx / cols);
+  twinRooms.push({
+    id: 'room-' + name.replace(/\s/g,'_') + '-' + Date.now(),
+    name, emoji,
+    x: pad + col * (w + pad),
+    y: pad + row * (h + pad),
+    w, h,
+    plugs: [],
+  });
+  saveHouseRooms(twinRooms);
+  renderDigitalTwin();
+}
+
+// ── Plug Detail Drawer ────────────────────────────────────────────────────────
+function openPlugDetailDrawer(plugId) {
+  const p = currentPlugs.find(x => x.id === plugId);
+  if (!p) return;
+  selectedPlugForDrawer = p;
+  document.getElementById('dd-plug-title').textContent = (p.device_emoji || '🔌') + ' ' + p.name;
+  document.getElementById('dd-power').innerHTML = (p.current_power_w != null ? p.current_power_w.toFixed(0) : '—') + '<span class="dmu">W</span>';
+  document.getElementById('dd-status').textContent = p.online_status === 'online' ? '🟢 ออนไลน์' : '⚫ ออฟไลน์';
+  document.getElementById('dd-device').textContent = p.device_name ? (p.device_emoji || '') + ' ' + p.device_name : '— ไม่มีอุปกรณ์';
+  const risk = p.device_risk;
+  document.getElementById('dd-risk').innerHTML = risk ? `<span class="risk ${riskClass[risk]}">${riskLabel[risk]}</span>` : '—';
+  document.getElementById('dd-code').textContent = p.plug_code;
+  document.getElementById('dd-room').textContent = p.location || 'ไม่ระบุ';
+  const tog = document.getElementById('dd-tog');
+  const sw = document.getElementById('dd-sw');
+  const st = document.getElementById('dd-st');
+  tog.classList.toggle('on', p.is_on);
+  sw.classList.toggle('on', p.is_on);
+  st.textContent = p.is_on ? 'เปิดอยู่' : 'ปิดอยู่';
+  openTwinDrawer('d-plug-detail');
+}
+
+async function togglePlugFromDrawer() {
+  if (!selectedPlugForDrawer) return;
+  const p = selectedPlugForDrawer;
+  const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/plugs/${p.id}/control/`, { action: p.is_on ? 'off' : 'on' });
+  if (ok) {
+    p.is_on = data.is_on;
+    openPlugDetailDrawer(p.id); // refresh drawer
+    renderDigitalTwin();
+  }
+}
+
+// ── Move Plug Drawer ──────────────────────────────────────────────────────────
+function openMovePlugDrawer() {
+  if (!selectedPlugForDrawer) return;
+  document.getElementById('d-move-plug-title').textContent = `ย้าย "${selectedPlugForDrawer.name}"`;
+  const list = document.getElementById('move-room-list');
+  list.innerHTML = twinRooms.map(r => `
+    <div class="popt" onclick="movePlugToRoom('${r.name}')">
+      <div class="popt-em">${r.emoji}</div>
+      <div class="popt-info">
+        <div class="popt-nm">${r.name}</div>
+        <div class="popt-ds">${r.plugs.length} ปลั๊ก</div>
+      </div>
+      ${selectedPlugForDrawer.location === r.name ? '<span style="color:var(--accent);font-size:11px;">● ปัจจุบัน</span>' : ''}
+    </div>`).join('');
+  openTwinDrawer('d-move-plug');
+}
+
+async function movePlugToRoom(roomName) {
+  if (!selectedPlugForDrawer) return;
+  const p = selectedPlugForDrawer;
+  const res = await fetch(`/api/houses/${activeHouseId}/plugs/${p.id}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ location: roomName }),
+  });
+  if (res.ok) {
+    p.location = roomName;
+    closeTwinDrawer();
+    await loadPlugs();
+  }
+}
+
+async function quickTogglePlug(plugId, currentState) {
   const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/plugs/${plugId}/control/`, { action: currentState ? 'off' : 'on' });
   if (ok) {
     const plug = currentPlugs.find(p => p.id === plugId);
     if (plug) plug.is_on = data.is_on;
-    renderPlugGrid();
+    renderDigitalTwin();
   }
+}
+
+async function togglePlug(plugId, currentState, event) {
+  event.stopPropagation();
+  await quickTogglePlug(plugId, currentState);
 }
 
 async function loadAlertPills() {
@@ -551,8 +933,8 @@ async function addHomeCommit() {
     renderHouseTabs();
     toggleAddHomePopup();
     setActiveHouse(data.id, data.house_name, data.role);
-    document.querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.htab')[houses.length - 1]?.classList.add('active');
+    document.querySelectorAll('#page-home .htab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#page-home .htab')[houses.length - 1]?.classList.add('active');
   } else {
     errorEl.textContent = data.error || 'เกิดข้อผิดพลาด';
   }
@@ -577,7 +959,11 @@ function initMap() {
 function openAddPlugModal() {
   if (!activeHouseId) { alert('กรุณาเลือกบ้านก่อน'); return; }
   if (['member','guest'].includes(activeHouseRole)) { alert('เฉพาะเจ้าของหรือผู้ดูแลเท่านั้น'); return; }
-  ['plug_code','plug_name','plug_location'].forEach(id => document.getElementById(id).value = '');
+  ['plug_code','plug_name'].forEach(id => document.getElementById(id).value = '');
+  // Populate room dropdown
+  const sel = document.getElementById('plug_location');
+  sel.innerHTML = '<option value="">— ไม่ระบุ —</option>' +
+    twinRooms.map(r => `<option value="${r.name}">${r.emoji} ${r.name}</option>`).join('');
   document.getElementById('plug-error').textContent = '';
   document.getElementById('add-plug-popup').style.display = 'flex';
   document.getElementById('plug-overlay').style.display   = 'block';
@@ -598,7 +984,7 @@ async function addPlugCommit() {
   btn.disabled = true; btn.textContent = 'กำลังเพิ่ม…';
   const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/plugs/`, { plug_code, name, location });
   btn.disabled = false; btn.textContent = 'เพิ่มปลั๊ก';
-  if (ok) { currentPlugs.push(data); renderPlugGrid(); closeAddPlugModal(); }
+  if (ok) { currentPlugs.push(data); renderDigitalTwin(); closeAddPlugModal(); }
   else errorEl.textContent = data.error || 'เกิดข้อผิดพลาด';
 }
 
