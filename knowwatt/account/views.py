@@ -226,8 +226,50 @@ class MeView(APIView):
 
     def get(self, request):
         return Response({
+            'id': request.user.id,
             'username': request.user.username,
             'email': request.user.email,
+        })
+
+
+# ── Update Profile ─────────────────────────────────────────────────────────────
+
+class UpdateProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+        username = request.data.get('username')
+        email = request.data.get('email')
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if username and username != user.username:
+            if User.objects.filter(username=username).exclude(pk=user.pk).exists():
+                return Response({'error': 'Username already taken'}, status=status.HTTP_400_BAD_REQUEST)
+            user.username = username
+
+        if email and email != user.email:
+            if User.objects.filter(email=email).exclude(pk=user.pk).exists():
+                return Response({'error': 'Email already in use'}, status=status.HTTP_400_BAD_REQUEST)
+            user.email = email
+
+        if new_password:
+            if not current_password:
+                return Response({'error': 'Current password is required to set a new password'}, status=status.HTTP_400_BAD_REQUEST)
+            if not user.check_password(current_password):
+                return Response({'error': 'Current password is incorrect'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                validate_password(new_password, user)
+            except ValidationError as e:
+                return Response({'error': e.messages}, status=status.HTTP_400_BAD_REQUEST)
+            user.set_password(new_password)
+
+        user.save()
+        return Response({
+            'message': 'Profile updated successfully',
+            'username': user.username,
+            'email': user.email,
         })
 
 
