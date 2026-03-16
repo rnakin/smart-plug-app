@@ -24,6 +24,15 @@ services:
       - db
     env_file:
       - .env
-
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: always
+    ports:
+      - "1883:1883"   # MQTT
+      # - "9001:9001"   WebSockets
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
 volumes:
   postgres_data:
