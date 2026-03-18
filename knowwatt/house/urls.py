@@ -5,6 +5,8 @@ from .views import (
     HouseUserListView,
     HouseUserInviteView,
     HouseUserManageView,
+    HouseLeaveView,
+    HouseTransferOwnershipView,
 )
 
 urlpatterns = [
@@ -16,6 +18,8 @@ urlpatterns = [
     path('<uuid:house_id>/users/', HouseUserListView.as_view(), name='house-user-list'),
     path('<uuid:house_id>/users/invite/', HouseUserInviteView.as_view(), name='house-user-invite'),
     path('<uuid:house_id>/users/manage/', HouseUserManageView.as_view(), name='house-user-manage'),
+    path('<uuid:house_id>/leave/', HouseLeaveView.as_view(), name='house-leave'),
+    path('<uuid:house_id>/transfer/', HouseTransferOwnershipView.as_view(), name='house-transfer'),
 
     # Device & NFC (scoped to house)
     path('<uuid:house_id>/', include('device.house_urls')),

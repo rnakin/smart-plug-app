@@ -42,12 +42,21 @@
     <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     <div class="bdg" id="alert-badge" style="display:none;"></div>
   </button>
+  <button class="nav-btn" id="nav-manage" onclick="showPage('manage')" title="จัดการบ้าน">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.8"/><path d="M9 22V12h6v10" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="8" r="3" fill="var(--accent)" stroke="none"/><path d="M18 6v2l1 1" stroke="#000" stroke-width="1.2" stroke-linecap="round"/></svg>
+  </button>
+  <button class="nav-btn" id="nav-myhouses" onclick="showPage('myhouses')" title="บ้านของฉัน">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
   <div class="sidebar-gap"></div>
   <button class="theme-btn" onclick="toggleTheme()" title="สลับธีม">
     <svg class="i-sun" width="17" height="17" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     <svg class="i-moon" width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
-  <div class="avatar" id="avatar-initials" title="โปรไฟล์">?</div>
+  <button class="nav-btn" id="nav-account" onclick="showPage('account')" title="บัญชีของฉัน">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+  <div class="avatar" id="avatar-initials" onclick="showPage('account')" title="บัญชีของฉัน" style="cursor:pointer;">?</div>
 </nav>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -242,6 +251,101 @@
   </div>
 </div>
 
+<!-- ─────────────────────────────────────────────────────────────
+     PAGE: HOUSE MANAGEMENT (owner/admin)
+───────────────────────────────────────────────────────────── -->
+<div class="page" id="page-manage">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">🏠 จัดการบ้าน</div>
+        <div class="top-bar-sub" id="manage-house-name">—</div>
+      </div>
+      <div class="top-bar-actions">
+        <button class="btn btn-ghost" onclick="loadManagePage()">รีเฟรช</button>
+      </div>
+    </div>
+    <div class="dashboard-content" id="manage-content">
+      <div style="text-align:center;padding:40px;color:var(--text3);">กำลังโหลด...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────
+     PAGE: MY HOUSES (all users)
+───────────────────────────────────────────────────────────── -->
+<div class="page" id="page-myhouses">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">🔑 บ้านของฉัน</div>
+        <div class="top-bar-sub">บ้านทั้งหมดที่คุณเป็นสมาชิก</div>
+      </div>
+      <div class="top-bar-actions">
+        <button class="btn btn-ghost" onclick="loadMyHousesPage()">รีเฟรช</button>
+      </div>
+    </div>
+    <div class="dashboard-content" id="myhouses-content">
+      <div style="text-align:center;padding:40px;color:var(--text3);">กำลังโหลด...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────
+     PAGE: ACCOUNT
+───────────────────────────────────────────────────────────── -->
+<div class="page" id="page-account">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">👤 บัญชีของฉัน</div>
+        <div class="top-bar-sub" id="account-sub">—</div>
+      </div>
+    </div>
+    <div class="dashboard-content">
+      <div style="max-width:480px;">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><div class="card-title">ข้อมูลบัญชี</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ชื่อผู้ใช้</label>
+              <input id="acc-username" type="text" class="modal-input" placeholder="ชื่อผู้ใช้">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">อีเมล</label>
+              <input id="acc-email" type="email" class="modal-input" placeholder="อีเมล">
+            </div>
+            <p id="acc-profile-msg" style="font-size:12px;min-height:16px;margin:0;"></p>
+            <button onclick="saveProfile()" class="modal-btn-primary" style="padding:10px;">บันทึกข้อมูล</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">เปลี่ยนรหัสผ่าน</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">รหัสผ่านปัจจุบัน</label>
+              <input id="acc-cur-pw" type="password" class="modal-input" placeholder="รหัสผ่านปัจจุบัน">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">รหัสผ่านใหม่</label>
+              <input id="acc-new-pw" type="password" class="modal-input" placeholder="รหัสผ่านใหม่">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ยืนยันรหัสผ่านใหม่</label>
+              <input id="acc-confirm-pw" type="password" class="modal-input" placeholder="ยืนยันรหัสผ่านใหม่">
+            </div>
+            <p id="acc-pw-msg" style="font-size:12px;min-height:16px;margin:0;"></p>
+            <button onclick="changePassword()" class="modal-btn-primary" style="padding:10px;">เปลี่ยนรหัสผ่าน</button>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <button onclick="doLogout()" style="width:100%;padding:10px;background:rgba(255,77,106,.1);border:1px solid rgba(255,77,106,.3);border-radius:10px;color:var(--danger);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">ออกจากระบบ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- end #content -->
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -256,23 +360,24 @@
     <button class="dclose" onclick="closeTwinDrawer()">✕</button>
   </div>
   <div class="dbody">
-    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">เลือกประเภทห้อง</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">คลิกเพื่อเลือก · ดับเบิลคลิกเพื่อสร้างทันที</div>
     <div class="rpgrid">
-      <div class="ropt" onclick="addRoomFromDrawer('ครัว','🍳')"><div class="ropt-em">🍳</div><div class="ropt-nm">ครัว</div></div>
-      <div class="ropt" onclick="addRoomFromDrawer('ห้องนอน','🛏')"><div class="ropt-em">🛏</div><div class="ropt-nm">ห้องนอน</div></div>
-      <div class="ropt" onclick="addRoomFromDrawer('ห้องนั่งเล่น','🛋')"><div class="ropt-em">🛋</div><div class="ropt-nm">ห้องนั่งเล่น</div></div>
-      <div class="ropt" onclick="addRoomFromDrawer('ห้องน้ำ','🚿')"><div class="ropt-em">🚿</div><div class="ropt-nm">ห้องน้ำ</div></div>
-      <div class="ropt" onclick="addRoomFromDrawer('ระเบียง','🌿')"><div class="ropt-em">🌿</div><div class="ropt-nm">ระเบียง</div></div>
-      <div class="ropt" onclick="addRoomFromDrawer('ห้องซัก','🫧')"><div class="ropt-em">🫧</div><div class="ropt-nm">ห้องซัก</div></div>
-      <div class="ropt" onclick="addRoomFromDrawer('ห้องทำงาน','💻')"><div class="ropt-em">💻</div><div class="ropt-nm">ห้องทำงาน</div></div>
-      <div class="ropt" onclick="addRoomFromDrawer('โรงรถ','🚗')"><div class="ropt-em">🚗</div><div class="ropt-nm">โรงรถ</div></div>
+      <div class="ropt" onclick="selectRoomType('ครัว','🍳',this)" ondblclick="addRoomFromDrawer('ครัว','🍳')"><div class="ropt-em">🍳</div><div class="ropt-nm">ครัว</div></div>
+      <div class="ropt" onclick="selectRoomType('ห้องนอน','🛏',this)" ondblclick="addRoomFromDrawer('ห้องนอน','🛏')"><div class="ropt-em">🛏</div><div class="ropt-nm">ห้องนอน</div></div>
+      <div class="ropt" onclick="selectRoomType('ห้องนั่งเล่น','🛋',this)" ondblclick="addRoomFromDrawer('ห้องนั่งเล่น','🛋')"><div class="ropt-em">🛋</div><div class="ropt-nm">ห้องนั่งเล่น</div></div>
+      <div class="ropt" onclick="selectRoomType('ห้องน้ำ','🚿',this)" ondblclick="addRoomFromDrawer('ห้องน้ำ','🚿')"><div class="ropt-em">🚿</div><div class="ropt-nm">ห้องน้ำ</div></div>
+      <div class="ropt" onclick="selectRoomType('ระเบียง','🌿',this)" ondblclick="addRoomFromDrawer('ระเบียง','🌿')"><div class="ropt-em">🌿</div><div class="ropt-nm">ระเบียง</div></div>
+      <div class="ropt" onclick="selectRoomType('ห้องซัก','🫧',this)" ondblclick="addRoomFromDrawer('ห้องซัก','🫧')"><div class="ropt-em">🫧</div><div class="ropt-nm">ห้องซัก</div></div>
+      <div class="ropt" onclick="selectRoomType('ห้องทำงาน','💻',this)" ondblclick="addRoomFromDrawer('ห้องทำงาน','💻')"><div class="ropt-em">💻</div><div class="ropt-nm">ห้องทำงาน</div></div>
+      <div class="ropt" onclick="selectRoomType('โรงรถ','🚗',this)" ondblclick="addRoomFromDrawer('โรงรถ','🚗')"><div class="ropt-em">🚗</div><div class="ropt-nm">โรงรถ</div></div>
     </div>
-    <div style="margin-top:12px;">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">หรือตั้งชื่อเอง</div>
-      <div style="display:flex;gap:8px;">
-        <input id="custom-room-name" type="text" placeholder="ชื่อห้อง..." class="modal-input" style="flex:1;">
-        <button onclick="addRoomCustom()" class="tbtn primary" style="flex-shrink:0;">เพิ่ม</button>
-      </div>
+    <div style="margin-top:14px;">
+      <label style="font-size:11px;color:var(--text3);margin-bottom:6px;display:block;">ชื่อห้อง (แก้ไขได้)</label>
+      <input id="custom-room-name" type="text" placeholder="ชื่อห้อง..." class="modal-input">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button onclick="closeTwinDrawer()" class="ab ab-ghost" style="flex:1;">ยกเลิก</button>
+      <button onclick="addRoomConfirm()" class="tbtn primary" style="flex:2;justify-content:center;padding:10px;">✓ เพิ่มห้อง</button>
     </div>
   </div>
 </div>
@@ -286,6 +391,28 @@
   <div class="dbody">
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">เลือกห้องปลายทาง</div>
     <div id="move-room-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+  </div>
+</div>
+
+<!-- ROOM CONFIG DRAWER -->
+<div class="drawer" id="d-room-config">
+  <div class="dh">
+    <div class="dh-title" id="d-room-config-title">ตั้งค่าห้อง</div>
+    <button class="dclose" onclick="closeTwinDrawer()">✕</button>
+  </div>
+  <div class="dbody">
+    <div class="dsec">
+      <div class="dsec-lbl">ชื่อห้อง</div>
+      <input id="room-config-name" type="text" class="modal-input" style="margin-bottom:10px;">
+      <button onclick="saveRoomConfig()" class="tbtn primary" style="width:100%;justify-content:center;padding:10px;">บันทึก</button>
+    </div>
+    <div class="dsec" style="margin-top:10px;">
+      <div class="dsec-lbl">ปลั๊กในห้อง</div>
+      <div id="room-config-plugs" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+    <div style="margin-top:14px;">
+      <button onclick="deleteRoomFromConfig()" class="ab ab-dng" style="width:100%;justify-content:center;">🗑 ลบห้องนี้</button>
+    </div>
   </div>
 </div>
 
@@ -467,6 +594,9 @@ function showPage(name) {
   if (name === 'energy')    loadEnergyPage();
   if (name === 'alerts')    loadAlertsPage();
   if (name === 'dashboard') loadDashboardPage();
+  if (name === 'manage')    loadManagePage();
+  if (name === 'myhouses')  loadMyHousesPage();
+  if (name === 'account')   loadAccountPage();
 }
 
 // ── Shared state ──────────────────────────────────────────────────────────────
@@ -649,7 +779,8 @@ function renderTwinRoom(r, canvas) {
   el.innerHTML = `
     <div class="rbar${twinEditMode ? ' editable' : ''}" data-id="${r.id}">
       <div class="rlabel"><span class="em">${r.emoji}</span><span>${r.name}</span></div>
-      <div class="ract">
+      <div class="ract" style="opacity:1;">
+        <button class="ract-btn" onclick="event.stopPropagation();openRoomConfig('${r.id}')" title="ตั้งค่าห้อง">⚙</button>
         <button class="ract-btn del" onclick="event.stopPropagation();deleteRoom('${r.id}')" title="ลบห้อง">✕</button>
       </div>
     </div>
@@ -684,6 +815,54 @@ function deleteRoom(roomId) {
     saveHouseRooms(twinRooms);
     loadPlugs();
   });
+}
+
+// ── Room Config ───────────────────────────────────────────────────────────────
+let _configRoomId = null;
+
+function openRoomConfig(roomId) {
+  const room = twinRooms.find(r => r.id === roomId);
+  if (!room) return;
+  _configRoomId = roomId;
+  document.getElementById('d-room-config-title').textContent = room.emoji + ' ' + room.name;
+  document.getElementById('room-config-name').value = room.name;
+  // List plugs in this room
+  const plugsDiv = document.getElementById('room-config-plugs');
+  if (room.plugs.length === 0) {
+    plugsDiv.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">ยังไม่มีปลั๊กในห้องนี้</div>';
+  } else {
+    plugsDiv.innerHTML = room.plugs.map(p => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface3);border-radius:8px;">
+        <span style="font-size:16px;">${p.device_emoji || '🔌'}</span>
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:500;">${p.name}</div>
+          ${p.device_name ? `<div style="font-size:10px;color:var(--text3);">${p.device_name}</div>` : ''}
+        </div>
+        <div style="width:8px;height:8px;border-radius:50%;background:${p.is_on ? 'var(--accent)' : 'var(--text3)'};" title="${p.is_on ? 'เปิด' : 'ปิด'}"></div>
+      </div>`).join('');
+  }
+  openTwinDrawer('d-room-config');
+}
+
+function saveRoomConfig() {
+  const newName = document.getElementById('room-config-name').value.trim();
+  if (!newName) return;
+  const room = twinRooms.find(r => r.id === _configRoomId);
+  if (!room) return;
+  const oldName = room.name;
+  if (newName === oldName) { closeTwinDrawer(); return; }
+  // Rename: update room + PATCH all plugs in this room
+  room.name = newName;
+  room.emoji = roomEmoji[newName] || room.emoji;
+  saveHouseRooms(twinRooms);
+  const patches = room.plugs.map(p =>
+    apiPatch(`/api/houses/${activeHouseId}/plugs/${p.id}/`, { location: newName }).catch(() => {})
+  );
+  Promise.all(patches).then(() => { closeTwinDrawer(); loadPlugs(); });
+}
+
+function deleteRoomFromConfig() {
+  if (_configRoomId) { closeTwinDrawer(); deleteRoom(_configRoomId); }
 }
 
 function makeTwinDrag(el, r) {
@@ -737,19 +916,47 @@ function openTwinDrawer(id) {
 }
 function closeTwinDrawer() {
   document.getElementById('twin-overlay').classList.remove('open');
-  document.querySelectorAll('#d-add-room,#d-move-plug,#d-plug-detail').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('#d-add-room,#d-move-plug,#d-plug-detail,#d-room-config').forEach(d => d.classList.remove('open'));
 }
-function openAddRoomDrawer() { openTwinDrawer('d-add-room'); }
+function openAddRoomDrawer() {
+  _selectedRoomType = null;
+  const inp = document.getElementById('custom-room-name');
+  inp.value = '';
+  inp.dataset.auto = '';
+  document.querySelectorAll('#d-add-room .ropt').forEach(o => o.style.borderColor = '');
+  openTwinDrawer('d-add-room');
+}
+
+let _selectedRoomType = null;
+
+function selectRoomType(name, emoji, el) {
+  _selectedRoomType = { name, emoji };
+  // Highlight selected
+  document.querySelectorAll('#d-add-room .ropt').forEach(o => o.style.borderColor = '');
+  el.style.borderColor = 'var(--accent)';
+  // Fill name field
+  const inp = document.getElementById('custom-room-name');
+  if (!inp.value || inp.dataset.auto === '1') {
+    inp.value = name;
+    inp.dataset.auto = '1';
+  }
+}
 
 function addRoomFromDrawer(name, emoji) {
+  // Double-click: instantly create with this type (use custom name if filled)
+  const inp = document.getElementById('custom-room-name');
+  const finalName = inp.value.trim() || name;
+  closeTwinDrawer();
+  _addRoom(finalName, roomEmoji[finalName] || emoji);
+}
+
+function addRoomConfirm() {
+  const inp = document.getElementById('custom-room-name');
+  const name = inp.value.trim();
+  if (!name) { inp.focus(); return; }
+  const emoji = (_selectedRoomType && _selectedRoomType.name === name) ? _selectedRoomType.emoji : (roomEmoji[name] || '🏠');
   closeTwinDrawer();
   _addRoom(name, emoji);
-}
-function addRoomCustom() {
-  const name = document.getElementById('custom-room-name').value.trim();
-  if (!name) return;
-  closeTwinDrawer();
-  _addRoom(name, roomEmoji[name] || '🏠');
 }
 function _addRoom(name, emoji) {
   if (twinRooms.find(r => r.name === name)) {
@@ -1185,6 +1392,370 @@ async function alertAction(eventId, action) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadHouses();
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: HOUSE MANAGEMENT
+// ══════════════════════════════════════════════════════════════════
+async function loadManagePage() {
+  if (!activeHouseId) {
+    document.getElementById('manage-content').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">กรุณาเลือกบ้านก่อน</div>';
+    return;
+  }
+  document.getElementById('manage-house-name').textContent = activeHouseName;
+  const content = document.getElementById('manage-content');
+  content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">กำลังโหลด...</div>';
+
+  try {
+    const [houseData, members] = await Promise.all([
+      apiGet(`/api/houses/${activeHouseId}/`),
+      apiGet(`/api/houses/${activeHouseId}/users/`),
+    ]);
+
+    const isOwner = activeHouseRole === 'owner';
+    const isAdmin = activeHouseRole === 'admin';
+    const canManage = isOwner || isAdmin;
+
+    const roleLabel = { owner:'เจ้าของ', admin:'ผู้ดูแล', member:'สมาชิก', guest:'แขก' };
+    const roleBadgeColor = { owner:'var(--accent)', admin:'var(--accent2)', member:'var(--text2)', guest:'var(--text3)' };
+
+    content.innerHTML = `
+      ${isOwner ? `
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><div class="card-title">⚙️ ตั้งค่าบ้าน</div></div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="manage-emoji-picker">
+            ${Array.from("🏠🏡🏢🏣🏤🏥🏦🏨🏩🏪🏫🏬🏭🏯🏰").map(em =>
+              `<button class="emoji-btn" onclick="selectManageEmoji('${em}')" style="font-size:20px;background:var(--surface2);border:1.5px solid ${houseData.emoji===em?'var(--accent)':'var(--border)'};border-radius:8px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;">${em}</button>`
+            ).join('')}
+          </div>
+          <input type="hidden" id="manage-emoji" value="${houseData.emoji||'🏠'}">
+          <div>
+            <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ชื่อบ้าน</label>
+            <input id="manage-house-name-input" type="text" class="modal-input" value="${houseData.house_name}">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ที่อยู่</label>
+            <input id="manage-address" type="text" class="modal-input" value="${houseData.address}">
+          </div>
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;">
+              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">Latitude</label>
+              <input id="manage-lat" type="number" step="any" class="modal-input" value="${houseData.lat||''}">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">Longitude</label>
+              <input id="manage-lng" type="number" step="any" class="modal-input" value="${houseData.long||''}">
+            </div>
+          </div>
+          <p id="manage-house-msg" style="font-size:12px;min-height:16px;margin:0;"></p>
+          <div style="display:flex;gap:8px;">
+            <button onclick="saveHouseSettings()" class="modal-btn-primary" style="padding:10px;flex:2;">บันทึก</button>
+            <button onclick="deleteHouseConfirm()" style="flex:1;padding:10px;background:rgba(255,77,106,.1);border:1px solid rgba(255,77,106,.3);border-radius:10px;color:var(--danger);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🗑 ลบบ้าน</button>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title">👥 สมาชิก (${members.length} คน)</div>
+          ${canManage ? `<button onclick="showInviteForm()" class="tbtn primary" style="font-size:12px;padding:6px 12px;">+ เชิญสมาชิก</button>` : ''}
+        </div>
+        <div id="invite-form" style="display:none;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2);">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="flex:2;min-width:180px;">
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">อีเมลสมาชิก</label>
+              <input id="invite-email" type="email" class="modal-input" placeholder="email@example.com">
+            </div>
+            <div style="flex:1;min-width:120px;">
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">บทบาท</label>
+              <select id="invite-role" class="modal-input" style="cursor:pointer;">
+                ${isOwner ? '<option value="admin">ผู้ดูแล</option>' : ''}
+                <option value="member">สมาชิก</option>
+                <option value="guest">แขก</option>
+              </select>
+            </div>
+            <button onclick="inviteMember()" class="modal-btn-primary" style="padding:10px 16px;flex-shrink:0;">เชิญ</button>
+          </div>
+          <p id="invite-msg" style="font-size:12px;min-height:16px;margin:6px 0 0;"></p>
+        </div>
+        <div style="padding:8px 0;">
+          ${members.map(m => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:var(--text2);">${m.username.slice(0,1).toUpperCase()}</div>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:500;color:var(--text);">${m.username}</div>
+                <div style="font-size:11px;color:var(--text3);">${m.email}</div>
+              </div>
+              <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${roleBadgeColor[m.role]}22;color:${roleBadgeColor[m.role]};">${roleLabel[m.role]||m.role}</span>
+              ${canManage && m.role !== 'owner' ? `
+              <div style="display:flex;gap:6px;">
+                <select onchange="updateMemberRole('${m.user_id}', this.value)" style="padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">
+                  ${isOwner ? `<option value="admin" ${m.role==='admin'?'selected':''}>ผู้ดูแล</option>` : ''}
+                  <option value="member" ${m.role==='member'?'selected':''}>สมาชิก</option>
+                  <option value="guest" ${m.role==='guest'?'selected':''}>แขก</option>
+                </select>
+                ${isOwner ? `<button onclick="transferOwnership('${m.user_id}','${m.username}')" style="padding:4px 8px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;" title="โอนความเป็นเจ้าของ">👑</button>` : ''}
+                <button onclick="removeMember('${m.user_id}','${m.username}')" style="padding:4px 8px;background:rgba(255,77,106,.1);border:1px solid rgba(255,77,106,.2);border-radius:6px;color:var(--danger);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">ลบ</button>
+              </div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('manage-content').innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">เกิดข้อผิดพลาด</div>';
+  }
+}
+
+function selectManageEmoji(em) {
+  document.getElementById('manage-emoji').value = em;
+  document.querySelectorAll('#manage-emoji-picker .emoji-btn').forEach(btn => {
+    const match = btn.textContent.trim() === em;
+    btn.style.borderColor = match ? 'var(--accent)' : 'var(--border)';
+    btn.style.background = match ? 'var(--accent-dim)' : 'var(--surface2)';
+  });
+}
+
+async function saveHouseSettings() {
+  const house_name = document.getElementById('manage-house-name-input').value.trim();
+  const address = document.getElementById('manage-address').value.trim();
+  const lat = document.getElementById('manage-lat').value;
+  const lng = document.getElementById('manage-lng').value;
+  const emoji = document.getElementById('manage-emoji').value;
+  const msg = document.getElementById('manage-house-msg');
+  msg.style.color = 'var(--danger)'; msg.textContent = '';
+  if (!house_name) { msg.textContent = 'กรุณากรอกชื่อบ้าน'; return; }
+  const res = await fetch(`/api/houses/${activeHouseId}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ house_name, address, lat: lat ? parseFloat(lat) : null, long: lng ? parseFloat(lng) : null, emoji }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    msg.style.color = 'var(--accent)'; msg.textContent = 'บันทึกสำเร็จ';
+    activeHouseName = house_name;
+    document.getElementById('manage-house-name').textContent = house_name;
+    const h = houses.find(x => x.id === activeHouseId);
+    if (h) { h.house_name = house_name; h.emoji = emoji; renderHouseTabs(); }
+  } else {
+    msg.textContent = data.error || 'เกิดข้อผิดพลาด';
+  }
+}
+
+async function deleteHouseConfirm() {
+  if (!confirm('ลบบ้าน "' + activeHouseName + '"? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+  const res = await fetch(`/api/houses/${activeHouseId}/`, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token },
+  });
+  if (res.ok) {
+    houses = houses.filter(h => h.id !== activeHouseId);
+    activeHouseId = null; activeHouseName = ''; activeHouseRole = '';
+    renderHouseTabs();
+    if (houses.length > 0) setActiveHouse(houses[0].id, houses[0].house_name, houses[0].role);
+    showPage('home');
+  }
+}
+
+function showInviteForm() {
+  const f = document.getElementById('invite-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+async function inviteMember() {
+  const email = document.getElementById('invite-email').value.trim();
+  const role = document.getElementById('invite-role').value;
+  const msg = document.getElementById('invite-msg');
+  msg.style.color = 'var(--danger)'; msg.textContent = '';
+  if (!email) { msg.textContent = 'กรุณากรอกอีเมล'; return; }
+  const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/users/invite/`, { email, role });
+  if (ok) {
+    msg.style.color = 'var(--accent)'; msg.textContent = 'เชิญ ' + email + ' สำเร็จ';
+    document.getElementById('invite-email').value = '';
+    setTimeout(loadManagePage, 1000);
+  } else {
+    msg.textContent = data.error || 'เกิดข้อผิดพลาด';
+  }
+}
+
+async function removeMember(userId, username) {
+  if (!confirm('ลบ ' + username + ' ออกจากบ้านนี้?')) return;
+  const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/users/manage/`, { action: 'remove', user_id: userId });
+  if (ok) loadManagePage();
+  else alert(data.error || 'เกิดข้อผิดพลาด');
+}
+
+async function updateMemberRole(userId, newRole) {
+  const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/users/manage/`, { action: 'update_role', user_id: userId, role: newRole });
+  if (!ok) { alert(data.error || 'เกิดข้อผิดพลาด'); loadManagePage(); }
+}
+
+async function transferOwnership(userId, username) {
+  if (!confirm('โอนความเป็นเจ้าของบ้านให้ ' + username + '? คุณจะกลายเป็นผู้ดูแลแทน')) return;
+  const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/transfer/`, { user_id: userId });
+  if (ok) {
+    activeHouseRole = 'admin';
+    const h = houses.find(x => x.id === activeHouseId);
+    if (h) h.role = 'admin';
+    loadManagePage();
+  } else {
+    alert(data.error || 'เกิดข้อผิดพลาด');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: MY HOUSES
+// ══════════════════════════════════════════════════════════════════
+async function loadMyHousesPage() {
+  const content = document.getElementById('myhouses-content');
+  content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">กำลังโหลด...</div>';
+  try {
+    const myHouses = await apiGet('/api/houses/');
+    if (myHouses.length === 0) {
+      content.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3);"><div style="font-size:40px;margin-bottom:12px;">🏠</div><p>คุณยังไม่ได้เป็นสมาชิกบ้านใด</p></div>';
+      return;
+    }
+    const roleLabel = { owner:'เจ้าของ', admin:'ผู้ดูแล', member:'สมาชิก', guest:'แขก' };
+    const roleBadgeColor = { owner:'var(--accent)', admin:'var(--accent2)', member:'var(--text2)', guest:'var(--text3)' };
+
+    const houseDetails = await Promise.all(myHouses.map(async h => {
+      try {
+        const members = await apiGet(`/api/houses/${h.id}/users/`);
+        const owner = members.find(m => m.role === 'owner');
+        return { ...h, members, owner };
+      } catch { return { ...h, members: [], owner: null }; }
+    }));
+
+    content.innerHTML = houseDetails.map(h => `
+      <div class="card" style="margin-bottom:16px;">
+        <div style="padding:16px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div style="font-size:32px;">${h.emoji||'🏠'}</div>
+            <div style="flex:1;">
+              <div style="font-size:16px;font-weight:700;color:var(--text);">${h.house_name}</div>
+              <div style="font-size:12px;color:var(--text3);">📍 ${h.address}</div>
+            </div>
+            <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:${roleBadgeColor[h.role]}22;color:${roleBadgeColor[h.role]};">${roleLabel[h.role]||h.role}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text2);margin-bottom:12px;">
+            ${h.owner ? '<div>👑 เจ้าของ: <strong style="color:var(--text);">' + h.owner.username + '</strong> (' + h.owner.email + ')</div>' : ''}
+            <div>👥 สมาชิก ${h.members.length} คน</div>
+            ${h.lat && h.long ? '<div>🗺️ พิกัด: ' + parseFloat(h.lat).toFixed(4) + ', ' + parseFloat(h.long).toFixed(4) + '</div>' : ''}
+            <div>📅 สร้างเมื่อ: ${new Date(h.created_at).toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'})}</div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:10px;">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">สมาชิกทั้งหมด</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              ${h.members.map(m =>
+                '<div style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--surface2);border-radius:20px;font-size:11px;">' +
+                '<div style="width:20px;height:20px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;">' + m.username.slice(0,1).toUpperCase() + '</div>' +
+                '<span style="color:var(--text);">' + m.username + '</span>' +
+                '<span style="color:' + roleBadgeColor[m.role] + ';font-size:10px;">' + (roleLabel[m.role]||m.role) + '</span>' +
+                '</div>'
+              ).join('')}
+            </div>
+          </div>
+          ${h.role !== 'owner' ?
+            '<div style="margin-top:12px;"><button onclick="leaveHouse(\'' + h.id + '\',\'' + h.house_name.replace(/'/g,"\\'") + '\')" style="padding:8px 16px;background:rgba(255,77,106,.1);border:1px solid rgba(255,77,106,.3);border-radius:8px;color:var(--danger);font-size:12px;font-weight:600;cursor:pointer;font-family:\'DM Sans\',sans-serif;">ออกจากบ้านนี้</button></div>' :
+            '<div style="margin-top:12px;"><button onclick="setActiveHouse(\'' + h.id + '\',\'' + h.house_name.replace(/'/g,"\\'") + '\',\'owner\');showPage(\'manage\');loadManagePage();" style="padding:8px 16px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;font-family:\'DM Sans\',sans-serif;">⚙️ จัดการบ้าน</button></div>'
+          }
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">เกิดข้อผิดพลาด</div>';
+  }
+}
+
+async function leaveHouse(houseId, houseName) {
+  if (!confirm('ออกจากบ้าน "' + houseName + '"?')) return;
+  const { ok, data } = await apiPost(`/api/houses/${houseId}/leave/`, {});
+  if (ok) {
+    houses = houses.filter(h => h.id !== houseId);
+    if (activeHouseId === houseId) {
+      activeHouseId = null; activeHouseName = ''; activeHouseRole = '';
+      if (houses.length > 0) setActiveHouse(houses[0].id, houses[0].house_name, houses[0].role);
+    }
+    renderHouseTabs();
+    loadMyHousesPage();
+  } else {
+    alert(data.error || 'เกิดข้อผิดพลาด');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: ACCOUNT
+// ══════════════════════════════════════════════════════════════════
+async function loadAccountPage() {
+  try {
+    const me = await apiGet('/auth/me/');
+    document.getElementById('acc-username').value = me.username || '';
+    document.getElementById('acc-email').value = me.email || '';
+    document.getElementById('account-sub').textContent = me.username || '';
+    ['acc-cur-pw','acc-new-pw','acc-confirm-pw'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('acc-profile-msg').textContent = '';
+    document.getElementById('acc-pw-msg').textContent = '';
+  } catch(e) {}
+}
+
+async function saveProfile() {
+  const username = document.getElementById('acc-username').value.trim();
+  const email = document.getElementById('acc-email').value.trim();
+  const msg = document.getElementById('acc-profile-msg');
+  msg.style.color = 'var(--danger)'; msg.textContent = '';
+  if (!username) { msg.textContent = 'กรุณากรอกชื่อผู้ใช้'; return; }
+  if (!email) { msg.textContent = 'กรุณากรอกอีเมล'; return; }
+  const res = await fetch('/auth/me/update/', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ username, email }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    msg.style.color = 'var(--accent)'; msg.textContent = 'บันทึกสำเร็จ';
+    document.getElementById('avatar-initials').textContent = username.slice(0,1).toUpperCase();
+    document.getElementById('username').textContent = username;
+    document.getElementById('account-sub').textContent = username;
+  } else {
+    msg.textContent = (Array.isArray(data.error) ? data.error.join(', ') : data.error) || 'เกิดข้อผิดพลาด';
+  }
+}
+
+async function changePassword() {
+  const current_password = document.getElementById('acc-cur-pw').value;
+  const new_password = document.getElementById('acc-new-pw').value;
+  const confirm_pw = document.getElementById('acc-confirm-pw').value;
+  const msg = document.getElementById('acc-pw-msg');
+  msg.style.color = 'var(--danger)'; msg.textContent = '';
+  if (!current_password) { msg.textContent = 'กรุณากรอกรหัสผ่านปัจจุบัน'; return; }
+  if (!new_password) { msg.textContent = 'กรุณากรอกรหัสผ่านใหม่'; return; }
+  if (new_password !== confirm_pw) { msg.textContent = 'รหัสผ่านใหม่ไม่ตรงกัน'; return; }
+  const res = await fetch('/auth/me/update/', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ current_password, new_password }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    msg.style.color = 'var(--accent)'; msg.textContent = 'เปลี่ยนรหัสผ่านสำเร็จ';
+    ['acc-cur-pw','acc-new-pw','acc-confirm-pw'].forEach(id => document.getElementById(id).value = '');
+  } else {
+    msg.textContent = (Array.isArray(data.error) ? data.error.join(', ') : data.error) || 'เกิดข้อผิดพลาด';
+  }
+}
+
+async function doLogout() {
+  const refresh = localStorage.getItem('refresh');
+  if (refresh) {
+    await fetch('/auth/logout/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ refresh }),
+    }).catch(() => {});
+  }
+  localStorage.clear();
+  window.location = '/login/';
+}
 </script>
 </body>
 </html>

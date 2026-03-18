@@ -116,6 +116,7 @@ class HouseDetailView(APIView):
             'address': house.address,
             'lat': house.lat,
             'long': house.long,
+            'emoji': house.emoji,
             'role': membership.role,
             'created_at': house.created_at.isoformat(),
         }, status=status.HTTP_200_OK)
@@ -142,6 +143,7 @@ class HouseDetailView(APIView):
         address = request.data.get('address')
         lat = request.data.get('lat')
         long = request.data.get('long')
+        emoji = request.data.get('emoji')
 
         if house_name:
             house.house_name = house_name
@@ -151,6 +153,8 @@ class HouseDetailView(APIView):
             house.lat = lat
         if long is not None:
             house.long = long
+        if emoji:
+            house.emoji = emoji
 
         house.save()
 
@@ -432,3 +436,47 @@ class HouseUserManageView(APIView):
                 {'error': 'Invalid action. Use "remove" or "update_role"'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class HouseLeaveView(APIView):
+    """
+    POST /api/houses/:houseId/leave/ - Leave a house (non-owners only)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, house_id):
+        membership = HouseMember.objects.filter(house_id=house_id, user=request.user).first()
+        if not membership:
+            return Response({'error': 'You are not a member of this house'}, status=status.HTTP_404_NOT_FOUND)
+        if membership.role == 'owner':
+            return Response({'error': 'Owner cannot leave. Transfer ownership first or delete the house.'}, status=status.HTTP_400_BAD_REQUEST)
+        membership.delete()
+        return Response({'message': 'You have left the house'}, status=status.HTTP_200_OK)
+
+
+class HouseTransferOwnershipView(APIView):
+    """
+    POST /api/houses/:houseId/transfer/ - Transfer ownership to another member
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, house_id):
+        membership = HouseMember.objects.filter(house_id=house_id, user=request.user).first()
+        if not membership or membership.role != 'owner':
+            return Response({'error': 'Only owner can transfer ownership'}, status=status.HTTP_403_FORBIDDEN)
+
+        new_owner_id = request.data.get('user_id')
+        if not new_owner_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        target = HouseMember.objects.filter(house_id=house_id, user_id=new_owner_id).first()
+        if not target:
+            return Response({'error': 'Target user is not a member of this house'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Transfer
+        membership.role = 'admin'
+        membership.save()
+        target.role = 'owner'
+        target.save()
+
+        return Response({'message': 'Ownership transferred successfully'}, status=status.HTTP_200_OK)
