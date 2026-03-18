@@ -4,8 +4,35 @@ MQTT message handlers for device events.
 import json
 import logging
 from django.utils import timezone
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 logger = logging.getLogger(__name__)
+
+
+def send_plug_update(plug_code, event, uid, known, device_name=None, device_type=None, risk_level=None, rated_watts=None):
+    """
+    Send a plug status update to all connected WebSocket clients.
+    """
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'plug_{plug_code}',
+            {
+                'type': 'plug.update',
+                'event': event,
+                'uid': uid,
+                'known': known,
+                'device_name': device_name,
+                'device_type': device_type,
+                'risk_level': risk_level,
+                'rated_watts': rated_watts,
+                'timestamp': str(timezone.now()),
+            }
+        )
+        logger.info(f'Sent WebSocket update to plug_{plug_code}: {event}')
+    except Exception as e:
+        logger.error(f'Failed to send WebSocket update: {e}')
 
 
 def handle_nfc_event(client, topic, payload_bytes):
@@ -67,23 +94,21 @@ def handle_nfc_event(client, topic, payload_bytes):
                 active_sessions.update(is_active=False, ended_at=now)
                 logger.info(f'Closed active session for plug {plug_code}')
             
+            # Send WebSocket update for tag removal
+            send_plug_update(plug_code, 'nfc_removed', uid=None, known=False)
+            
             return
         
         # Step 6: If detected == True, uid is present
         if detected and uid:
             now = timezone.now()
             
-            # Look up NFCTag by tag_uid=uid
-            tag = None
-            try:
-                tag = NFCTag.objects.get(tag_uid=uid)
-            except NFCTag.DoesNotExist:
-                # NOT FOUND - create new NFCTag
-                tag = NFCTag.objects.create(
-                    tag_uid=uid,
-                    device=None,
-                    label=''
-                )
+            # Look up NFCTag by tag_uid=uid — use get_or_create to avoid race conditions
+            tag, created = NFCTag.objects.get_or_create(
+                tag_uid=uid,
+                defaults={'device': None, 'label': ''}
+            )
+            if created:
                 logger.info(f'Created new NFCTag for uid: {uid}')
             
             # Check if tag has a registered device
@@ -124,11 +149,33 @@ def handle_nfc_event(client, topic, payload_bytes):
                 client.publish(publish_topic, json.dumps(config_payload))
                 logger.info(f'Published config to {publish_topic}')
                 
+                # Send WebSocket update for known device
+                send_plug_update(
+                    plug_code,
+                    'nfc_scan',
+                    uid=tag.tag_uid,
+                    known=True,
+                    device_name=tag.device.name,
+                    device_type=tag.device.device_type,
+                    risk_level=tag.device.risk_level,
+                    rated_watts=tag.device.rated_power_watts
+                )
+                
             else:
-                # NOT FOUND or tag.device is None (unknown tag)
+                # tag.device is None (unknown/unregistered tag)
                 logger.info(f'Unknown tag: {uid} — waiting for user registration')
                 
-                # Close any existing active PlugSession for this plug
+                # Check if an active session already exists for this plug with this tag
+                existing_session = PlugSession.objects.filter(
+                    plug=plug, nfc_tag=tag, is_active=True
+                ).first()
+                
+                if existing_session:
+                    # Tag is still present — do not create a duplicate session
+                    logger.info(f'Tag {uid} still present on plug {plug_code}, session already active — skipping')
+                    return
+                
+                # Close any other active PlugSession for this plug (different tag)
                 active_sessions = PlugSession.objects.filter(plug=plug, is_active=True)
                 if active_sessions.exists():
                     active_sessions.update(is_active=False, ended_at=now)
@@ -143,7 +190,9 @@ def handle_nfc_event(client, topic, payload_bytes):
                 )
                 logger.info(f'Created session for unregistered tag: {uid}')
                 
-                # Do NOT publish back — wait for user to register this tag
+                # Do NOT publish back to MQTT — wait for user to register this tag
+                # But DO send WebSocket update so frontend shows "unknown tag"
+                send_plug_update(plug_code, 'nfc_scan', uid=uid, known=False)
     
     except Exception as e:
         logger.exception(f'Error handling NFC event: {e}')

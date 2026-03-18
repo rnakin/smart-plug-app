@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'channels',
 
     #created app
     'account',
@@ -68,7 +69,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'knowwatt.wsgi.application'
+ASGI_APPLICATION = 'knowwatt.asgi.application'
 
 
 # Database
@@ -91,6 +92,17 @@ else:
             'PORT': os.environ.get('DB_PORT'),
         }
     }
+
+# Channel layers configuration for real-time WebSocket support
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('redis', 6379)],
+        },
+    },
+}
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 

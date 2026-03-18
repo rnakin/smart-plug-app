@@ -9,19 +9,26 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
   web:
     build:
       context: ./knowwatt
       dockerfile: Dockerfile
     command: >
       sh -c "python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+             daphne -b 0.0.0.0 -p 8000 knowwatt.asgi:application"
     volumes:
       - ./knowwatt:/app
     ports:
       - "8000:8000"
     depends_on:
       - db
+      - redis
     env_file:
       - .env
   mosquitto:
@@ -34,5 +41,17 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+
+  mqtt_subscriber:
+    build:
+      context: ./knowwatt
+      dockerfile: Dockerfile
+    command: python manage.py mqtt_subscriber
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    restart: always
 volumes:
   postgres_data:

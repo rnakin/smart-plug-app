@@ -1756,6 +1756,134 @@ async function doLogout() {
   localStorage.clear();
   window.location = '/login/';
 }
+
+// ── WebSocket for Real-time Plug Updates ─────────────────────────────────────────
+// Store WebSocket connections per plug
+const plugWebSockets = {};
+
+function connectPlugWebSocket(plugCode) {
+  if (plugWebSockets[plugCode]) {
+    // Already connected
+    return;
+  }
+  
+  const ws = new WebSocket(`ws://${window.location.host}/ws/plug/${plugCode}/`);
+  
+  ws.onopen = function() {
+    console.log(`WebSocket connected for plug ${plugCode}`);
+  };
+  
+  ws.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    console.log('Plug update received:', data);
+    
+    if (data.type === 'plug.update') {
+      handlePlugUpdate(plugCode, data);
+    }
+  };
+  
+  ws.onclose = function() {
+    console.log(`WebSocket closed for plug ${plugCode} — retrying in 3s`);
+    delete plugWebSockets[plugCode];
+    setTimeout(() => connectPlugWebSocket(plugCode), 3000);
+  };
+  
+  ws.onerror = function(err) {
+    console.error(`WebSocket error for plug ${plugCode}:`, err);
+  };
+  
+  plugWebSockets[plugCode] = ws;
+}
+
+function handlePlugUpdate(plugCode, data) {
+  // Find the plug card in the DOM
+  const plugCard = document.querySelector(`[data-plug-code="${plugCode}"]`);
+  if (!plugCard) return;
+  
+  if (data.event === 'nfc_scan' && data.known) {
+    // Known device detected
+    const deviceNameEl = plugCard.querySelector('.device-name');
+    const deviceTypeEl = plugCard.querySelector('.device-type');
+    const nfcStatusEl = plugCard.querySelector('.nfc-status');
+    
+    if (deviceNameEl) deviceNameEl.textContent = data.device_name || '—';
+    if (deviceTypeEl) deviceTypeEl.textContent = data.device_type || '—';
+    if (nfcStatusEl) {
+      nfcStatusEl.textContent = 'อุปกรณ์ตรวจพบ';
+      nfcStatusEl.className = 'nfc-status status-green';
+    }
+    
+    // Refresh plug data from server
+    loadPlugs();
+  }
+  
+  if (data.event === 'nfc_scan' && !data.known) {
+    // Unknown tag detected
+    const nfcStatusEl = plugCard.querySelector('.nfc-status');
+    
+    if (nfcStatusEl) {
+      nfcStatusEl.textContent = 'แท็กไม่รู้จัก — กรุณาลงทะเบียน';
+      nfcStatusEl.className = 'nfc-status status-orange';
+    }
+  }
+  
+  if (data.event === 'nfc_removed') {
+    // Tag removed
+    const deviceNameEl = plugCard.querySelector('.device-name');
+    const deviceTypeEl = plugCard.querySelector('.device-type');
+    const nfcStatusEl = plugCard.querySelector('.nfc-status');
+    
+    if (deviceNameEl) deviceNameEl.textContent = '—';
+    if (deviceTypeEl) deviceTypeEl.textContent = '—';
+    if (nfcStatusEl) {
+      nfcStatusEl.textContent = 'ไม่มีอุปกรณ์';
+      nfcStatusEl.className = 'nfc-status status-gray';
+    }
+    
+    // Refresh plug data from server
+    loadPlugs();
+  }
+}
+
+// Initialize WebSocket connections when house changes
+document.addEventListener('houseChanged', async function() {
+  // Close existing WebSocket connections
+  Object.values(plugWebSockets).forEach(ws => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.close();
+    }
+  });
+  
+  // Get current plugs and connect WebSockets for each
+  const res = await fetch(`/api/houses/${activeHouseId}/plugs/`, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (res.ok) {
+    const plugs = await res.json();
+    plugs.forEach(p => {
+      if (p.plug_code) {
+        connectPlugWebSocket(p.plug_code);
+      }
+    });
+  }
+});
+
+// Also connect on initial load
+if (activeHouseId) {
+  (async () => {
+    const res = await fetch(`/api/houses/${activeHouseId}/plugs/`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.ok) {
+      const plugs = await res.json();
+      plugs.forEach(p => {
+        if (p.plug_code) {
+          connectPlugWebSocket(p.plug_code);
+        }
+      });
+    }
+  })();
+}
 </script>
 </body>
 </html>

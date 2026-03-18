@@ -171,8 +171,8 @@ class Command(BaseCommand):
     def _on_log(self, client, userdata, level, string):
         """Callback for MQTT client logs."""
         # Only log warnings and errors to avoid flooding logs
-        if level >= mqtt.MQTT_LOG_WARNING:
-            logger.log(
-                mqtt.MQTT_LOG_WARNING if level == mqtt.MQTT_LOG_WARNING else mqtt.MQTT_LOG_ERR,
-                f'MQTT: {string}'
-            )
+        # Map paho log levels to Python logging levels
+        if level == mqtt.MQTT_LOG_ERR:
+            logger.error(f'MQTT: {string}')
+        elif level == mqtt.MQTT_LOG_WARNING:
+            logger.warning(f'MQTT: {string}')

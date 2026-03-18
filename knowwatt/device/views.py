@@ -481,3 +481,135 @@ class NFCTagScanView(APIView):
             'device': device_to_dict(tag.device) if tag.device else None,
             'session_id': str(session.id),
         }, status=200)
+
+
+class UnregisteredNFCTagsView(APIView):
+    """
+    GET /api/nfc/unregistered/
+    Returns NFCTag objects where device is null.
+    Fields: id, tag_uid, label, registered_at
+    Order by: -registered_at
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Get all unregistered NFC tags (where device is null)
+        tags = NFCTag.objects.filter(device__isnull=True).order_by('-registered_at')
+        
+        data = [
+            {
+                'id': str(tag.id),
+                'tag_uid': tag.tag_uid,
+                'label': tag.label or '',
+                'registered_at': tag.registered_at.isoformat() if tag.registered_at else None,
+            }
+            for tag in tags
+        ]
+        
+        return Response(data, status=200)
+
+
+class NFCTagRegisterView(APIView):
+    """
+    POST /api/nfc/{tag_uid}/register/
+    Registers an NFC tag to an existing ElectricalDevice.
+    Body: {
+        "device_id": "uuid-of-electrical-device",
+        "label": "optional label"
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, tag_uid):
+        device_id = request.data.get('device_id')
+        label = request.data.get('label', '')
+        
+        if not device_id:
+            return Response({'error': 'device_id is required'}, status=400)
+        
+        # Look up NFCTag by tag_uid — 404 if not found
+        try:
+            tag = NFCTag.objects.get(tag_uid=tag_uid)
+        except NFCTag.DoesNotExist:
+            return Response({'error': 'NFC tag not found'}, status=404)
+        
+        # Look up ElectricalDevice by id — 404 if not found
+        try:
+            device = ElectricalDevice.objects.get(id=device_id)
+        except ElectricalDevice.DoesNotExist:
+            return Response({'error': 'Electrical device not found'}, status=404)
+        
+        # Check membership - user must be member of the device's house
+        membership, err = require_membership(device.house_id, request.user)
+        if err:
+            return err
+        
+        # Set tag.device = device, tag.label = label
+        tag.device = device
+        tag.label = label
+        tag.save()
+        
+        # If there is an active PlugSession with this nfc_tag:
+        # update session.device = device
+        # publish device info to {plug_code}/config
+        active_sessions = PlugSession.objects.filter(nfc_tag=tag, is_active=True)
+        
+        if active_sessions.exists():
+            # Update session device
+            active_sessions.update(device=device)
+            
+            # Get the plug from the session to publish config
+            for session in active_sessions:
+                plug = session.plug
+                
+                # Publish to {plug_code}/config
+                import paho.mqtt.client as mqtt
+                import os
+                import json
+                
+                MQTT_HOST = os.environ.get('MQTT_HOST', '')
+                MQTT_PORT = int(os.environ.get('MQTT_PORT', 8883))
+                MQTT_USER = os.environ.get('MQTT_USER', '')
+                MQTT_PASS = os.environ.get('MQTT_PASS', '')
+                MQTT_USE_TLS = os.environ.get('MQTT_USE_TLS', 'true').lower() == 'true'
+                
+                try:
+                    mqtt_client = mqtt.Client(client_id='django_nfc_register')
+                    if MQTT_USER:
+                        mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
+                    if MQTT_USE_TLS:
+                        mqtt_client.tls_set()
+                    
+                    mqtt_client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
+                    
+                    config_payload = {
+                        'uid': tag.tag_uid,
+                        'device_name': device.name,
+                        'device_type': device.device_type,
+                        'risk_level': device.risk_level,
+                        'rated_watts': device.rated_power_watts
+                    }
+                    
+                    publish_topic = f'{plug.plug_code}/config'
+                    mqtt_client.publish(publish_topic, json.dumps(config_payload))
+                    mqtt_client.disconnect()
+                except Exception as e:
+                    # Log but don't fail the request
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Failed to publish MQTT config: {e}')
+        
+        # Return updated NFCTag with device details
+        return Response({
+            'id': str(tag.id),
+            'tag_uid': tag.tag_uid,
+            'label': tag.label,
+            'registered_at': tag.registered_at.isoformat() if tag.registered_at else None,
+            'device': {
+                'id': str(device.id),
+                'name': device.name,
+                'device_type': device.device_type,
+                'rated_power_watts': device.rated_power_watts,
+                'risk_level': device.risk_level,
+            }
+        }, status=200)
