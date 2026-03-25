@@ -495,7 +495,7 @@
 <div class="popup-overlay" id="plug-overlay" style="display:none;" onclick="closeAddPlugModal()"></div>
 <div id="add-plug-popup" class="popup" style="display:none; flex-direction:column; gap:0;">
   <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
-    <div style="font-size:15px; font-weight:700; color:var(--text);">🔌 เพิ่มปลั๊กอัจฉริยะ</div>
+    <div style="font-size:15px; font-weight:700; color:var(--text);"> เพิ่มปลั๊กอัจฉริยะ</div>
     <button onclick="closeAddPlugModal()" style="background:none; border:none; color:var(--text2); cursor:pointer; font-size:20px;">&times;</button>
   </div>
   <div style="margin-bottom:12px;">
@@ -763,7 +763,7 @@ function renderTwinRoom(r, canvas) {
     const isOn = p.is_on;
     const isOnline = p.online_status === 'online';
     const cls = !isOnline ? 'off' : isOn ? 'on' : 'off';
-    const emoji = p.device_emoji || '🔌';
+    const emoji = p.device_emoji || '';
     const deviceLabel = p.device_name ? `<div class="pwatt" style="color:var(--text3);font-size:7px;">${p.device_name}</div>` : '';
     return `
       <div class="plug-node ${cls}" onclick="openPlugDetailDrawer('${p.id}')">
@@ -832,7 +832,7 @@ function openRoomConfig(roomId) {
   } else {
     plugsDiv.innerHTML = room.plugs.map(p => `
       <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface3);border-radius:8px;">
-        <span style="font-size:16px;">${p.device_emoji || '🔌'}</span>
+        <span style="font-size:16px;">${p.device_emoji || ''}</span>
         <div style="flex:1;">
           <div style="font-size:12px;font-weight:500;">${p.name}</div>
           ${p.device_name ? `<div style="font-size:10px;color:var(--text3);">${p.device_name}</div>` : ''}
@@ -985,7 +985,7 @@ function openPlugDetailDrawer(plugId) {
   const p = currentPlugs.find(x => x.id === plugId);
   if (!p) return;
   selectedPlugForDrawer = p;
-  document.getElementById('dd-plug-title').textContent = (p.device_emoji || '🔌') + ' ' + p.name;
+  document.getElementById('dd-plug-title').textContent = (p.device_emoji || '') + ' ' + p.name;
   document.getElementById('dd-power').innerHTML = (p.current_power_w != null ? p.current_power_w.toFixed(0) : '—') + '<span class="dmu">W</span>';
   document.getElementById('dd-status').textContent = p.online_status === 'online' ? '🟢 ออนไลน์' : '⚫ ออฟไลน์';
   document.getElementById('dd-device').textContent = p.device_name ? (p.device_emoji || '') + ' ' + p.device_name : '— ไม่มีอุปกรณ์';
@@ -1286,7 +1286,7 @@ async function loadEnergyPage() {
       const maxKwh = Math.max(...byPlug.map(p => p.total_kwh));
       plugDiv.innerHTML = byPlug.map(p => `
         <div style="padding:12px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border);">
-          <div style="font-size:18px;">🔌</div>
+          <div style="font-size:18px;"></div>
           <div style="flex:1;">
             <div style="font-size:13px; font-weight:500; color:var(--text);">${p.plug_name}</div>
             <div style="font-size:11px; color:var(--text3);">${p.location || 'ไม่ระบุ'} · เฉลี่ย ${p.avg_power_w.toFixed(0)}W · สูงสุด ${p.peak_power_w.toFixed(0)}W</div>
@@ -1364,7 +1364,7 @@ async function loadAlertsPage() {
             <div style="font-size:12px; color:var(--text2); margin-bottom:8px;">${ev.message}</div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
               <span style="font-size:11px; padding:2px 8px; border-radius:20px; background:${statusColor[ev.status]}22; color:${statusColor[ev.status]};">${statusLabel[ev.status] || ev.status}</span>
-              ${ev.plug_name ? `<span style="font-size:11px; color:var(--text3);">🔌 ${ev.plug_name}</span>` : ''}
+              ${ev.plug_name ? `<span style="font-size:11px; color:var(--text3);"> ${ev.plug_name}</span>` : ''}
               ${ev.device_name ? `<span style="font-size:11px; color:var(--text3);">📱 ${ev.device_name}</span>` : ''}
               <span style="font-size:11px; color:var(--text3);">${new Date(ev.triggered_at).toLocaleString('th-TH')}</span>
             </div>
