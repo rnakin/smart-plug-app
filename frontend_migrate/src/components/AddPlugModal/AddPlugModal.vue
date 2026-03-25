@@ -1,0 +1,158 @@
+<template>
+  <div class="popup-overlay" @click="$emit('close')"></div>
+  <div class="popup">
+    <div class="popup-header">
+      <div class="popup-title">🔌 เพิ่มปลั๊กอัจฉริยะ</div>
+      <button class="popup-close" @click="$emit('close')">&times;</button>
+    </div>
+
+    <div class="popup-section">
+      <label class="field-label">รหัสปลั๊ก (QR / ตัวเลข) *</label>
+      <input 
+        v-model="plugCode" 
+        type="text" 
+        class="modal-input"
+        placeholder="เช่น KW-001 หรือสแกน QR"
+      >
+    </div>
+
+    <div class="popup-section">
+      <label class="field-label">ชื่อปลั๊ก *</label>
+      <input 
+        v-model="plugName" 
+        type="text" 
+        class="modal-input"
+        placeholder="เช่น ปลั๊กครัว A1"
+      >
+    </div>
+
+    <div class="popup-section">
+      <label class="field-label">ตำแหน่ง</label>
+      <input 
+        v-model="location" 
+        type="text" 
+        class="modal-input"
+        placeholder="เช่น ครัว, ห้องนอน"
+      >
+    </div>
+
+    <p class="popup-error">{{ errorMessage }}</p>
+
+    <div class="popup-actions">
+      <button class="modal-btn-cancel" @click="$emit('close')">ยกเลิก</button>
+      <button class="modal-btn-primary" @click="handleAdd">เพิ่มปลั๊ก</button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const plugCode = ref('')
+const plugName = ref('')
+const location = ref('')
+const errorMessage = ref('')
+
+const emit = defineEmits(['close', 'add'])
+
+const handleAdd = () => {
+  errorMessage.value = ''
+  
+  if (!plugCode.value.trim()) {
+    errorMessage.value = 'กรุณากรอกรหัสปลั๊ก'
+    return
+  }
+  
+  if (!plugName.value.trim()) {
+    errorMessage.value = 'กรุณากรอกชื่อปลั๊ก'
+    return
+  }
+  
+  emit('add', {
+    plug_code: plugCode.value.trim(),
+    name: plugName.value.trim(),
+    location: location.value.trim()
+  })
+  
+  // Reset form
+  plugCode.value = ''
+  plugName.value = ''
+  location.value = ''
+}
+</script>
+
+<style scoped>
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  z-index: 1001;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.popup-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.popup-close {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.popup-section {
+  margin-bottom: 12px;
+}
+
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+
+.popup-error {
+  font-size: 12px;
+  color: var(--danger);
+  min-height: 16px;
+  margin: 8px 0;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+</style>

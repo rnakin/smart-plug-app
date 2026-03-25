@@ -121,7 +121,7 @@
       <p class="auth-subhead" style="margin-bottom:0;">
         We sent a verification link to <strong id="sent-email" style="color:var(--text)"></strong>.<br>
         Click the link to activate your account.<br>
-        If you don't get it, <a href="/auth/resend-verification/" style="color:var(--accent)">resend</a>.
+        If you don't get it, <button onclick="resendVerification()" style="color:var(--accent); background:none; border:none; cursor:pointer; font-size:13px; font-family:inherit; padding:0;">resend</button>.
       </p>
       <div class="auth-footer" style="margin-top:24px;">
         <a href="/login/">← Back to sign in</a>
@@ -157,6 +157,23 @@
       document.getElementById('success-view').style.display = 'block';
     } else {
       errorEl.textContent = data.error || JSON.stringify(data);
+    }
+  }
+
+  async function resendVerification() {
+    const email = document.getElementById('sent-email').textContent;
+    if (!email) return;
+
+    try {
+      const res = await fetch('/auth/resend-verification/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      alert(data.message || 'Verification email sent!');
+    } catch (e) {
+      alert('An error occurred. Please try again.');
     }
   }
 

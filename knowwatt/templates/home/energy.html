@@ -18,19 +18,6 @@
         <div class="top-bar-title">⚡ การใช้พลังงาน</div>
         <div class="top-bar-sub" id="energy-house-name">เลือกบ้านจากหน้าหลัก</div>
       </div>
-      <div class="top-bar-actions">
-        <select id="energy-period" onchange="loadEnergyPage()"
-          style="padding:7px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer;">
-          <option value="daily">รายวัน</option>
-          <option value="weekly">รายสัปดาห์</option>
-          <option value="monthly">รายเดือน</option>
-        </select>
-        <button class="btn btn-ghost" onclick="exportEnergy('csv')">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          CSV
-        </button>
-        <button class="btn btn-ghost" onclick="exportEnergy('json')">JSON</button>
-      </div>
     </div>
 
     <div class="dashboard-content">
@@ -40,10 +27,6 @@
         <div class="stat-card">
           <div class="stat-label">วันนี้</div>
           <div class="stat-value" id="kpi-today">—<span class="stat-unit">kWh</span></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">สัปดาห์นี้</div>
-          <div class="stat-value" id="kpi-week">—<span class="stat-unit">kWh</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">เดือนนี้</div>
@@ -183,7 +166,7 @@ function renderEnergyChart(data, period) {
   const labels = data.map(d => {
     const dt = new Date(d.period);
     if (period === 'monthly') return dt.toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
-    if (period === 'weekly')  return `สัปดาห์ ${dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`;
+  
     return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
   });
   const values = data.map(d => d.total_kwh);

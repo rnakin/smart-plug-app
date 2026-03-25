@@ -67,7 +67,12 @@ def handle_nfc_event(client, topic, payload_bytes):
             logger.error(f'Failed to decode payload: {e}')
             return
         
-        # Step 3: If type != "nfc_scan" → return silently
+        # Step 3: Validate payload structure
+        if not isinstance(payload, dict):
+            logger.error(f'Invalid payload format: expected dict, got {type(payload).__name__}')
+            return
+        
+        # Step 4: If type != "nfc_scan" → return silently
         event_type = payload.get('type')
         if event_type != 'nfc_scan':
             logger.debug(f'Ignoring non-NFC event type: {event_type}')
@@ -82,6 +87,11 @@ def handle_nfc_event(client, topic, payload_bytes):
         
         detected = payload.get('detected', False)
         uid = payload.get('uid')
+        
+        # Validate detected is boolean
+        if not isinstance(detected, bool):
+            logger.warning(f'Invalid detected value: expected bool, got {type(detected).__name__}')
+            detected = False
         
         # Step 5: If detected == False
         if not detected:
@@ -101,6 +111,10 @@ def handle_nfc_event(client, topic, payload_bytes):
         
         # Step 6: If detected == True, uid is present
         if detected and uid:
+            # Validate uid is a non-empty string
+            if not isinstance(uid, str) or not uid.strip():
+                logger.error(f'Invalid uid value: expected non-empty string, got {type(uid).__name__}')
+                return
             now = timezone.now()
             
             # Look up NFCTag by tag_uid=uid — use get_or_create to avoid race conditions
