@@ -79,19 +79,29 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuth } from '../../composables/useAuth'
+import { useAlerts } from '../../composables/useAlerts'
 
 const router = useRouter()
 const route = useRoute()
 
-// TODO: Get actual user data from auth store
-const username = ref('User')
-const alertCount = ref(0)
-const isDark = ref(true)
+// Composables
+const { user, username, fetchUser } = useAuth()
+const { fetchAlertEvents, alertEvents } = useAlerts()
 
+// State
+const isDark = ref(true)
+let refreshInterval = null
+
+// Computed
 const userInitials = computed(() => {
-  return username.value.slice(0, 1).toUpperCase()
+  return (username.value || 'U').slice(0, 1).toUpperCase()
+})
+
+const alertCount = computed(() => {
+  return alertEvents.value?.filter(e => e.status === 'pending').length || 0
 })
 
 const activePage = computed(() => {
@@ -103,6 +113,7 @@ const activePage = computed(() => {
   return ''
 })
 
+// Methods
 const navigateTo = (page) => {
   router.push(`/${page}`)
 }
@@ -113,27 +124,41 @@ const toggleTheme = () => {
   localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
 }
 
-// TODO: Fetch alert count from API
-// TODO: GET /api/alerts/notifications/?status=pending&limit=1
 const fetchAlertCount = async () => {
-  // Placeholder data
-  alertCount.value = 2
+  // Get active house from localStorage
+  const activeHouseId = localStorage.getItem('activeHouseId')
+  if (!activeHouseId) return
+  
+  try {
+    await fetchAlertEvents(activeHouseId, { status: 'pending' })
+  } catch (err) {
+    console.error('Error fetching alert count:', err)
+  }
 }
 
-onMounted(() => {
+// Lifecycle
+onMounted(async () => {
   // Restore saved theme
   const savedTheme = localStorage.getItem('theme') || 'dark'
   isDark.value = savedTheme === 'dark'
   document.documentElement.setAttribute('data-theme', savedTheme)
   
-  // TODO: Fetch current user info
-  // TODO: GET /auth/me/
+  // Fetch current user info if not already loaded
+  if (!user.value) {
+    await fetchUser()
+  }
   
   // Fetch alert badge
-  fetchAlertCount()
+  await fetchAlertCount()
   
   // Refresh badge every 30s
-  setInterval(fetchAlertCount, 30000)
+  refreshInterval = setInterval(fetchAlertCount, 30000)
+})
+
+onUnmounted(() => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+  }
 })
 </script>
 

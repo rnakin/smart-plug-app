@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Sidebar from '../../components/Sidebar/Sidebar.vue'
 import AlertPill from '../../components/AlertPill/AlertPill.vue'
 import HouseTab from '../../components/HouseTab/HouseTab.vue'
@@ -112,58 +112,82 @@ import PlugCard from '../../components/PlugCard/PlugCard.vue'
 import SummaryBar from '../../components/SummaryBar/SummaryBar.vue'
 import AddHousePopup from '../../components/AddHousePopup/AddHousePopup.vue'
 import AddPlugModal from '../../components/AddPlugModal/AddPlugModal.vue'
+import { useAuth } from '../../composables/useAuth'
+import { useHouses } from '../../composables/useHouses'
+import { usePlugs } from '../../composables/usePlugs'
+import { useEnergy } from '../../composables/useEnergy'
+import { useAlerts } from '../../composables/useAlerts'
+
+// Composables
+const { user, fetchUser } = useAuth()
+const { houses, fetchHouses, createHouse, isLoading: housesLoading } = useHouses()
+const { plugs, fetchPlugs, togglePlug: togglePlugApi, createPlug, isLoading: plugsLoading } = usePlugs()
+const { energySummary, fetchSummary } = useEnergy()
+const { pendingEvents, fetchEvents, acknowledgeEvent, isLoading: alertsLoading } = useAlerts()
 
 // User state
-const username = ref('User')
+const username = computed(() => user.value?.username || 'User')
 const liveStatus = ref('กำลังโหลด...')
 
 // House state
-const houses = ref([
-  { id: 1, house_name: 'บ้านสุขสบาย', emoji: '🏠', role: 'owner' },
-  { id: 2, house_name: 'ออฟฟิศ', emoji: '🏢', role: 'admin' }
-])
-const activeHouseId = ref(1)
+const activeHouseId = ref(null)
 const activeHouse = computed(() => houses.value.find(h => h.id === activeHouseId.value))
 const roleLabel = computed(() => {
   const map = { owner: 'เจ้าของ', admin: 'ผู้ดูแล', member: 'สมาชิก', guest: 'แขก' }
-  return map[activeHouse.value?.role] || activeHouse.value?.role || ''
+  return map[activeHouse.value?.user_role] || activeHouse.value?.user_role || ''
 })
 
 // Plug state
-const plugs = ref([
-  { id: 1, name: 'เตาไฟฟ้า', location: 'ครัว', plug_code: 'KW-001', is_on: true, online_status: 'online', power: 1240 },
-  { id: 2, name: 'ตู้เย็น', location: 'ครัว', plug_code: 'KW-002', is_on: true, online_status: 'online', power: 150 },
-  { id: 3, name: 'เตารีด', location: 'ห้องนอน', plug_code: 'KW-003', is_on: false, online_status: 'offline', power: 0 },
-  { id: 4, name: 'แอร์', location: 'ห้องนอน', plug_code: 'KW-004', is_on: true, online_status: 'online', power: 900 },
-])
-
 const onlineCount = computed(() => plugs.value.filter(p => p.is_on).length)
-const totalPower = computed(() => plugs.value.reduce((sum, p) => sum + (p.power || 0), 0))
-const todayKwh = ref(12.4)
+const totalPower = computed(() => plugs.value.reduce((sum, p) => sum + (p.current_power_w || 0), 0))
+const todayKwh = computed(() => energySummary.value?.today_kwh || 0)
 
 // Alert state
-const activeAlerts = ref([
-  { id: 1, title: 'เตารีดในห้องนอนเปิดทิ้งไว้เกิน 30 นาที', severity: 'warn' },
-  { id: 2, title: 'ตรวจพบพลังงานผิดปกติ — ครัว A1 สูงกว่าปกติ 40%', severity: 'danger' }
-])
+const activeAlerts = computed(() => pendingEvents.value)
 const alertsCount = computed(() => activeAlerts.value.length)
 
 // Modal state
 const showAddHousePopup = ref(false)
 const showAddPlugModal = ref(false)
 
+// Load data for active house
+async function loadHouseData(houseId) {
+  if (!houseId) return
+  
+  try {
+    await Promise.all([
+      fetchPlugs(houseId),
+      fetchSummary(houseId),
+      fetchEvents(houseId, { status: 'pending' })
+    ])
+    liveStatus.value = 'ทุกอย่างปกติดี ✓'
+  } catch (err) {
+    liveStatus.value = 'เกิดข้อผิดพลาดในการโหลดข้อมูล'
+    console.error('Error loading house data:', err)
+  }
+}
+
+// Watch for house changes
+watch(activeHouseId, (newId) => {
+  if (newId) {
+    loadHouseData(newId)
+  }
+})
+
 // Methods
 const selectHouse = (house) => {
   activeHouseId.value = house.id
-  // TODO: Load plugs for selected house
-  // TODO: GET /api/houses/{house.id}/plugs/
-  liveStatus.value = `บ้าน ${house.house_name} ออนไลน์`
+  liveStatus.value = `บ้าน ${house.name} ออนไลน์`
 }
 
 const togglePlug = async (plug) => {
-  // TODO: POST /api/houses/{house.id}/plugs/{plug.id}/control/
-  plug.is_on = !plug.is_on
-  plug.power = plug.is_on ? Math.floor(Math.random() * 1000) + 100 : 0
+  if (!activeHouseId.value) return
+  
+  try {
+    await togglePlugApi(activeHouseId.value, plug.id, plug.is_on)
+  } catch (err) {
+    console.error('Error toggling plug:', err)
+  }
 }
 
 const openPlugDetail = (plug) => {
@@ -171,47 +195,56 @@ const openPlugDetail = (plug) => {
   console.log('Open plug detail:', plug)
 }
 
-const acknowledgeAlert = (alertId) => {
-  // TODO: POST /api/houses/{house.id}/alerts/events/{alertId}/action/
-  activeAlerts.value = activeAlerts.value.filter(a => a.id !== alertId)
-}
-
-const addHouse = (houseData) => {
-  // TODO: POST /api/houses/
-  const newHouse = {
-    id: houses.value.length + 1,
-    ...houseData,
-    role: 'owner'
-  }
-  houses.value.push(newHouse)
-  showAddHousePopup.value = false
-}
-
-const addPlug = (plugData) => {
-  // TODO: POST /api/houses/{house.id}/plugs/
-  const newPlug = {
-    id: plugs.value.length + 1,
-    ...plugData,
-    is_on: false,
-    online_status: 'offline',
-    power: 0
-  }
-  plugs.value.push(newPlug)
-  showAddPlugModal.value = false
-}
-
-// TODO: Load houses on mount
-// TODO: GET /api/houses/
-onMounted(() => {
-  // Set initial status
-  if (houses.value.length > 0) {
-    liveStatus.value = 'ทุกอย่างปกติดี ✓'
-  } else {
-    liveStatus.value = 'ยังไม่มีบ้าน — เพิ่มบ้านเพื่อเริ่มต้น'
-  }
+const acknowledgeAlert = async (alertId) => {
+  if (!activeHouseId.value) return
   
-  // TODO: Fetch current user
-  // TODO: GET /auth/me/
+  try {
+    await acknowledgeEvent(activeHouseId.value, alertId)
+  } catch (err) {
+    console.error('Error acknowledging alert:', err)
+  }
+}
+
+const addHouse = async (houseData) => {
+  try {
+    const newHouse = await createHouse(houseData)
+    activeHouseId.value = newHouse.id
+    showAddHousePopup.value = false
+  } catch (err) {
+    console.error('Error creating house:', err)
+  }
+}
+
+const addPlug = async (plugData) => {
+  if (!activeHouseId.value) return
+  
+  try {
+    await createPlug(activeHouseId.value, plugData)
+    showAddPlugModal.value = false
+  } catch (err) {
+    console.error('Error creating plug:', err)
+  }
+}
+
+// Initialize on mount
+onMounted(async () => {
+  try {
+    // Fetch user info
+    await fetchUser()
+    
+    // Fetch houses
+    await fetchHouses()
+    
+    // Set first house as active
+    if (houses.value.length > 0) {
+      activeHouseId.value = houses.value[0].id
+    } else {
+      liveStatus.value = 'ยังไม่มีบ้าน — เพิ่มบ้านเพื่อเริ่มต้น'
+    }
+  } catch (err) {
+    console.error('Error initializing:', err)
+    liveStatus.value = 'เกิดข้อผิดพลาดในการโหลดข้อมูล'
+  }
 })
 </script>
 

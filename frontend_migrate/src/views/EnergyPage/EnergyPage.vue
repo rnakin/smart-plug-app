@@ -96,45 +96,142 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Sidebar from '../../components/Sidebar/Sidebar.vue'
+import { useHouses } from '../../composables/useHouses'
+import { useEnergy } from '../../composables/useEnergy'
 
-const houseName = ref('บ้านสุขสบาย')
+// Composables
+const { houses, fetchHouses, currentHouse, setCurrentHouse } = useHouses()
+const { 
+  energySummary, 
+  dashboardData, 
+  plugEnergy, 
+  deviceEnergy,
+  fetchSummary, 
+  fetchDashboard, 
+  fetchByPlug, 
+  fetchByDevice,
+  exportData: exportEnergyData 
+} = useEnergy()
+
+// State
 const period = ref('daily')
+const activeHouseId = ref(null)
 
-const kpi = ref({
-  today: 12.45,
-  month: 285.32,
-  power: 3240
+// Computed
+const houseName = computed(() => currentHouse.value?.name || 'เลือกบ้าน')
+
+const kpi = computed(() => ({
+  today: energySummary.value?.today_kwh?.toFixed(2) || '0.00',
+  month: energySummary.value?.month_kwh?.toFixed(2) || '0.00',
+  power: dashboardData.value?.current_power_w || 0
+}))
+
+const chartData = computed(() => {
+  // Generate chart data from readings or use placeholder
+  const readings = dashboardData.value?.hourly_readings || []
+  if (readings.length > 0) {
+    const max = Math.max(...readings.map(r => r.power_w || 0))
+    return readings.map(r => max > 0 ? ((r.power_w || 0) / max) * 100 : 0)
+  }
+  return [30, 45, 35, 50, 40, 60, 55, 45, 70, 65, 50, 40, 35, 45]
 })
 
-const chartData = ref([30, 45, 35, 50, 40, 60, 55, 45, 70, 65, 50, 40, 35, 45])
+const topDevices = computed(() => {
+  if (!deviceEnergy.value || deviceEnergy.value.length === 0) {
+    return []
+  }
+  const maxKwh = Math.max(...deviceEnergy.value.map(d => d.total_kwh || 0))
+  return deviceEnergy.value.slice(0, 5).map(d => ({
+    name: d.device_name || d.name,
+    kwh: (d.total_kwh || 0).toFixed(2),
+    percentage: maxKwh > 0 ? ((d.total_kwh || 0) / maxKwh) * 100 : 0
+  }))
+})
 
-const topDevices = ref([
-  { name: 'เตาไฟฟ้า', kwh: 45.23, percentage: 100 },
-  { name: 'แอร์', kwh: 38.12, percentage: 84 },
-  { name: 'เครื่องซักผ้า', kwh: 25.67, percentage: 57 },
-  { name: 'ตู้เย็น', kwh: 18.45, percentage: 41 },
-  { name: 'ทีวี', kwh: 12.34, percentage: 27 }
-])
+const plugBreakdown = computed(() => {
+  if (!plugEnergy.value || plugEnergy.value.length === 0) {
+    return []
+  }
+  const maxKwh = Math.max(...plugEnergy.value.map(p => p.total_kwh || 0))
+  return plugEnergy.value.map(p => ({
+    id: p.plug_id || p.id,
+    name: p.plug_name || p.name,
+    location: p.location || '-',
+    avgPower: Math.round(p.avg_power_w || 0),
+    peakPower: Math.round(p.peak_power_w || 0),
+    kwh: (p.total_kwh || 0).toFixed(3),
+    percentage: maxKwh > 0 ? ((p.total_kwh || 0) / maxKwh) * 100 : 0
+  }))
+})
 
-const plugBreakdown = ref([
-  { id: 1, name: 'เตาไฟฟ้า', location: 'ครัว', avgPower: 850, peakPower: 1240, kwh: 45.234, percentage: 100 },
-  { id: 2, name: 'แอร์', location: 'ห้องนอน', avgPower: 720, peakPower: 900, kwh: 38.123, percentage: 84 },
-  { id: 3, name: 'เครื่องซักผ้า', location: 'ห้องซัก', avgPower: 650, peakPower: 850, kwh: 25.672, percentage: 57 },
-  { id: 4, name: 'ตู้เย็น', location: 'ครัว', avgPower: 120, peakPower: 150, kwh: 18.452, percentage: 41 }
-])
-
-const exportData = (format) => {
-  // TODO: GET /api/houses/{house.id}/energy/export/?format={format}
-  console.log(`Exporting energy data as ${format}...`)
+// Methods
+const exportData = async (format) => {
+  if (!activeHouseId.value) return
+  
+  try {
+    const blob = await exportEnergyData(activeHouseId.value, { format })
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `energy-data.${format}`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  } catch (err) {
+    console.error('Error exporting data:', err)
+  }
 }
 
-onMounted(() => {
-  // TODO: Load energy data
-  // TODO: GET /api/houses/{house.id}/energy/dashboard/
-  // TODO: GET /api/houses/{house.id}/energy/summary/
-  // TODO: GET /api/houses/{house.id}/energy/by-plug/
+const loadEnergyData = async () => {
+  if (!activeHouseId.value) return
+  
+  try {
+    const periodMap = { daily: 'day', weekly: 'week', monthly: 'month' }
+    await Promise.all([
+      fetchSummary(activeHouseId.value, { period: periodMap[period.value] }),
+      fetchDashboard(activeHouseId.value),
+      fetchByPlug(activeHouseId.value),
+      fetchByDevice(activeHouseId.value)
+    ])
+  } catch (err) {
+    console.error('Error loading energy data:', err)
+  }
+}
+
+// Watch for period changes
+watch(period, () => {
+  loadEnergyData()
+})
+
+// Initialize on mount
+onMounted(async () => {
+  try {
+    // Fetch houses
+    await fetchHouses()
+    
+    // Get active house from localStorage or use first house
+    const storedHouseId = localStorage.getItem('activeHouseId')
+    if (storedHouseId) {
+      activeHouseId.value = storedHouseId
+      const house = houses.value.find(h => h.id === storedHouseId)
+      if (house) setCurrentHouse(house)
+    } else if (houses.value.length > 0) {
+      activeHouseId.value = houses.value[0].id
+      setCurrentHouse(houses.value[0])
+    }
+    
+    // Load energy data
+    if (activeHouseId.value) {
+      await loadEnergyData()
+    }
+  } catch (err) {
+    console.error('Error initializing energy page:', err)
+  }
 })
 </script>
 

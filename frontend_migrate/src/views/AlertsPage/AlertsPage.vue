@@ -49,61 +49,137 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Sidebar from '../../components/Sidebar/Sidebar.vue'
+import { useHouses } from '../../composables/useHouses'
+import { useAlerts } from '../../composables/useAlerts'
 
-const houseName = ref('บ้านสุขสบาย')
+// Composables
+const { houses, fetchHouses, currentHouse, setCurrentHouse } = useHouses()
+const { 
+  alertEvents, 
+  fetchAlertEvents, 
+  acknowledgeAlert,
+  loading,
+  error 
+} = useAlerts()
+
+// State
 const statusFilter = ref('pending')
+const activeHouseId = ref(null)
 
-const alerts = ref([
-  { 
-    id: 1, 
-    title: 'เตารีดในห้องนอนเปิดทิ้งไว้เกิน 30 นาที', 
-    plug: 'เตารีด (ห้องนอน)',
-    time: '5 นาทีที่แล้ว',
-    severity: 'warn',
-    status: 'pending',
-    statusText: 'รอดำเนินการ',
-    icon: '⚠️'
-  },
-  { 
-    id: 2, 
-    title: 'ตรวจพบพลังงานผิดปกติ — ครัว A1 สูงกว่าปกติ 40%', 
-    plug: 'เตาไฟฟ้า (ครัว)',
-    time: '15 นาทีที่แล้ว',
-    severity: 'danger',
-    status: 'pending',
-    statusText: 'รอดำเนินการ',
-    icon: '🔴'
-  },
-  { 
-    id: 3, 
-    title: 'ปลั๊กออฟฟิศออฟไลน์', 
-    plug: 'ปลั๊กคอมพิวเตอร์ (ออฟฟิศ)',
-    time: '1 ชั่วโมงที่แล้ว',
-    severity: 'warn',
-    status: 'acknowledged',
-    statusText: 'รับทราบแล้ว',
-    icon: '⚠️'
+// Computed
+const houseName = computed(() => currentHouse.value?.name || 'เลือกบ้าน')
+
+const alerts = computed(() => {
+  if (!alertEvents.value || alertEvents.value.length === 0) {
+    return []
   }
-])
+  
+  return alertEvents.value.map(event => {
+    // Determine severity based on alert rule type or threshold
+    const severity = event.severity || (event.alert_rule?.severity === 'critical' ? 'danger' : 'warn')
+    
+    // Get icon based on alert type
+    const icon = severity === 'danger' ? '🔴' : '⚠️'
+    
+    // Format time
+    const timeAgo = formatTimeAgo(event.triggered_at || event.created_at)
+    
+    // Get status text
+    const statusTextMap = {
+      pending: 'รอดำเนินการ',
+      acknowledged: 'รับทราบแล้ว',
+      snoozed: 'เลื่อนแจ้งเตือน',
+      dismissed: 'ยกเลิกแล้ว'
+    }
+    
+    return {
+      id: event.id,
+      title: event.message || event.alert_rule?.name || 'การแจ้งเตือน',
+      plug: event.plug?.name || event.device_name || '-',
+      time: timeAgo,
+      severity,
+      status: event.status || 'pending',
+      statusText: statusTextMap[event.status] || 'รอดำเนินการ',
+      icon
+    }
+  })
+})
 
-const acknowledge = (alertId) => {
-  // TODO: POST /api/houses/{house.id}/alerts/events/{alertId}/action/
-  const alert = alerts.value.find(a => a.id === alertId)
-  if (alert) {
-    alert.status = 'acknowledged'
-    alert.statusText = 'รับทราบแล้ว'
+// Helper to format time ago
+const formatTimeAgo = (dateString) => {
+  if (!dateString) return '-'
+  
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 1) return 'เมื่อสักครู่'
+  if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`
+  if (diffHours < 24) return `${diffHours} ชั่วโมงที่แล้ว`
+  return `${diffDays} วันที่แล้ว`
+}
+
+// Methods
+const acknowledge = async (alertId) => {
+  if (!activeHouseId.value) return
+  
+  try {
+    await acknowledgeAlert(activeHouseId.value, alertId, 'acknowledge')
+    // Refresh the alerts list
+    await fetchAlertEvents(activeHouseId.value, { status: statusFilter.value === 'all' ? undefined : statusFilter.value })
+  } catch (err) {
+    console.error('Error acknowledging alert:', err)
   }
 }
 
-const refresh = () => {
-  // TODO: GET /api/houses/{house.id}/alerts/events/?status={statusFilter}
-  console.log('Refreshing alerts...')
+const refresh = async () => {
+  if (!activeHouseId.value) return
+  
+  try {
+    await fetchAlertEvents(activeHouseId.value, { 
+      status: statusFilter.value === 'all' ? undefined : statusFilter.value 
+    })
+  } catch (err) {
+    console.error('Error refreshing alerts:', err)
+  }
 }
 
-onMounted(() => {
-  // TODO: Load alerts from API
+// Watch for filter changes
+watch(statusFilter, () => {
+  refresh()
+})
+
+// Initialize on mount
+onMounted(async () => {
+  try {
+    // Fetch houses
+    await fetchHouses()
+    
+    // Get active house from localStorage or use first house
+    const storedHouseId = localStorage.getItem('activeHouseId')
+    if (storedHouseId) {
+      activeHouseId.value = storedHouseId
+      const house = houses.value.find(h => h.id === storedHouseId)
+      if (house) setCurrentHouse(house)
+    } else if (houses.value.length > 0) {
+      activeHouseId.value = houses.value[0].id
+      setCurrentHouse(houses.value[0])
+    }
+    
+    // Load alerts
+    if (activeHouseId.value) {
+      await fetchAlertEvents(activeHouseId.value, { 
+        status: statusFilter.value === 'all' ? undefined : statusFilter.value 
+      })
+    }
+  } catch (err) {
+    console.error('Error initializing alerts page:', err)
+  }
 })
 </script>
 

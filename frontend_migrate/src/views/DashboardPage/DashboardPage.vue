@@ -54,42 +54,77 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Sidebar from '../../components/Sidebar/Sidebar.vue'
 import PlugCard from '../../components/PlugCard/PlugCard.vue'
+import { useHouses } from '../../composables/useHouses'
+import { usePlugs } from '../../composables/usePlugs'
+import { useEnergy } from '../../composables/useEnergy'
 
-const houseName = ref('บ้านสุขสบาย')
-const totalPlugs = ref(7)
-const onPlugs = ref(4)
-const totalPower = ref(3240)
-const todayKwh = ref(12.4)
+// Composables
+const { houses, fetchHouses, currentHouse, setCurrentHouse } = useHouses()
+const { plugs, fetchPlugs, togglePlug: togglePlugApi } = usePlugs()
+const { dashboardData, fetchDashboard } = useEnergy()
 
-const plugs = ref([
-  { id: 1, name: 'เตาไฟฟ้า', location: 'ครัว', plug_code: 'KW-001', is_on: true, online_status: 'online', power: 1240 },
-  { id: 2, name: 'ตู้เย็น', location: 'ครัว', plug_code: 'KW-002', is_on: true, online_status: 'online', power: 150 },
-  { id: 3, name: 'เตารีด', location: 'ห้องนอน', plug_code: 'KW-003', is_on: false, online_status: 'offline', power: 0 },
-  { id: 4, name: 'แอร์', location: 'ห้องนอน', plug_code: 'KW-004', is_on: true, online_status: 'online', power: 900 },
-  { id: 5, name: 'ทีวี', location: 'ห้องนั่งเล่น', plug_code: 'KW-005', is_on: true, online_status: 'online', power: 120 },
-  { id: 6, name: 'พัดลม', location: 'ห้องนั่งเล่น', plug_code: 'KW-006', is_on: true, online_status: 'online', power: 65 },
-  { id: 7, name: 'เครื่องซักผ้า', location: 'ห้องซัก', plug_code: 'KW-007', is_on: true, online_status: 'online', power: 850 },
-])
+// Computed
+const houseName = computed(() => currentHouse.value?.name || 'เลือกบ้าน')
+const totalPlugs = computed(() => plugs.value.length)
+const onPlugs = computed(() => plugs.value.filter(p => p.is_on).length)
+const totalPower = computed(() => plugs.value.reduce((sum, p) => sum + (p.current_power_w || 0), 0))
+const todayKwh = computed(() => dashboardData.value?.today_kwh?.toFixed(1) || '0.0')
 
-const togglePlug = (plug) => {
-  // TODO: POST /api/houses/{house.id}/plugs/{plug.id}/control/
-  plug.is_on = !plug.is_on
-  plug.power = plug.is_on ? Math.floor(Math.random() * 1000) + 100 : 0
-  onPlugs.value = plugs.value.filter(p => p.is_on).length
-  totalPower.value = plugs.value.reduce((sum, p) => sum + (p.power || 0), 0)
+// Get active house from localStorage or use first house
+const activeHouseId = ref(null)
+
+const togglePlug = async (plug) => {
+  if (!activeHouseId.value) return
+  
+  try {
+    await togglePlugApi(activeHouseId.value, plug.id, plug.is_on)
+  } catch (err) {
+    console.error('Error toggling plug:', err)
+  }
 }
 
-const refresh = () => {
-  // TODO: GET /api/houses/{house.id}/plugs/
-  console.log('Refreshing dashboard data...')
+const refresh = async () => {
+  if (!activeHouseId.value) return
+  
+  try {
+    await Promise.all([
+      fetchPlugs(activeHouseId.value),
+      fetchDashboard(activeHouseId.value)
+    ])
+  } catch (err) {
+    console.error('Error refreshing dashboard:', err)
+  }
 }
 
-onMounted(() => {
-  // TODO: Load dashboard data
-  // TODO: GET /api/houses/{house.id}/energy/dashboard/
+onMounted(async () => {
+  try {
+    // Fetch houses
+    await fetchHouses()
+    
+    // Get active house from localStorage or use first house
+    const storedHouseId = localStorage.getItem('activeHouseId')
+    if (storedHouseId) {
+      activeHouseId.value = storedHouseId
+      const house = houses.value.find(h => h.id === storedHouseId)
+      if (house) setCurrentHouse(house)
+    } else if (houses.value.length > 0) {
+      activeHouseId.value = houses.value[0].id
+      setCurrentHouse(houses.value[0])
+    }
+    
+    // Load dashboard data
+    if (activeHouseId.value) {
+      await Promise.all([
+        fetchPlugs(activeHouseId.value),
+        fetchDashboard(activeHouseId.value)
+      ])
+    }
+  } catch (err) {
+    console.error('Error loading dashboard:', err)
+  }
 })
 </script>
 

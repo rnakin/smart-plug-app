@@ -61,9 +61,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useAuth } from '../../composables/useAuth'
 
 const route = useRoute()
 const router = useRouter()
+
+const { resetPassword: resetPasswordApi, isLoading, error } = useAuth()
 
 const password = ref('')
 const confirmPassword = ref('')
@@ -71,13 +74,12 @@ const errorMessage = ref('')
 const noticeMessage = ref('')
 const token = ref('')
 
-// TODO: Get token from URL query parameter
 const isValidToken = computed(() => {
   return !!token.value
 })
 
 onMounted(() => {
-  // TODO: Extract token from URL: /reset-password?token=xxx
+  // Extract token from URL: /reset-password?token=xxx
   token.value = route.query.token || ''
   
   if (!token.value) {
@@ -85,8 +87,7 @@ onMounted(() => {
   }
 })
 
-// TODO: Replace with POST /auth/reset-password/ API call
-const resetPassword = () => {
+const resetPassword = async () => {
   errorMessage.value = ''
   noticeMessage.value = ''
   
@@ -95,20 +96,32 @@ const resetPassword = () => {
     return
   }
   
+  if (password.value.length < 8) {
+    errorMessage.value = 'Password must be at least 8 characters.'
+    return
+  }
+  
   if (password.value !== confirmPassword.value) {
     errorMessage.value = 'Passwords do not match.'
     return
   }
   
-  // TODO: Implement actual password reset
-  console.log('Reset password:', { token: token.value, password: password.value })
-  
-  noticeMessage.value = 'Password reset successful. Redirecting...'
-  
-  // TODO: Redirect to login after successful reset
-  setTimeout(() => {
-    router.push('/login')
-  }, 2000)
+  try {
+    const result = await resetPasswordApi(token.value, password.value)
+    
+    if (result.success) {
+      noticeMessage.value = 'Password reset successful. Redirecting...'
+      
+      // Redirect to login after successful reset
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
+    } else {
+      errorMessage.value = result.message
+    }
+  } catch (err) {
+    errorMessage.value = 'Failed to reset password. Please try again.'
+  }
 }
 </script>
 

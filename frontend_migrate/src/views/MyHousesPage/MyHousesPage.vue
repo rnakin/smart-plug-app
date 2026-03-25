@@ -32,35 +32,44 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Sidebar from '../../components/Sidebar/Sidebar.vue'
+import { useHouses } from '../../composables/useHouses'
 
 const router = useRouter()
 
-const houses = ref([
-  { id: 1, house_name: 'บ้านสุขสบาย', address: '123 ถนนสุขุมวิท กรุงเทพฯ', emoji: '🏠', role: 'owner' },
-  { id: 2, house_name: 'ออฟฟิศ', address: '456 ถนนสีลม กรุงเทพฯ', emoji: '🏢', role: 'admin' },
-  { id: 3, house_name: 'บ้านพักตากอากาศ', address: '789 ถนนชายทะเล ชลบุรี', emoji: '🏡', role: 'member' }
-])
+// Composables
+const { houses, fetchHouses, setCurrentHouse, loading, error } = useHouses()
 
+// Methods
 const roleLabel = (role) => {
   const map = { owner: 'เจ้าของ', admin: 'ผู้ดูแล', member: 'สมาชิก', guest: 'แขก' }
   return map[role] || role
 }
 
 const selectHouse = (house) => {
-  // TODO: Set active house and redirect
+  // Set active house in localStorage and composable state
+  localStorage.setItem('activeHouseId', house.id)
+  setCurrentHouse(house)
   router.push('/home')
 }
 
-const refresh = () => {
-  // TODO: GET /api/houses/
-  console.log('Refreshing houses...')
+const refresh = async () => {
+  try {
+    await fetchHouses()
+  } catch (err) {
+    console.error('Error refreshing houses:', err)
+  }
 }
 
-onMounted(() => {
-  // TODO: Load all houses where user is a member
+// Initialize on mount
+onMounted(async () => {
+  try {
+    await fetchHouses()
+  } catch (err) {
+    console.error('Error loading houses:', err)
+  }
 })
 </script>
 

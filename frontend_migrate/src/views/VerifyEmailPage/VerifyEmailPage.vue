@@ -41,13 +41,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { useAuth } from '../../composables/useAuth'
 
 const route = useRoute()
+
+const { verifyEmail: verifyEmailApi } = useAuth()
 
 const verificationState = ref('loading')
 const errorMessage = ref('The verification link is invalid or has expired.')
 
-// TODO: Replace with POST /auth/verify-email/ API call
 const verifyEmail = async () => {
   const token = route.query.token
   
@@ -57,20 +59,19 @@ const verifyEmail = async () => {
     return
   }
   
-  // TODO: Implement actual email verification
-  console.log('Verifying email with token:', token)
-  
-  // Simulate verification delay
-  setTimeout(() => {
-    // For demo, randomly succeed or fail
-    const success = Math.random() > 0.3
-    if (success) {
+  try {
+    const result = await verifyEmailApi(token)
+    
+    if (result.success) {
       verificationState.value = 'success'
     } else {
       verificationState.value = 'error'
-      errorMessage.value = 'Verification failed. The link may be expired or invalid.'
+      errorMessage.value = result.message || 'Verification failed. The link may be expired or invalid.'
     }
-  }, 1500)
+  } catch (err) {
+    verificationState.value = 'error'
+    errorMessage.value = 'Verification failed. The link may be expired or invalid.'
+  }
 }
 
 onMounted(() => {

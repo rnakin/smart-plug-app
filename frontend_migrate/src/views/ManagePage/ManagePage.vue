@@ -21,13 +21,13 @@
               <button class="btn btn-accent" @click="showAddMember = true">+ เพิ่มสมาชิก</button>
             </div>
             <div class="members-list">
-              <div v-for="member in members" :key="member.id" class="member-item">
+              <div v-for="member in displayMembers" :key="member.id" class="member-item">
                 <div class="member-avatar">{{ member.name[0] }}</div>
                 <div class="member-info">
                   <div class="member-name">{{ member.name }}</div>
                   <div class="member-role">{{ member.role }}</div>
                 </div>
-                <button v-if="member.role !== 'เจ้าของ'" class="btn-remove" @click="removeMember(member.id)">
+                <button v-if="!member.isOwner" class="btn-remove" @click="removeMember(member.id)">
                   ลบ
                 </button>
               </div>
@@ -58,41 +58,126 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Sidebar from '../../components/Sidebar/Sidebar.vue'
+import { useHouses } from '../../composables/useHouses'
 
-const houseName = ref('บ้านสุขสบาย')
+// Composables
+const { 
+  houses, 
+  fetchHouses, 
+  currentHouse, 
+  setCurrentHouse,
+  fetchMembers,
+  members,
+  removeMember: deleteMember,
+  updateHouse,
+  loading,
+  error
+} = useHouses()
+
+// State
 const showAddMember = ref(false)
+const activeHouseId = ref(null)
 
-const members = ref([
-  { id: 1, name: 'คุณ', role: 'เจ้าของ' },
-  { id: 2, name: 'ภรรยา', role: 'ผู้ดูแล' },
-  { id: 3, name: 'ลูกชาย', role: 'สมาชิก' }
-])
+// Computed
+const houseName = computed(() => currentHouse.value?.name || 'เลือกบ้าน')
 
 const houseSettings = ref({
-  name: 'บ้านสุขสบาย',
-  address: '123 ถนนสุขุมวิท กรุงเทพฯ'
+  name: '',
+  address: ''
 })
 
-const removeMember = (memberId) => {
-  // TODO: DELETE /api/houses/{house.id}/members/{memberId}/
-  members.value = members.value.filter(m => m.id !== memberId)
+// Role label mapping
+const roleLabel = (role) => {
+  const map = { owner: 'เจ้าของ', admin: 'ผู้ดูแล', member: 'สมาชิก', guest: 'แขก' }
+  return map[role] || role
 }
 
-const saveSettings = () => {
-  // TODO: PATCH /api/houses/{house.id}/
-  houseName.value = houseSettings.value.name
-  console.log('Saving settings:', houseSettings.value)
+// Computed members with role labels
+const displayMembers = computed(() => {
+  if (!members.value || members.value.length === 0) {
+    return []
+  }
+  return members.value.map(m => ({
+    id: m.id,
+    name: m.user?.username || m.user?.email || 'Unknown',
+    role: roleLabel(m.role),
+    isOwner: m.role === 'owner'
+  }))
+})
+
+// Methods
+const removeMember = async (memberId) => {
+  if (!activeHouseId.value) return
+  
+  try {
+    await deleteMember(activeHouseId.value, memberId)
+    // Members list is automatically updated in the composable
+  } catch (err) {
+    console.error('Error removing member:', err)
+  }
 }
 
-const refresh = () => {
-  // TODO: GET /api/houses/{house.id}/members/
-  console.log('Refreshing...')
+const saveSettings = async () => {
+  if (!activeHouseId.value) return
+  
+  try {
+    await updateHouse(activeHouseId.value, {
+      name: houseSettings.value.name,
+      address: houseSettings.value.address
+    })
+    // House is automatically updated in the composable
+  } catch (err) {
+    console.error('Error saving settings:', err)
+  }
 }
 
-onMounted(() => {
-  // TODO: Load house members
+const refresh = async () => {
+  if (!activeHouseId.value) return
+  
+  try {
+    await fetchMembers(activeHouseId.value)
+  } catch (err) {
+    console.error('Error refreshing:', err)
+  }
+}
+
+// Initialize on mount
+onMounted(async () => {
+  try {
+    // Fetch houses
+    await fetchHouses()
+    
+    // Get active house from localStorage or use first house
+    const storedHouseId = localStorage.getItem('activeHouseId')
+    if (storedHouseId) {
+      activeHouseId.value = storedHouseId
+      const house = houses.value.find(h => h.id === storedHouseId)
+      if (house) {
+        setCurrentHouse(house)
+        // Initialize settings form with current house data
+        houseSettings.value = {
+          name: house.name || '',
+          address: house.address || ''
+        }
+      }
+    } else if (houses.value.length > 0) {
+      activeHouseId.value = houses.value[0].id
+      setCurrentHouse(houses.value[0])
+      houseSettings.value = {
+        name: houses.value[0].name || '',
+        address: houses.value[0].address || ''
+      }
+    }
+    
+    // Load members
+    if (activeHouseId.value) {
+      await fetchMembers(activeHouseId.value)
+    }
+  } catch (err) {
+    console.error('Error initializing manage page:', err)
+  }
 })
 </script>
 

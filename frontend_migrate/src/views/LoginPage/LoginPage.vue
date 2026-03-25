@@ -57,14 +57,16 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useAuth } from '../../composables/useAuth'
 
 const router = useRouter()
+const { login, isLoading, error } = useAuth()
+
 const username = ref('')
 const password = ref('')
 const errorMessage = ref('')
 
-// TODO: Replace with POST /auth/login/ API call
-const handleLogin = () => {
+const handleLogin = async () => {
   errorMessage.value = ''
   
   if (!username.value || !password.value) {
@@ -72,13 +74,13 @@ const handleLogin = () => {
     return
   }
   
-  // TODO: Implement actual authentication
-  // TODO: Store JWT tokens in localStorage
-  // TODO: Redirect to /home on success
-  console.log('Login attempt:', { username: username.value, password: password.value })
+  const success = await login(username.value, password.value)
   
-  // Placeholder: Navigate to home
-  router.push('/home')
+  if (success) {
+    router.push('/home')
+  } else {
+    errorMessage.value = error.value || 'Login failed'
+  }
 }
 </script>
 

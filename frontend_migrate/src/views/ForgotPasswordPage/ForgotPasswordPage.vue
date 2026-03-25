@@ -44,13 +44,15 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useAuth } from '../../composables/useAuth'
+
+const { forgotPassword, isLoading, error } = useAuth()
 
 const email = ref('')
 const errorMessage = ref('')
 const noticeMessage = ref('')
 
-// TODO: Replace with POST /auth/forgot-password/ API call
-const sendReset = () => {
+const sendReset = async () => {
   errorMessage.value = ''
   noticeMessage.value = ''
   
@@ -59,11 +61,18 @@ const sendReset = () => {
     return
   }
   
-  // TODO: Implement actual password reset request
-  console.log('Forgot password request:', { email: email.value })
-  
-  // Show success message
-  noticeMessage.value = 'If that email exists, a reset link has been sent.'
+  try {
+    const result = await forgotPassword(email.value)
+    
+    if (result.success) {
+      noticeMessage.value = 'If that email exists, a reset link has been sent.'
+      email.value = ''
+    } else {
+      errorMessage.value = result.message
+    }
+  } catch (err) {
+    errorMessage.value = 'Failed to send reset link. Please try again.'
+  }
 }
 </script>
 

@@ -93,6 +93,9 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useAuth } from '../../composables/useAuth'
+
+const { register, resendVerification: resendVerificationApi, error } = useAuth()
 
 const username = ref('')
 const email = ref('')
@@ -100,8 +103,7 @@ const password = ref('')
 const errorMessage = ref('')
 const showSuccess = ref(false)
 
-// TODO: Replace with POST /auth/register/ API call
-const handleRegister = () => {
+const handleRegister = async () => {
   errorMessage.value = ''
   
   if (!username.value || !email.value || !password.value) {
@@ -109,22 +111,22 @@ const handleRegister = () => {
     return
   }
   
-  // TODO: Implement actual registration
-  console.log('Register attempt:', { 
-    username: username.value, 
-    email: email.value, 
-    password: password.value 
-  })
+  const result = await register(username.value, email.value, password.value)
   
-  // Show success state
-  showSuccess.value = true
+  if (result.success) {
+    showSuccess.value = true
+  } else {
+    errorMessage.value = result.message
+  }
 }
 
-// TODO: Replace with POST /auth/resend-verification/ API call
-const resendVerification = () => {
-  // TODO: Implement resend verification email
-  console.log('Resend verification to:', email.value)
-  alert('Verification email sent!')
+const resendVerification = async () => {
+  const result = await resendVerificationApi(email.value)
+  if (result.success) {
+    alert('Verification email sent!')
+  } else {
+    alert(result.message || 'Failed to resend verification')
+  }
 }
 </script>
 

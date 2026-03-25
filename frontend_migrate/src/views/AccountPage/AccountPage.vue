@@ -66,13 +66,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
 import Sidebar from '../../components/Sidebar/Sidebar.vue'
+import { useAuth } from '../../composables/useAuth'
 
-const router = useRouter()
+// Composables
+const { 
+  user, 
+  username, 
+  fetchUser, 
+  updateProfile, 
+  logout: authLogout,
+  isLoading,
+  error 
+} = useAuth()
 
-const username = ref('ผู้ใช้')
+// State
 const profile = ref({
   username: '',
   email: ''
@@ -85,35 +94,76 @@ const password = ref({
 const profileMessage = ref('')
 const passwordMessage = ref('')
 
-const saveProfile = () => {
-  // TODO: PATCH /auth/me/
-  profileMessage.value = 'บันทึกข้อมูลสำเร็จ'
-  setTimeout(() => profileMessage.value = '', 3000)
+// Methods
+const saveProfile = async () => {
+  profileMessage.value = ''
+  
+  try {
+    const result = await updateProfile({
+      username: profile.value.username,
+      email: profile.value.email
+    })
+    
+    if (result.success) {
+      profileMessage.value = 'บันทึกข้อมูลสำเร็จ'
+      setTimeout(() => profileMessage.value = '', 3000)
+    } else {
+      profileMessage.value = result.message
+    }
+  } catch (err) {
+    profileMessage.value = 'เกิดข้อผิดพลาดในการบันทึก'
+  }
 }
 
-const changePassword = () => {
-  // TODO: POST /auth/change-password/
+const changePassword = async () => {
+  passwordMessage.value = ''
+  
+  // Validate passwords match
   if (password.value.new !== password.value.confirm) {
     passwordMessage.value = 'รหัสผ่านไม่ตรงกัน'
     return
   }
-  passwordMessage.value = 'เปลี่ยนรหัสผ่านสำเร็จ'
-  password.value = { current: '', new: '', confirm: '' }
-  setTimeout(() => passwordMessage.value = '', 3000)
+  
+  // Validate password length
+  if (password.value.new.length < 8) {
+    passwordMessage.value = 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'
+    return
+  }
+  
+  try {
+    const result = await updateProfile({
+      current_password: password.value.current,
+      new_password: password.value.new
+    })
+    
+    if (result.success) {
+      passwordMessage.value = 'เปลี่ยนรหัสผ่านสำเร็จ'
+      password.value = { current: '', new: '', confirm: '' }
+      setTimeout(() => passwordMessage.value = '', 3000)
+    } else {
+      passwordMessage.value = result.message
+    }
+  } catch (err) {
+    passwordMessage.value = 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน'
+  }
 }
 
-const logout = () => {
-  // TODO: Clear localStorage and JWT tokens
-  // TODO: POST /auth/logout/
-  localStorage.removeItem('access')
-  localStorage.removeItem('refresh')
-  router.push('/login')
+const logout = async () => {
+  await authLogout()
 }
 
-onMounted(() => {
-  // TODO: GET /auth/me/
-  profile.value.username = username.value
-  profile.value.email = 'user@example.com'
+// Initialize on mount
+onMounted(async () => {
+  // Fetch user info if not already loaded
+  if (!user.value) {
+    await fetchUser()
+  }
+  
+  // Initialize profile form with user data
+  if (user.value) {
+    profile.value.username = user.value.username || ''
+    profile.value.email = user.value.email || ''
+  }
 })
 </script>
 
