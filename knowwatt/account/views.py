@@ -11,6 +11,15 @@ from rest_framework_simplejwt.tokens import RefreshToken, Token
 from rest_framework_simplejwt.exceptions import TokenError
 import datetime
 from django.contrib.auth.password_validation import validate_password, ValidationError
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, logout
+from django.contrib.auth.views import LoginView as AuthLoginView, LogoutView as AuthLogoutView
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.views.generic import TemplateView
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_protect
+from django.contrib.auth.decorators import login_required
 
 # ── Custom Token Types ─────────────────────────────────────────────────────────
 
@@ -336,3 +345,160 @@ class ResetPasswordView(APIView):
                 {'error': 'User not found.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+# ── Session-based Authentication Views (Django Templates) ─────────────────────────
+
+class SessionLoginView(AuthLoginView):
+    template_name = 'login.html'
+    authentication_form = AuthenticationForm
+    redirect_authenticated_user = True
+
+    def get_success_url(self):
+        return '/home/'
+
+
+class SessionLogoutView(AuthLogoutView):
+    next_page = '/login/'
+
+
+class SessionRegisterView(TemplateView):
+    template_name = 'register.html'
+
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect('/home/')
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        email = request.POST.get('email', '')
+
+        if not username or not password:
+            return render(request, self.template_name, {'error': 'Username and password are required'})
+
+        if not email:
+            return render(request, self.template_name, {'error': 'Email is required for account verification'})
+
+        if User.objects.filter(username=username).exists():
+            return render(request, self.template_name, {'error': 'Username already exists'})
+
+        if User.objects.filter(email=email).exists():
+            return render(request, self.template_name, {'error': 'An account with this email already exists'})
+
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            return render(request, self.template_name, {'error': ', '.join(e.messages)})
+
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email,
+            is_active=False,
+        )
+
+        token = EmailVerifyToken.for_user(user)
+        verify_url = f"{settings.FRONTEND_URL}/verify-email/?token={quote(str(token))}"
+        if settings.DEBUG:
+            print(f"\n🔗 verification URL: {verify_url}\n")
+        send_mail(
+            subject='Verify your KnowWatt account',
+            message=(
+                f'Hi {username},\n\n'
+                f'Please verify your email address by clicking the link below:\n\n'
+                f'{verify_url}\n\n'
+                f'This link expires in 24 hours.\n\n'
+                f'— KnowWatt'
+            ),
+            from_email='noreply@knowwatt.com',
+            recipient_list=[email],
+            fail_silently=True,
+        )
+
+        # Auto-login after registration (optional, but requires email verification usually)
+        # For now, redirect to login page with success message
+        return redirect('/login/')
+
+
+class SessionForgotPasswordView(TemplateView):
+    template_name = 'forgot_password.html'
+
+    def post(self, request, *args, **kwargs):
+        email = request.POST.get('email')
+        if not email:
+            return render(request, self.template_name, {'error': 'Email is required'})
+
+        try:
+            user = User.objects.get(email=email)
+            token = PasswordResetToken.for_user(user)
+            reset_url = f"{settings.FRONTEND_URL}/reset-password/?token={quote(str(token))}"
+            print(f"\n🔗 Reset URL: {reset_url}\n")
+
+            send_mail(
+                subject='Reset your KnowWatt password',
+                message=f'Click to reset your password:\n\n{reset_url}',
+                from_email='noreply@knowwatt.com',
+                recipient_list=[email],
+                fail_silently=True,
+            )
+        except User.DoesNotExist:
+            pass
+
+        return render(request, self.template_name, {'message': 'If that email exists, a reset link has been sent.'})
+
+
+class SessionResetPasswordView(TemplateView):
+    template_name = 'reset_password.html'
+
+    def post(self, request, *args, **kwargs):
+        token_string = request.POST.get('token')
+        new_password = request.POST.get('password')
+
+        if not token_string or not new_password:
+            return render(request, self.template_name, {'error': 'Token and password are required'})
+
+        try:
+            token = PasswordResetToken(token_string)
+            user = User.objects.get(id=token['user_id'])
+            user.set_password(new_password)
+            user.save()
+
+            return render(request, self.template_name, {'message': 'Password reset successful. You can now login.'})
+
+        except TokenError:
+            return render(request, self.template_name, {'error': 'Reset link is invalid or expired.'})
+        except User.DoesNotExist:
+            return render(request, self.template_name, {'error': 'User not found.'})
+
+
+class SessionVerifyEmailView(TemplateView):
+    template_name = 'verify_email.html'
+
+    def get(self, request, *args, **kwargs):
+        token_string = request.GET.get('token')
+        if not token_string:
+            return render(request, self.template_name, {'error': 'Verification token is required'})
+
+        try:
+            token = EmailVerifyToken(token_string)
+            user = User.objects.get(id=token['user_id'])
+
+            if user.is_active:
+                return render(request, self.template_name, {'message': 'Email already verified. You can log in.'})
+
+            user.is_active = True
+            user.save()
+
+            return render(request, self.template_name, {'message': 'Email verified successfully. You can now log in.'})
+
+        except TokenError:
+            return render(request, self.template_name, {'error': 'Verification link is invalid or expired.'})
+        except User.DoesNotExist:
+            return render(request, self.template_name, {'error': 'User not found.'})
+
+
+@method_decorator(login_required(login_url='/login/'), name='dispatch')
+class SessionDashboardView(TemplateView):
+    template_name = 'home/app.html'

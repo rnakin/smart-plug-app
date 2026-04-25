@@ -1,569 +1,18 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="th" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KnowWatt</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/home/home.css' %}">
-  <link rel="stylesheet" href="{% static 'css/home/sidebar.css' %}">
-  <link rel="stylesheet" href="{% static 'css/home/page.css' %}">
-  <link rel="stylesheet" href="{% static 'css/home/digital_twin.css' %}">
-  <link rel="stylesheet" href="{% static 'css/home/dashboard.css' %}">
-  <link rel="stylesheet" href="{% static 'css/home/chart.css' %}">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-</head>
-<body>
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED JAVASCRIPT FOR KNOWWATT APPLICATION
+// ═══════════════════════════════════════════════════════════════════════════
 
-<!-- ═══════════════════════════════════════════════════════════════
-     SIDEBAR
-═══════════════════════════════════════════════════════════════ -->
-<nav class="sidebar">
-  <div class="logo" onclick="showPage('home')" style="cursor:pointer;">
-    <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </div>
-  <button class="nav-btn active" id="nav-home" onclick="showPage('home')" title="หน้าหลัก">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.8"/></svg>
-  </button>
-  <button class="nav-btn" id="nav-dashboard" onclick="showPage('dashboard')" title="Dashboard">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
-  </button>
-  <button class="nav-btn" id="nav-energy" onclick="showPage('energy')" title="พลังงาน">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M3 3v18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m7 16 4-5 4 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button>
-  <button class="nav-btn" id="nav-alerts" onclick="showPage('alerts')" title="การแจ้งเตือน" style="position:relative;">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <div class="bdg" id="alert-badge" style="display:none;"></div>
-  </button>
-  <button class="nav-btn" id="nav-manage" onclick="showPage('manage')" title="จัดการบ้าน">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.8"/><path d="M9 22V12h6v10" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="8" r="3" fill="var(--accent)" stroke="none"/><path d="M18 6v2l1 1" stroke="#000" stroke-width="1.2" stroke-linecap="round"/></svg>
-  </button>
-  <button class="nav-btn" id="nav-myhouses" onclick="showPage('myhouses')" title="บ้านของฉัน">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-  </button>
-  <div class="sidebar-gap"></div>
-  <button class="theme-btn" onclick="toggleTheme()" title="สลับธีม">
-    <svg class="i-sun" width="17" height="17" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <svg class="i-moon" width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button>
-  <button class="nav-btn" id="nav-account" onclick="showPage('account')" title="บัญชีของฉัน">
-    <svg width="19" height="19" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-  </button>
-  <div class="avatar" id="avatar-initials" onclick="showPage('account')" title="บัญชีของฉัน" style="cursor:pointer;">?</div>
-</nav>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     MAIN CONTENT
-═══════════════════════════════════════════════════════════════ -->
-<div id="content" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
-
-<!-- ─────────────────────────────────────────────────────────────
-     PAGE: HOME
-───────────────────────────────────────────────────────────── -->
-<div class="page active" id="page-home">
-  <!-- Top bar: greeting + house tabs + quick stats -->
-  <div class="home-header">
-    <div style="display:flex; flex-direction:column; gap:6px; flex:1; min-width:0;">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-        <div>
-          <div class="greeting">สวัสดี, <span id="username">...</span></div>
-          <div class="greeting-sub">
-            <div class="live-dot-home"></div>
-            <span id="live-status">กำลังโหลด...</span>
-          </div>
-        </div>
-        <div class="qs-row">
-          <div class="qs"><div class="dot" style="background:var(--accent)"></div>เปิดอยู่ <span class="v" id="qs-online">—</span></div>
-          <div class="qs"><div class="dot" style="background:var(--warn)"></div>แจ้งเตือน <span class="v" id="qs-alerts">—</span></div>
-          <div class="qs">⚡ <span class="v" id="qs-power">—</span> W</div>
-        </div>
-      </div>
-      <!-- House selection tabs inside topbar -->
-      <div class="house-row" style="padding:0; margin-top:4px;">
-        <div id="house-row" style="display:contents;"></div>
-        <button class="htab-add" onclick="toggleAddHomePopup()">
-          <svg width="11" height="11" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-          เพิ่มบ้าน
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Alert pills -->
-  <div class="alerts-zone" id="alerts-zone" style="padding:10px 36px 0; display:flex; flex-direction:column; gap:6px; flex-shrink:0;"></div>
-
-  <!-- Digital Twin section -->
-  <div class="twin-section">
-    <div class="twin-toolbar">
-      <div class="tb-left">
-        <button class="tbtn primary" onclick="openAddRoomDrawer()">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-          เพิ่มห้อง
-        </button>
-        <button class="tbtn" onclick="openAddPlugModal()">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          เพิ่มปลั๊ก
-        </button>
-        <button class="tbtn" id="btn-edit" onclick="toggleTwinEdit()">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8"/></svg>
-          จัดเรียง
-        </button>
-        <button class="tbtn" onclick="autoArrangeTwin()">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/></svg>
-          จัดอัตโนมัติ
-        </button>
-      </div>
-      <span id="house-role-badge" style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px;"></span>
-      <span class="mode-lbl" id="twin-mode-lbl">VIEW MODE</span>
-    </div>
-    <div class="twin-canvas" id="twin-canvas">
-      <div class="cempty" id="twin-empty">
-        <div class="cempty-ico">🏠</div>
-        <p>ยังไม่มีห้องหรือปลั๊กในบ้านนี้</p>
-        <small>คลิก "เพิ่มห้อง" เพื่อเริ่มสร้างแผนผังบ้าน</small>
-      </div>
-    </div>
-  </div>
-
-  <div class="sum-bar">
-    <div class="ss"><div class="ssl">ปลั๊ก</div><div class="ssv" id="sb-p">—</div></div>
-    <div class="sdiv"></div>
-    <div class="ss"><div class="ssl">กำลังไฟ</div><div class="ssv acc" id="sb-w">— W</div></div>
-    <div class="sdiv"></div>
-    <div class="ss"><div class="ssl">วันนี้</div><div class="ssv" id="sb-kwh">— kWh</div></div>
-    <div class="sdiv"></div>
-    <div class="ss"><div class="ssl">แจ้งเตือน</div><div class="ssv wrn" id="sb-alerts">—</div></div>
-    <div class="sr"><button class="tbtn" onclick="showPage('dashboard')">Dashboard →</button></div>
-  </div>
-</div>
-
-<!-- ─────────────────────────────────────────────────────────────
-     PAGE: DASHBOARD (real-time plug status)
-───────────────────────────────────────────────────────────── -->
-<div class="page" id="page-dashboard">
-  <div class="center-panel">
-    <div class="top-bar">
-      <div>
-        <div class="top-bar-title">📊 Dashboard</div>
-        <div class="top-bar-sub" id="dash-house-name">—</div>
-      </div>
-      <div class="top-bar-actions">
-        <button class="btn btn-ghost" onclick="loadDashboardPage()">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          รีเฟรช
-        </button>
-      </div>
-    </div>
-    <div class="dashboard-content">
-      <div class="stats-grid" id="dash-kpi">
-        <div class="stat-card"><div class="stat-label">ปลั๊กทั้งหมด</div><div class="stat-value" id="dash-total-plugs">—</div></div>
-        <div class="stat-card"><div class="stat-label">เปิดอยู่</div><div class="stat-value" id="dash-on-plugs" style="color:var(--accent)">—</div></div>
-        <div class="stat-card"><div class="stat-label">กำลังไฟรวม</div><div class="stat-value" id="dash-power">—<span class="stat-unit">W</span></div></div>
-        <div class="stat-card"><div class="stat-label">วันนี้</div><div class="stat-value" id="dash-today">—<span class="stat-unit">kWh</span></div></div>
-      </div>
-      <div id="dash-plug-list" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:4px;">
-        <div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text3);">กำลังโหลด...</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────────────────────────────────────────────────────
-     PAGE: ENERGY
-───────────────────────────────────────────────────────────── -->
-<div class="page" id="page-energy">
-  <div class="center-panel">
-    <div class="top-bar">
-      <div>
-        <div class="top-bar-title">⚡ การใช้พลังงาน</div>
-        <div class="top-bar-sub" id="energy-house-name">—</div>
-      </div>
-      <div class="top-bar-actions">
-        <select id="energy-period" onchange="loadEnergyPage()"
-          style="padding:7px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer;">
-          <option value="daily">รายวัน</option>
-          <option value="weekly">รายสัปดาห์</option>
-          <option value="monthly">รายเดือน</option>
-        </select>
-        <button class="btn btn-ghost" onclick="exportEnergy('csv')">⬇ CSV</button>
-        <button class="btn btn-ghost" onclick="exportEnergy('json')">⬇ JSON</button>
-      </div>
-    </div>
-    <div class="dashboard-content">
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">วันนี้</div><div class="stat-value" id="kpi-today">—<span class="stat-unit">kWh</span></div></div>
-        <div class="stat-card"><div class="stat-label">เดือนนี้</div><div class="stat-value" id="kpi-month">—<span class="stat-unit">kWh</span></div></div>
-        <div class="stat-card"><div class="stat-label">กำลังไฟปัจจุบัน</div><div class="stat-value" id="kpi-power">—<span class="stat-unit">W</span></div></div>
-      </div>
-      <div class="content-grid">
-        <div class="card">
-          <div class="card-header"><div class="card-title">กราฟการใช้พลังงาน</div></div>
-          <div style="padding:16px; height:260px;"><canvas id="energy-chart"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">อุปกรณ์ใช้ไฟสูงสุด</div></div>
-          <div id="top-devices-list" style="padding:8px 0;"><div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">กำลังโหลด...</div></div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:16px;">
-        <div class="card-header"><div class="card-title">การใช้พลังงานแยกตามปลั๊ก</div></div>
-        <div id="plug-breakdown" style="padding:8px 0;"><div style="padding:20px; text-align:center; color:var(--text3); font-size:13px;">กำลังโหลด...</div></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────────────────────────────────────────────────────
-     PAGE: ALERTS
-───────────────────────────────────────────────────────────── -->
-<div class="page" id="page-alerts">
-  <div class="center-panel">
-    <div class="top-bar">
-      <div>
-        <div class="top-bar-title">🔔 การแจ้งเตือน</div>
-        <div class="top-bar-sub" id="alerts-house-name">—</div>
-      </div>
-      <div class="top-bar-actions">
-        <select id="alert-status-filter" onchange="loadAlertsPage()"
-          style="padding:7px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer;">
-          <option value="pending">รอดำเนินการ</option>
-          <option value="acknowledged">รับทราบแล้ว</option>
-          <option value="snoozed">เลื่อนแจ้งเตือน</option>
-          <option value="dismissed">ยกเลิกแล้ว</option>
-          <option value="all">ทั้งหมด</option>
-        </select>
-        <button class="btn btn-ghost" onclick="loadAlertsPage()">รีเฟรช</button>
-      </div>
-    </div>
-    <div class="dashboard-content">
-      <div id="alerts-list">
-        <div style="text-align:center; padding:40px; color:var(--text3);">กำลังโหลด...</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────────────────────────────────────────────────────
-     PAGE: HOUSE MANAGEMENT (owner/admin)
-───────────────────────────────────────────────────────────── -->
-<div class="page" id="page-manage">
-  <div class="center-panel">
-    <div class="top-bar">
-      <div>
-        <div class="top-bar-title">🏠 จัดการบ้าน</div>
-        <div class="top-bar-sub" id="manage-house-name">—</div>
-      </div>
-      <div class="top-bar-actions">
-        <button class="btn btn-ghost" onclick="loadManagePage()">รีเฟรช</button>
-      </div>
-    </div>
-    <div class="dashboard-content" id="manage-content">
-      <div style="text-align:center;padding:40px;color:var(--text3);">กำลังโหลด...</div>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────────────────────────────────────────────────────
-     PAGE: MY HOUSES (all users)
-───────────────────────────────────────────────────────────── -->
-<div class="page" id="page-myhouses">
-  <div class="center-panel">
-    <div class="top-bar">
-      <div>
-        <div class="top-bar-title">🔑 บ้านของฉัน</div>
-        <div class="top-bar-sub">บ้านทั้งหมดที่คุณเป็นสมาชิก</div>
-      </div>
-      <div class="top-bar-actions">
-        <button class="btn btn-ghost" onclick="loadMyHousesPage()">รีเฟรช</button>
-      </div>
-    </div>
-    <div class="dashboard-content" id="myhouses-content">
-      <div style="text-align:center;padding:40px;color:var(--text3);">กำลังโหลด...</div>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────────────────────────────────────────────────────
-     PAGE: ACCOUNT
-───────────────────────────────────────────────────────────── -->
-<div class="page" id="page-account">
-  <div class="center-panel">
-    <div class="top-bar">
-      <div>
-        <div class="top-bar-title">👤 บัญชีของฉัน</div>
-        <div class="top-bar-sub" id="account-sub">—</div>
-      </div>
-    </div>
-    <div class="dashboard-content">
-      <div style="max-width:480px;">
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header"><div class="card-title">ข้อมูลบัญชี</div></div>
-          <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
-            <div>
-              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ชื่อผู้ใช้</label>
-              <input id="acc-username" type="text" class="modal-input" placeholder="ชื่อผู้ใช้">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">อีเมล</label>
-              <input id="acc-email" type="email" class="modal-input" placeholder="อีเมล">
-            </div>
-            <p id="acc-profile-msg" style="font-size:12px;min-height:16px;margin:0;"></p>
-            <button onclick="saveProfile()" class="modal-btn-primary" style="padding:10px;">บันทึกข้อมูล</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">เปลี่ยนรหัสผ่าน</div></div>
-          <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
-            <div>
-              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">รหัสผ่านปัจจุบัน</label>
-              <input id="acc-cur-pw" type="password" class="modal-input" placeholder="รหัสผ่านปัจจุบัน">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">รหัสผ่านใหม่</label>
-              <input id="acc-new-pw" type="password" class="modal-input" placeholder="รหัสผ่านใหม่">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">ยืนยันรหัสผ่านใหม่</label>
-              <input id="acc-confirm-pw" type="password" class="modal-input" placeholder="ยืนยันรหัสผ่านใหม่">
-            </div>
-            <p id="acc-pw-msg" style="font-size:12px;min-height:16px;margin:0;"></p>
-            <button onclick="changePassword()" class="modal-btn-primary" style="padding:10px;">เปลี่ยนรหัสผ่าน</button>
-          </div>
-        </div>
-        <div style="margin-top:16px;">
-          <button onclick="doLogout()" style="width:100%;padding:10px;background:rgba(255,77,106,.1);border:1px solid rgba(255,77,106,.3);border-radius:10px;color:var(--danger);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">ออกจากระบบ</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-</div><!-- end #content -->
-
-<!-- ═══════════════════════════════════════════════════════════════
-     DRAWERS (Digital Twin)
-═══════════════════════════════════════════════════════════════ -->
-<div class="overlay" id="twin-overlay" onclick="closeTwinDrawer()"></div>
-
-<!-- ADD ROOM DRAWER -->
-<div class="drawer" id="d-add-room">
-  <div class="dh">
-    <div class="dh-title">เพิ่มห้องใหม่</div>
-    <button class="dclose" onclick="closeTwinDrawer()">✕</button>
-  </div>
-  <div class="dbody">
-    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">คลิกเพื่อเลือก · ดับเบิลคลิกเพื่อสร้างทันที</div>
-    <div class="rpgrid">
-      <div class="ropt" onclick="selectRoomType('ครัว','🍳',this)" ondblclick="addRoomFromDrawer('ครัว','🍳')"><div class="ropt-em">🍳</div><div class="ropt-nm">ครัว</div></div>
-      <div class="ropt" onclick="selectRoomType('ห้องนอน','🛏',this)" ondblclick="addRoomFromDrawer('ห้องนอน','🛏')"><div class="ropt-em">🛏</div><div class="ropt-nm">ห้องนอน</div></div>
-      <div class="ropt" onclick="selectRoomType('ห้องนั่งเล่น','🛋',this)" ondblclick="addRoomFromDrawer('ห้องนั่งเล่น','🛋')"><div class="ropt-em">🛋</div><div class="ropt-nm">ห้องนั่งเล่น</div></div>
-      <div class="ropt" onclick="selectRoomType('ห้องน้ำ','🚿',this)" ondblclick="addRoomFromDrawer('ห้องน้ำ','🚿')"><div class="ropt-em">🚿</div><div class="ropt-nm">ห้องน้ำ</div></div>
-      <div class="ropt" onclick="selectRoomType('ระเบียง','🌿',this)" ondblclick="addRoomFromDrawer('ระเบียง','🌿')"><div class="ropt-em">🌿</div><div class="ropt-nm">ระเบียง</div></div>
-      <div class="ropt" onclick="selectRoomType('ห้องซัก','🫧',this)" ondblclick="addRoomFromDrawer('ห้องซัก','🫧')"><div class="ropt-em">🫧</div><div class="ropt-nm">ห้องซัก</div></div>
-      <div class="ropt" onclick="selectRoomType('ห้องทำงาน','💻',this)" ondblclick="addRoomFromDrawer('ห้องทำงาน','💻')"><div class="ropt-em">💻</div><div class="ropt-nm">ห้องทำงาน</div></div>
-      <div class="ropt" onclick="selectRoomType('โรงรถ','🚗',this)" ondblclick="addRoomFromDrawer('โรงรถ','🚗')"><div class="ropt-em">🚗</div><div class="ropt-nm">โรงรถ</div></div>
-    </div>
-    <div style="margin-top:14px;">
-      <label style="font-size:11px;color:var(--text3);margin-bottom:6px;display:block;">ชื่อห้อง (แก้ไขได้)</label>
-      <input id="custom-room-name" type="text" placeholder="ชื่อห้อง..." class="modal-input">
-    </div>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <button onclick="closeTwinDrawer()" class="ab ab-ghost" style="flex:1;">ยกเลิก</button>
-      <button onclick="addRoomConfirm()" class="tbtn primary" style="flex:2;justify-content:center;padding:10px;">✓ เพิ่มห้อง</button>
-    </div>
-  </div>
-</div>
-
-<!-- MOVE PLUG DRAWER -->
-<div class="drawer" id="d-move-plug">
-  <div class="dh">
-    <div class="dh-title" id="d-move-plug-title">ย้ายปลั๊ก</div>
-    <button class="dclose" onclick="closeTwinDrawer()">✕</button>
-  </div>
-  <div class="dbody">
-    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">เลือกห้องปลายทาง</div>
-    <div id="move-room-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-  </div>
-</div>
-
-<!-- ROOM CONFIG DRAWER -->
-<div class="drawer" id="d-room-config">
-  <div class="dh">
-    <div class="dh-title" id="d-room-config-title">ตั้งค่าห้อง</div>
-    <button class="dclose" onclick="closeTwinDrawer()">✕</button>
-  </div>
-  <div class="dbody">
-    <div class="dsec">
-      <div class="dsec-lbl">ชื่อห้อง</div>
-      <input id="room-config-name" type="text" class="modal-input" style="margin-bottom:10px;">
-      <button onclick="saveRoomConfig()" class="tbtn primary" style="width:100%;justify-content:center;padding:10px;">บันทึก</button>
-    </div>
-    <div class="dsec" style="margin-top:10px;">
-      <div class="dsec-lbl">ปลั๊กในห้อง</div>
-      <div id="room-config-plugs" style="display:flex;flex-direction:column;gap:6px;"></div>
-    </div>
-    <div style="margin-top:14px;">
-      <button onclick="deleteRoomFromConfig()" class="ab ab-dng" style="width:100%;justify-content:center;">🗑 ลบห้องนี้</button>
-    </div>
-  </div>
-</div>
-
-<!-- PLUG DETAIL DRAWER -->
-<div class="drawer" id="d-plug-detail">
-  <div class="dh">
-    <div class="dh-title" id="dd-plug-title">ปลั๊ก</div>
-    <button class="dclose" onclick="closeTwinDrawer()">✕</button>
-  </div>
-  <div class="dbody">
-    <div class="dsec">
-      <div class="dsec-lbl">Real-time</div>
-      <div class="dmet">
-        <div class="dm"><div class="dml">กำลังไฟ</div><div class="dmv" id="dd-power">—<span class="dmu">W</span></div></div>
-        <div class="dm"><div class="dml">สถานะ</div><div class="dmv" id="dd-status" style="font-size:13px;">—</div></div>
-        <div class="dm"><div class="dml">อุปกรณ์</div><div class="dmv" id="dd-device" style="font-size:13px;">—</div></div>
-        <div class="dm"><div class="dml">ความเสี่ยง</div><div class="dmv" id="dd-risk" style="font-size:13px;">—</div></div>
-      </div>
-    </div>
-    <div class="big-tog" id="dd-tog" onclick="togglePlugFromDrawer()">
-      <div class="bt-info"><div class="bt-lbl">สถานะการทำงาน</div><div class="bt-st" id="dd-st">—</div></div>
-      <div class="sw" id="dd-sw"></div>
-    </div>
-    <div class="dsec" style="margin-top:8px;">
-      <div class="dsec-lbl">ข้อมูลปลั๊ก</div>
-      <div style="display:flex;flex-direction:column;gap:7px;font-size:12px;">
-        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2)">รหัส</span><span id="dd-code" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);">—</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2)">ห้อง</span><span id="dd-room">—</span></div>
-      </div>
-    </div>
-    <div class="arow">
-      <button class="ab ab-ghost" onclick="openMovePlugDrawer()">↔ ย้ายห้อง</button>
-      <button class="ab ab-dng" onclick="togglePlugFromDrawer()">⏹ ปิดทันที</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     MODALS
-═══════════════════════════════════════════════════════════════ -->
-
-<!-- Add Home overlay + popup -->
-<div class="popup-overlay" id="popup-overlay" style="display:none;" onclick="toggleAddHomePopup()"></div>
-<div id="add-home-popup" class="popup" style="display:none; flex-direction:column; gap:0; max-height:90vh; overflow-y:auto;">
-  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
-    <div style="font-size:15px; font-weight:700; color:var(--text);">🏠 เพิ่มบ้านใหม่</div>
-    <button onclick="toggleAddHomePopup()" style="background:none; border:none; color:var(--text2); cursor:pointer; font-size:20px;">&times;</button>
-  </div>
-  <div style="margin-bottom:14px;">
-    <div style="font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px;">ไอคอน</div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="emoji-picker">
-      {% for em in "🏠🏡🏢🏣🏤🏥🏦🏨🏩🏪🏫🏬🏭🏯🏰"|make_list %}
-      <button class="emoji-btn" onclick="selectEmoji('{{ em }}')" style="font-size:20px; background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center;">{{ em }}</button>
-      {% endfor %}
-    </div>
-    <input type="hidden" id="house_emoji" value="🏠">
-  </div>
-  <div style="margin-bottom:12px;">
-    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ชื่อบ้าน *</label>
-    <input id="house_name" type="text" placeholder="เช่น บ้านหลังใหญ่" class="modal-input">
-  </div>
-  <div style="margin-bottom:12px;">
-    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ที่อยู่ *</label>
-    <input id="address" type="text" placeholder="เช่น 123 ถนนสุขุมวิท กรุงเทพฯ" class="modal-input">
-  </div>
-  <div style="margin-bottom:6px;">
-    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ตำแหน่ง (ไม่บังคับ)</label>
-    <div id="map" style="height:200px; width:100%; border-radius:10px; border:1px solid var(--border); overflow:hidden;"></div>
-    <div id="coords-display" style="font-size:11px; color:var(--text3); margin-top:5px;">คลิกบนแผนที่เพื่อปักหมุด</div>
-  </div>
-  <input type="hidden" id="lat">
-  <input type="hidden" id="lng">
-  <p id="popup-error" style="font-size:12px; color:var(--danger); min-height:16px; margin:4px 0 0;"></p>
-  <div style="display:flex; gap:10px; margin-top:16px;">
-    <button onclick="toggleAddHomePopup()" class="modal-btn-cancel">ยกเลิก</button>
-    <button id="add-home-btn" onclick="addHomeCommit()" class="modal-btn-primary">เพิ่มบ้าน</button>
-  </div>
-</div>
-
-<!-- Add Plug overlay + popup -->
-<div class="popup-overlay" id="plug-overlay" style="display:none;" onclick="closeAddPlugModal()"></div>
-<div id="add-plug-popup" class="popup" style="display:none; flex-direction:column; gap:0;">
-  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
-    <div style="font-size:15px; font-weight:700; color:var(--text);"> เพิ่มปลั๊กอัจฉริยะ</div>
-    <button onclick="closeAddPlugModal()" style="background:none; border:none; color:var(--text2); cursor:pointer; font-size:20px;">&times;</button>
-  </div>
-  <div style="margin-bottom:12px;">
-    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">รหัสปลั๊ก *</label>
-    <input id="plug_code" type="text" placeholder="เช่น KW-001" class="modal-input">
-  </div>
-  <div style="margin-bottom:12px;">
-    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ชื่อปลั๊ก *</label>
-    <input id="plug_name" type="text" placeholder="เช่น ปลั๊กครัว A1" class="modal-input">
-  </div>
-  <div style="margin-bottom:12px;">
-    <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">ห้อง</label>
-    <select id="plug_location" class="modal-input" style="cursor:pointer;">
-      <option value="">— ไม่ระบุ —</option>
-    </select>
-  </div>
-  <p id="plug-error" style="font-size:12px; color:var(--danger); min-height:16px; margin:4px 0 0;"></p>
-  <div style="display:flex; gap:10px; margin-top:16px;">
-    <button onclick="closeAddPlugModal()" class="modal-btn-cancel">ยกเลิก</button>
-    <button id="add-plug-btn" onclick="addPlugCommit()" class="modal-btn-primary">เพิ่มปลั๊ก</button>
-  </div>
-</div>
-
-<style>
-.modal-input {
-  width:100%; padding:10px 12px;
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:10px; color:var(--text); font-size:14px;
-  font-family:'DM Sans',sans-serif; outline:none;
-}
-.modal-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
-.modal-input::placeholder { color:var(--text3); }
-.modal-btn-cancel {
-  flex:1; padding:10px; background:var(--surface2); border:1px solid var(--border);
-  border-radius:10px; color:var(--text2); font-size:13px; font-weight:500;
-  cursor:pointer; font-family:'DM Sans',sans-serif;
-}
-.modal-btn-primary {
-  flex:2; padding:10px; background:var(--accent); border:none;
-  border-radius:10px; color:#000; font-size:13px; font-weight:600;
-  cursor:pointer; font-family:'DM Sans',sans-serif;
-}
-.modal-btn-primary:hover { filter:brightness(1.08); }
-.modal-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
-</style>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     SCRIPTS
-═══════════════════════════════════════════════════════════════ -->
-<script>
 // ── Auth ──────────────────────────────────────────────────────────────────────
-// Check if user is logged in by fetching user info
-// Session cookie will be sent automatically by the browser
-fetch('/auth/api/me/')
-  .then(res => {
-    if (res.status === 403 || res.status === 401) {
-      window.location = '/login/';
-      return;
-    }
-    return res.json();
-  })
+const token = localStorage.getItem('access');
+if (!token) window.location = '/login/';
+
+fetch('/auth/me/', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(res => { if (res.status === 401) { localStorage.clear(); window.location = '/login/'; } return res.json(); })
   .then(data => {
     if (!data?.username) return;
     document.getElementById('avatar-initials').textContent = data.username.slice(0,1).toUpperCase();
     document.getElementById('username').textContent = data.username;
-  }).catch(() => {
-    window.location = '/login/';
-  });
+  }).catch(() => {});
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 function toggleTheme() {
@@ -576,37 +25,21 @@ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme'
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 async function apiGet(url) {
-  const res = await fetch(url);
-  if (res.status === 403 || res.status === 401) {
-    window.location = '/login/';
-    return;
-  }
+  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  if (res.status === 401) { localStorage.clear(); window.location = '/login/'; }
   return res.json();
 }
 async function apiPost(url, body) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify(body),
   });
   return { ok: res.ok, status: res.status, data: await res.json() };
 }
 
-// ── Page navigation ───────────────────────────────────────────────────────────
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const page = document.getElementById('page-' + name);
-  const btn  = document.getElementById('nav-' + name);
-  if (page) page.classList.add('active');
-  if (btn)  btn.classList.add('active');
-  if (name === 'energy')    loadEnergyPage();
-  if (name === 'alerts')    loadAlertsPage();
-  if (name === 'dashboard') loadDashboardPage();
-  if (name === 'manage')    loadManagePage();
-  if (name === 'myhouses')  loadMyHousesPage();
-  if (name === 'account')   loadAccountPage();
-}
+// ── Page initialization (called on each page load) ─────────────────────────────
+// Each page has its own initialization function defined in its template
 
 // ── Shared state ──────────────────────────────────────────────────────────────
 let houses = [], currentPlugs = [], activeHouseId = null, activeHouseName = '', activeHouseRole = '';
@@ -805,7 +238,7 @@ function renderTwinRoom(r, canvas) {
 async function apiPatch(url, body) {
   const res = await fetch(url, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify(body),
   });
   return { ok: res.ok, data: await res.json() };
@@ -1045,7 +478,7 @@ async function movePlugToRoom(roomName) {
   const p = selectedPlugForDrawer;
   const res = await fetch(`/api/houses/${activeHouseId}/plugs/${p.id}/`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ location: roomName }),
   });
   if (res.ok) {
@@ -1536,7 +969,7 @@ async function saveHouseSettings() {
   if (!house_name) { msg.textContent = 'กรุณากรอกชื่อบ้าน'; return; }
   const res = await fetch(`/api/houses/${activeHouseId}/`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ house_name, address, lat: lat ? parseFloat(lat) : null, long: lng ? parseFloat(lng) : null, emoji }),
   });
   const data = await res.json();
@@ -1555,6 +988,7 @@ async function deleteHouseConfirm() {
   if (!confirm('ลบบ้าน "' + activeHouseName + '"? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
   const res = await fetch(`/api/houses/${activeHouseId}/`, {
     method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token },
   });
   if (res.ok) {
     houses = houses.filter(h => h.id !== activeHouseId);
@@ -1713,9 +1147,9 @@ async function saveProfile() {
   msg.style.color = 'var(--danger)'; msg.textContent = '';
   if (!username) { msg.textContent = 'กรุณากรอกชื่อผู้ใช้'; return; }
   if (!email) { msg.textContent = 'กรุณากรอกอีเมล'; return; }
-  const res = await fetch('/auth/api/me/update/', {
+  const res = await fetch('/auth/me/update/', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ username, email }),
   });
   const data = await res.json();
@@ -1738,9 +1172,9 @@ async function changePassword() {
   if (!current_password) { msg.textContent = 'กรุณากรอกรหัสผ่านปัจจุบัน'; return; }
   if (!new_password) { msg.textContent = 'กรุณากรอกรหัสผ่านใหม่'; return; }
   if (new_password !== confirm_pw) { msg.textContent = 'รหัสผ่านใหม่ไม่ตรงกัน'; return; }
-  const res = await fetch('/auth/api/me/update/', {
+  const res = await fetch('/auth/me/update/', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ current_password, new_password }),
   });
   const data = await res.json();
@@ -1753,8 +1187,16 @@ async function changePassword() {
 }
 
 async function doLogout() {
-  // Session-based logout - just redirect to logout endpoint
-  window.location = '/logout/';
+  const refresh = localStorage.getItem('refresh');
+  if (refresh) {
+    await fetch('/auth/logout/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ refresh }),
+    }).catch(() => {});
+  }
+  localStorage.clear();
+  window.location = '/login/';
 }
 
 // ── WebSocket for Real-time Plug Updates ─────────────────────────────────────────
@@ -1855,7 +1297,9 @@ document.addEventListener('houseChanged', async function() {
   });
   
   // Get current plugs and connect WebSockets for each
-  const res = await fetch(`/api/houses/${activeHouseId}/plugs/`);
+  const res = await fetch(`/api/houses/${activeHouseId}/plugs/`, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
   if (res.ok) {
     const plugs = await res.json();
     plugs.forEach(p => {
@@ -1869,7 +1313,9 @@ document.addEventListener('houseChanged', async function() {
 // Also connect on initial load
 if (activeHouseId) {
   (async () => {
-    const res = await fetch(`/api/houses/${activeHouseId}/plugs/`);
+    const res = await fetch(`/api/houses/${activeHouseId}/plugs/`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
     if (res.ok) {
       const plugs = await res.json();
       plugs.forEach(p => {
@@ -1880,6 +1326,3 @@ if (activeHouseId) {
     }
   })();
 }
-</script>
-</body>
-</html>

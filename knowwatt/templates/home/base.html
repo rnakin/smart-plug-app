@@ -76,18 +76,13 @@
 
 <script>
 // ── Auth ──────────────────────────────────────────────────────────────────────
-const token = localStorage.getItem('access');
-
-if (!token) {
-  window.location = '/login/';
-}
-
-// Fetch current user info
-fetch('/auth/me/', { headers: { 'Authorization': 'Bearer ' + token } })
+// Check if user is logged in by fetching user info
+// Session cookie will be sent automatically by the browser
+fetch('/auth/api/me/')
   .then(res => {
-    if (res.status === 401) {
-      localStorage.clear();
+    if (res.status === 403 || res.status === 401) {
       window.location = '/login/';
+      return;
     }
     return res.json();
   })
@@ -100,7 +95,9 @@ fetch('/auth/me/', { headers: { 'Authorization': 'Bearer ' + token } })
     const usernameEl = document.getElementById('username');
     if (usernameEl) usernameEl.textContent = data.username;
   })
-  .catch(() => {});
+  .catch(() => {
+    window.location = '/login/';
+  });
 
 // ── Page navigation ───────────────────────────────────────────────────────────
 function showPage(name) {
@@ -133,9 +130,7 @@ document.documentElement.setAttribute('data-theme', savedTheme);
 // ── Alert badge ───────────────────────────────────────────────────────────────
 async function refreshAlertBadge() {
   try {
-    const res = await fetch('/api/alerts/notifications/?status=pending&limit=1', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
+    const res = await fetch('/api/alerts/notifications/?status=pending&limit=1');
     if (!res.ok) return;
     const data = await res.json();
     const badge = document.getElementById('alert-badge');
@@ -154,15 +149,18 @@ setInterval(refreshAlertBadge, 30000);
 
 // ── Shared API helper ─────────────────────────────────────────────────────────
 async function apiGet(url) {
-  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
-  if (res.status === 401) { localStorage.clear(); window.location = '/login/'; }
+  const res = await fetch(url);
+  if (res.status === 403 || res.status === 401) {
+    window.location = '/login/';
+    return;
+  }
   return res.json();
 }
 
 async function apiPost(url, body) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   return { ok: res.ok, status: res.status, data: await res.json() };
@@ -171,7 +169,7 @@ async function apiPost(url, body) {
 async function apiPatch(url, body) {
   const res = await fetch(url, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   return { ok: res.ok, data: await res.json() };
@@ -180,7 +178,6 @@ async function apiPatch(url, body) {
 async function apiDelete(url) {
   const res = await fetch(url, {
     method: 'DELETE',
-    headers: { 'Authorization': 'Bearer ' + token },
   });
   return { ok: res.ok };
 }

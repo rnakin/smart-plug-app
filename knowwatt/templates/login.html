@@ -79,20 +79,25 @@
     <h1 class="auth-headline">Welcome back</h1>
     <p class="auth-subhead">Sign in to your account</p>
 
-    <div class="field-group">
-      <div class="field">
-        <label for="username">Username</label>
-        <input id="username" type="text" placeholder="Enter your username" autocomplete="username">
+    <form method="post" action="{% url 'login' %}">
+      {% csrf_token %}
+      <div class="field-group">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" placeholder="Enter your username" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+        </div>
       </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password">
-      </div>
-    </div>
 
-    <p class="msg-error" id="error"></p>
+      {% if form.errors %}
+        <p class="msg-error">Invalid username or password.</p>
+      {% endif %}
 
-    <button class="btn-primary" onclick="login()">Sign In</button>
+      <button type="submit" class="btn-primary">Sign In</button>
+    </form>
 
     <div class="auth-footer" style="margin-top:14px;">
       <a href="/forgot-password/">Forgot password?</a>
@@ -103,33 +108,5 @@
 
   </div>
 </div>
-
-<script>
-  if (localStorage.getItem('access')) window.location = '/home/';
-
-  async function login() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const errorEl  = document.getElementById('error');
-    errorEl.textContent = '';
-
-    const res  = await fetch('/auth/login/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      localStorage.setItem('access',  data.access);
-      localStorage.setItem('refresh', data.refresh);
-      window.location = '/home/';
-    } else {
-      errorEl.textContent = data.detail || 'Login failed. Please check your credentials.';
-    }
-  }
-
-  document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
-</script>
 </body>
 </html>
