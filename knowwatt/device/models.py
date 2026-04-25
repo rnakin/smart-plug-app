@@ -13,6 +13,13 @@ class SmartPlug(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='plugs')
+    room = models.ForeignKey(
+        'house.Room',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='plugs'
+    )
     plug_code = models.CharField(max_length=64, unique=True)  # QR/manual code
     name = models.CharField(max_length=255)
     location = models.CharField(max_length=255, blank=True, default='')

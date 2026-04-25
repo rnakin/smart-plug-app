@@ -1,6 +1,11 @@
 from django.db import models
 import uuid
+import secrets
 from django.conf import settings
+
+
+def generate_join_code():
+    return secrets.token_urlsafe(6)[:8].upper()
 
 
 class House(models.Model):
@@ -11,7 +16,8 @@ class House(models.Model):
     long = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     emoji = models.CharField(max_length=10, default='🏠')
-    # deleted = models.BooleanField(default=False)
+    join_code = models.CharField(max_length=8, unique=True, blank=True, null=True)
+
     class Meta:
         db_table = 'house'
         verbose_name = 'House'
@@ -20,6 +26,23 @@ class House(models.Model):
 
     def __str__(self):
         return f"{self.house_name} ({self.id})"
+
+
+class Room(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='rooms')
+    name = models.CharField(max_length=100)
+    emoji = models.CharField(max_length=10, default='🏠')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'room'
+        verbose_name = 'Room'
+        verbose_name_plural = 'Rooms'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.house.house_name})"
 
 
 class HouseMember(models.Model):

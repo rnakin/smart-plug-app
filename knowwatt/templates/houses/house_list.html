@@ -1,0 +1,92 @@
+{% extends "app/base.html" %}
+{% load static %}
+{% block title %}My Houses — KnowWatt{% endblock %}
+{% block nav_houses %}active{% endblock %}
+
+{% block content %}
+<div class="page active">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">My Houses</div>
+        <div class="top-bar-sub">All houses you belong to</div>
+      </div>
+      
+    </div>
+    <div class="dashboard-content">
+      {% if houses %}
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px;">
+        {% for item in houses %}
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="padding:18px 20px; border-bottom:1px solid var(--border);">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:24px;">{{ item.house.emoji|default:"🏠" }}</span>
+                <div>
+                  <div style="font-size:15px; font-weight:700; color:var(--text);">{{ item.house.house_name }}</div>
+                  <div style="font-size:11px; color:var(--text3);">{{ item.house.address }}</div>
+                </div>
+              </div>
+              <span style="font-size:11px; padding:3px 10px; border-radius:6px;
+                {% if item.role == 'owner' %}background:rgba(0,217,139,.1); color:var(--accent);
+                {% elif item.role == 'admin' %}background:rgba(100,100,255,.1); color:#88f;
+                {% else %}background:var(--surface2); color:var(--text3);{% endif %}">
+                {{ item.role }}
+              </span>
+            </div>
+          </div>
+          <div style="padding:12px 20px; display:flex; gap:12px; font-size:12px; color:var(--text3);">
+            <span>{{ item.member_count }} member{{ item.member_count|pluralize }}</span>
+            <span>{{ item.plug_count }} plug{{ item.plug_count|pluralize }}</span>
+          </div>
+          <div style="padding:0 20px 16px; display:flex; gap:8px;">
+            <a href="{% url 'page-house-detail' pk=item.house.pk %}" style="flex:1; padding:8px; background:var(--accent); border:none; border-radius:8px; color:#000; font-size:12px; font-weight:600; text-align:center; text-decoration:none;">View</a>
+            {% if item.role == 'owner' %}
+            <a href="{% url 'page-house-edit' pk=item.house.pk %}" style="padding:8px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text2); font-size:12px; text-decoration:none;">Edit</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center; padding:60px 20px; color:var(--text3);">
+        <div style="font-size:40px; margin-bottom:12px;">🏠</div>
+        <p>No houses yet</p>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+          <a href="{% url 'page-house-create' %}" class="tbtn primary" style="text-decoration:none; display:inline-flex;">+ Add House</a>
+          <a href="{% url 'page-house-join' %}" class="tbtn" style="text-decoration:none; display:inline-flex;">Join House</a>
+        </div>
+      </div>
+      {% endif %}
+
+              <div class="card" style="padding:0; overflow:hidden;">
+          <div style="padding:18px 20px; border-bottom:1px solid var(--border);">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:24px;">🏠</span>
+                <div>
+                  <div style="font-size:15px; font-weight:700; color:var(--text);">Add or Join House</div>
+                  <div style="font-size:11px; color:var(--text3);">Create a new house or join an existing one</div>
+                </div>
+              </div>
+              <span style="font-size:11px; padding:3px 10px; border-radius:6px; background:rgba(0,217,139,.1); color:var(--accent);">
+                Action
+              </span>
+            </div>
+          </div>
+          <gap>
+            
+          </gap>
+          <div style="padding:12px 20px; display:flex; gap:12px; font-size:12px; color:var(--text3);">
+            <span>Manage your homes</span>
+          </div>
+          <div style="padding:0 20px 16px; display:flex; gap:8px;">
+            <a href="{% url 'page-house-create' %}" style="flex:1; padding:8px; background:var(--accent); border:none; border-radius:8px; color:#000; font-size:12px; font-weight:600; text-align:center; text-decoration:none;">Add House</a>
+            <a href="{% url 'page-house-join' %}" style="flex:1; padding:8px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text2); font-size:12px; text-decoration:none;">Join House</a>
+          </div>
+        </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

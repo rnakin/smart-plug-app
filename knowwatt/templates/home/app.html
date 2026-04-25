@@ -584,9 +584,27 @@ async function apiGet(url) {
   return res.json();
 }
 async function apiPost(url, body) {
+  const getCookie = (name) => {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  };
+  const csrftoken = getCookie('csrftoken');
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrftoken
+    },
     body: JSON.stringify(body),
   });
   return { ok: res.ok, status: res.status, data: await res.json() };
@@ -1585,7 +1603,6 @@ async function inviteMember() {
     msg.textContent = data.error || 'เกิดข้อผิดพลาด';
   }
 }
-
 async function removeMember(userId, username) {
   if (!confirm('ลบ ' + username + ' ออกจากบ้านนี้?')) return;
   const { ok, data } = await apiPost(`/api/houses/${activeHouseId}/users/manage/`, { action: 'remove', user_id: userId });

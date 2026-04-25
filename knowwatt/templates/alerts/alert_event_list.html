@@ -1,0 +1,87 @@
+{% extends "app/base.html" %}
+{% load static %}
+{% block title %}Alerts — {{ house.house_name }}{% endblock %}
+{% block nav_alerts %}active{% endblock %}
+
+{% block content %}
+<div class="page active">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">Alerts — {{ house.house_name }}</div>
+        <div class="top-bar-sub">{{ events|length }} event{{ events|length|pluralize }}</div>
+      </div>
+      <div class="top-bar-actions">
+        <form method="get" style="display:flex; gap:8px;">
+          <select name="status" onchange="this.form.submit()"
+            style="padding:7px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer;">
+            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="acknowledged" {% if status_filter == 'acknowledged' %}selected{% endif %}>Acknowledged</option>
+            <option value="snoozed" {% if status_filter == 'snoozed' %}selected{% endif %}>Snoozed</option>
+            <option value="dismissed" {% if status_filter == 'dismissed' %}selected{% endif %}>Dismissed</option>
+            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+          </select>
+        </form>
+        <a href="{% url 'page-alert-rules' house_pk=house.pk %}" class="tbtn" style="text-decoration:none;">Rules</a>
+        <a href="{% url 'page-house-detail' pk=house.pk %}" class="tbtn" style="text-decoration:none;">← Back</a>
+      </div>
+    </div>
+    <div class="dashboard-content">
+      {% if events %}
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        {% for ev in events %}
+        <div class="card" style="padding:14px 16px;">
+          <div style="display:flex; align-items:flex-start; gap:12px;">
+            <div style="font-size:18px; margin-top:2px;">
+              {% if ev.status == 'pending' %}⚠️{% elif ev.status == 'acknowledged' %}✅{% elif ev.status == 'snoozed' %}⏰{% elif ev.status == 'dismissed' %}❌{% else %}ℹ️{% endif %}
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:14px; font-weight:600;">{{ ev.title }}</div>
+              <div style="font-size:12px; color:var(--text2); margin-top:2px;">{{ ev.message }}</div>
+              <div style="font-size:11px; color:var(--text3); margin-top:4px;">
+                {{ ev.triggered_at|date:"M d, Y H:i" }}
+                {% if ev.trigger_value %} · Value: {{ ev.trigger_value }}{% endif %}
+                {% if ev.plug %} · Plug: {{ ev.plug.name }}{% endif %}
+                {% if ev.device %} · Device: {{ ev.device.name }}{% endif %}
+              </div>
+            </div>
+            <span style="font-size:11px; padding:3px 10px; border-radius:6px;
+              {% if ev.status == 'pending' %}background:rgba(255,180,0,.1); color:var(--warn);
+              {% elif ev.status == 'acknowledged' %}background:rgba(0,217,139,.1); color:var(--accent);
+              {% elif ev.status == 'snoozed' %}background:rgba(100,100,255,.1); color:#88f;
+              {% else %}background:var(--surface2); color:var(--text3);{% endif %}">
+              {{ ev.status }}
+            </span>
+          </div>
+          {% if ev.status == 'pending' %}
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <form method="post" action="{% url 'page-alert-event-action' house_pk=house.pk event_pk=ev.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="acknowledge">
+              <button type="submit" style="padding:6px 14px; background:var(--accent); border:none; border-radius:8px; color:#000; font-size:12px; font-weight:600; cursor:pointer;">Acknowledge</button>
+            </form>
+            <form method="post" action="{% url 'page-alert-event-action' house_pk=house.pk event_pk=ev.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="snooze">
+              <button type="submit" style="padding:6px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text2); font-size:12px; cursor:pointer;">Snooze</button>
+            </form>
+            <form method="post" action="{% url 'page-alert-event-action' house_pk=house.pk event_pk=ev.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="dismiss">
+              <button type="submit" style="padding:6px 14px; border:1px solid rgba(255,77,106,.3); border-radius:8px; color:var(--danger); font-size:12px; cursor:pointer; background:rgba(255,77,106,.05);">Dismiss</button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center; padding:60px 20px; color:var(--text3);">
+        <div style="font-size:40px; margin-bottom:12px;">✅</div>
+        <p>No alerts</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

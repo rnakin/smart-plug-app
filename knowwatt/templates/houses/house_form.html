@@ -1,0 +1,92 @@
+{% extends "app/base.html" %}
+{% load static %}
+{% block title %}{% if editing %}Edit {{ house.house_name }}{% else %}Add House{% endif %} — KnowWatt{% endblock %}
+{% block nav_houses %}active{% endblock %}
+
+{% block header %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page active">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">{% if editing %}Edit House{% else %}Add House{% endif %}</div>
+        <div class="top-bar-sub">{% if editing %}{{ house.house_name }}{% else %}Create a new house{% endif %}</div>
+      </div>
+    </div>
+    <div class="dashboard-content">
+      <div style="max-width:500px;">
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+            {% if field.is_hidden %}
+              {{ field }}
+            {% else %}
+            <div style="margin-bottom:14px;">
+              <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}
+              <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ field.errors.0 }}</div>
+              {% endif %}
+            </div>
+            {% endif %}
+          {% endfor %}
+
+          {% if not editing %}
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Icon</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              {% for em in "🏠🏡🏢🏣🏤🏥🏦🏨🏩🏪🏫🏬🏭🏯🏰"|make_list %}
+              <button type="button" class="emoji-btn" onclick="selectEmoji('{{ em }}')" style="font-size:20px; background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center;">{{ em }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Location (optional)</label>
+            <div id="map" style="height:200px; width:100%; border-radius:10px; border:1px solid var(--border); overflow:hidden;"></div>
+            <div id="coords-display" style="font-size:11px; color:var(--text3); margin-top:5px;">Click on map to set location</div>
+          </div>
+          {% endif %}
+
+          <div style="display:flex; gap:10px; margin-top:20px;">
+            <a href="{% url 'page-house-list' %}" style="flex:1; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; color:var(--text2); font-size:13px; font-weight:500; text-align:center; text-decoration:none;">Cancel</a>
+            <button type="submit" style="flex:2; padding:10px; background:var(--accent); border:none; border-radius:10px; color:#000; font-size:13px; font-weight:600; cursor:pointer;">{% if editing %}Save Changes{% else %}Create House{% endif %}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+{% if not editing %}
+<script>
+let map, marker;
+function selectEmoji(em) {
+  document.getElementById('id_emoji').value = em;
+  document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.style.borderColor = btn.textContent.trim() === em ? 'var(--accent)' : 'var(--border)';
+    btn.style.background = btn.textContent.trim() === em ? 'var(--accent-dim)' : 'var(--surface2)';
+  });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  map = L.map('map').setView([13.7563, 100.5018], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+  map.on('click', e => {
+    const { lat, lng } = e.latlng;
+    if (marker) marker.setLatLng(e.latlng);
+    else marker = L.marker(e.latlng).addTo(map);
+    document.getElementById('id_lat').value = lat.toFixed(6);
+    document.getElementById('id_long').value = lng.toFixed(6);
+    document.getElementById('coords-display').textContent = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    document.getElementById('coords-display').style.color = 'var(--accent)';
+  });
+  selectEmoji('🏠');
+});
+</script>
+{% endif %}
+{% endblock %}

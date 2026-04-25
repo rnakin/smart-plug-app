@@ -1,0 +1,68 @@
+{% extends "app/base.html" %}
+{% load static %}
+{% block title %}Alert Rules — {{ house.house_name }}{% endblock %}
+
+{% block content %}
+<div class="page active">
+  <div class="center-panel">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">Alert Rules — {{ house.house_name }}</div>
+        <div class="top-bar-sub">{{ rules|length }} rule{{ rules|length|pluralize }}</div>
+      </div>
+      <div class="top-bar-actions">
+        {% if membership.role == 'owner' or membership.role == 'admin' %}
+        <a href="{% url 'page-alert-rule-create' house_pk=house.pk %}" class="tbtn primary" style="text-decoration:none;">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          Add Rule
+        </a>
+        {% endif %}
+        <a href="{% url 'page-alert-events' house_pk=house.pk %}" class="tbtn" style="text-decoration:none;">Events</a>
+        <a href="{% url 'page-house-detail' pk=house.pk %}" class="tbtn" style="text-decoration:none;">← Back</a>
+      </div>
+    </div>
+    <div class="dashboard-content">
+      {% if rules %}
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        {% for rule in rules %}
+        <div class="card" style="padding:14px 16px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="font-size:18px;">
+              {% if rule.trigger == 'power_above' %}⚡{% elif rule.trigger == 'power_below' %}⚠️{% elif rule.trigger == 'duration_above' %}⏰{% else %}🔔{% endif %}
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:14px; font-weight:600;">{{ rule.get_trigger_display }}</div>
+              <div style="font-size:12px; color:var(--text3);">
+                {% if rule.plug %}Plug: {{ rule.plug.name }}{% else %}All plugs{% endif %}
+                {% if rule.device %} · Device: {{ rule.device.name }}{% endif %}
+                {% if rule.threshold_value %} · Threshold: {{ rule.threshold_value }}{% endif %}
+                · Action: {{ rule.get_action_display }}
+              </div>
+            </div>
+            <span style="font-size:11px; padding:3px 10px; border-radius:6px;
+              {% if rule.is_active %}background:rgba(0,217,139,.1); color:var(--accent){% else %}background:var(--surface2); color:var(--text3){% endif %}">
+              {% if rule.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
+            {% if membership.role == 'owner' or membership.role == 'admin' %}
+            <a href="{% url 'page-alert-rule-edit' house_pk=house.pk rule_pk=rule.pk %}"
+               style="padding:6px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; font-size:11px; color:var(--text2); text-decoration:none;">Edit</a>
+            <form method="post" action="{% url 'page-alert-rule-delete' house_pk=house.pk rule_pk=rule.pk %}"
+                  onsubmit="return confirm('Delete this rule?');" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" style="padding:6px 10px; border:1px solid rgba(255,77,106,.3); border-radius:8px; font-size:11px; color:var(--danger); cursor:pointer; background:rgba(255,77,106,.05);">Delete</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center; padding:60px 20px; color:var(--text3);">
+        <div style="font-size:40px; margin-bottom:12px;">🔔</div>
+        <p>No alert rules yet</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
