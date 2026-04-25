@@ -4,7 +4,11 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+]
 
+handler404 = 'funt.views.custom_404'
+
+urlpatterns += [
     # Auth (login, register, etc.) - keep existing
     path("auth/", include("account.urls")),
 

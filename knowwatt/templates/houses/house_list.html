@@ -1,92 +1,87 @@
-{% extends "app/base.html" %}
+{% extends "home/base.html" %}
 {% load static %}
-{% block title %}My Houses — KnowWatt{% endblock %}
-{% block nav_houses %}active{% endblock %}
+{% block title %}My Houses | KnowWatt{% endblock %}
 
 {% block content %}
-<div class="page active">
-  <div class="center-panel">
-    <div class="top-bar">
-      <div>
-        <div class="top-bar-title">My Houses</div>
-        <div class="top-bar-sub">All houses you belong to</div>
-      </div>
-      
+<main class="col-main" style="padding: 24px;">
+    <div style="margin-bottom: 24px;">
+        <h1 style="margin: 0; font-size: 24px;">My Houses</h1>
+        <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 14px;">All houses you belong to</p>
     </div>
-    <div class="dashboard-content">
-      {% if houses %}
-      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px;">
+
+    {% if houses %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px;">
         {% for item in houses %}
-        <div class="card" style="padding:0; overflow:hidden;">
-          <div style="padding:18px 20px; border-bottom:1px solid var(--border);">
-            <div style="display:flex; align-items:center; justify-content:space-between;">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:24px;">{{ item.house.emoji|default:"🏠" }}</span>
-                <div>
-                  <div style="font-size:15px; font-weight:700; color:var(--text);">{{ item.house.house_name }}</div>
-                  <div style="font-size:11px; color:var(--text3);">{{ item.house.address }}</div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between;">
+                <div style="display: flex; gap: 12px;">
+                    <span style="font-size: 24px;">{{ item.house.emoji|default:"🏠" }}</span>
+                    <div>
+                        <div style="font-size: 16px; font-weight: 700;">{{ item.house.house_name }}</div>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">{{ item.house.address }}</div>
+                    </div>
                 </div>
-              </div>
-              <span style="font-size:11px; padding:3px 10px; border-radius:6px;
-                {% if item.role == 'owner' %}background:rgba(0,217,139,.1); color:var(--accent);
-                {% elif item.role == 'admin' %}background:rgba(100,100,255,.1); color:#88f;
-                {% else %}background:var(--surface2); color:var(--text3);{% endif %}">
-                {{ item.role }}
-              </span>
+                <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 8px; border-radius: 4px; background: rgba(0, 242, 255, 0.1); color: var(--accent);">
+                    {{ item.role }}
+                </span>
             </div>
-          </div>
-          <div style="padding:12px 20px; display:flex; gap:12px; font-size:12px; color:var(--text3);">
-            <span>{{ item.member_count }} member{{ item.member_count|pluralize }}</span>
-            <span>{{ item.plug_count }} plug{{ item.plug_count|pluralize }}</span>
-          </div>
-          <div style="padding:0 20px 16px; display:flex; gap:8px;">
-            <a href="{% url 'page-house-detail' pk=item.house.pk %}" style="flex:1; padding:8px; background:var(--accent); border:none; border-radius:8px; color:#000; font-size:12px; font-weight:600; text-align:center; text-decoration:none;">View</a>
-            {% if item.role == 'owner' %}
-            <a href="{% url 'page-house-edit' pk=item.house.pk %}" style="padding:8px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text2); font-size:12px; text-decoration:none;">Edit</a>
-            {% endif %}
-          </div>
+            <div style="padding: 16px 20px; display: flex; gap: 16px; font-size: 12px; color: var(--text-muted);">
+                <span>👥 {{ item.member_count }} member{{ item.member_count|pluralize }}</span>
+                <span>🔌 {{ item.plug_count }} plug{{ item.plug_count|pluralize }}</span>
+            </div>
+            <div style="padding: 0 20px 20px; display: flex; gap: 10px; margin-top: auto;">
+                <a href="{% url 'page-house-detail' pk=item.house.pk %}" style="flex: 1; padding: 10px; background: var(--accent); border: none; border-radius: 8px; color: black; font-size: 13px; font-weight: 700; text-align: center; text-decoration: none;">View Dashboard</a>
+                {% if item.role == 'owner' %}
+                <button onclick="openEditModal('{{ item.house.id }}', '{{ item.house.house_name|escapejs }}', '{{ item.house.address|escapejs }}', '{{ item.house.emoji|default:'🏠'|escapejs }}')" style="padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; cursor: pointer;">Edit</button>
+                {% endif %}
+            </div>
         </div>
         {% endfor %}
-      </div>
-      {% else %}
-      <div style="text-align:center; padding:60px 20px; color:var(--text3);">
-        <div style="font-size:40px; margin-bottom:12px;">🏠</div>
-        <p>No houses yet</p>
-        <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
-          <a href="{% url 'page-house-create' %}" class="tbtn primary" style="text-decoration:none; display:inline-flex;">+ Add House</a>
-          <a href="{% url 'page-house-join' %}" class="tbtn" style="text-decoration:none; display:inline-flex;">Join House</a>
-        </div>
-      </div>
-      {% endif %}
 
-              <div class="card" style="padding:0; overflow:hidden;">
-          <div style="padding:18px 20px; border-bottom:1px solid var(--border);">
-            <div style="display:flex; align-items:center; justify-content:space-between;">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:24px;">🏠</span>
-                <div>
-                  <div style="font-size:15px; font-weight:700; color:var(--text);">Add or Join House</div>
-                  <div style="font-size:11px; color:var(--text3);">Create a new house or join an existing one</div>
-                </div>
-              </div>
-              <span style="font-size:11px; padding:3px 10px; border-radius:6px; background:rgba(0,217,139,.1); color:var(--accent);">
-                Action
-              </span>
+        <!-- Add/Join Card -->
+        <div style="background: var(--surface); border: 1px dashed var(--border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 16px;">🏠</div>
+            <div style="font-weight: 700; margin-bottom: 8px;">Add or Join House</div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px;">Expand your network by creating a new home or joining an existing one.</p>
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button onclick="document.getElementById('add-house-modal').showModal()" style="flex: 1; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;">+ Create</button>
+                <a href="{% url 'page-house-join' %}" style="flex: 1; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; text-decoration: none; font-weight: 600;">Join</a>
             </div>
-          </div>
-          <gap>
-            
-          </gap>
-          <div style="padding:12px 20px; display:flex; gap:12px; font-size:12px; color:var(--text3);">
-            <span>Manage your homes</span>
-          </div>
-          <div style="padding:0 20px 16px; display:flex; gap:8px;">
-            <a href="{% url 'page-house-create' %}" style="flex:1; padding:8px; background:var(--accent); border:none; border-radius:8px; color:#000; font-size:12px; font-weight:600; text-align:center; text-decoration:none;">Add House</a>
-            <a href="{% url 'page-house-join' %}" style="flex:1; padding:8px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text2); font-size:12px; text-decoration:none;">Join House</a>
-          </div>
         </div>
-
     </div>
-  </div>
-</div>
+    {% else %}
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 80px 20px; text-align: center; max-width: 500px; margin: 40px auto;">
+        <div style="font-size: 48px; margin-bottom: 20px;">🏠</div>
+        <h2 style="margin: 0 0 12px;">No Houses Found</h2>
+        <p style="color: var(--text-muted); margin-bottom: 32px;">You haven't joined any houses yet. Start by creating your own or joining one with a code.</p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button onclick="document.getElementById('add-house-modal').showModal()" style="padding: 12px 24px; background: var(--accent); color: black; border-radius: 8px; border: none; font-weight: 700; cursor: pointer;">Create House</button>
+            <a href="{% url 'page-house-join' %}" style="padding: 12px 24px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; text-decoration: none; font-weight: 700;">Join House</a>
+        </div>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}
+
+{% block script %}
+<script>
+function openEditModal(id, name, address, emoji) {
+    const modal = document.getElementById('edit-house-modal');
+    if (!modal) return;
+    
+    // Update form action
+    modal.querySelector('form').action = `/houses/${id}/edit/`;
+    
+    // Update fields
+    modal.querySelector('input[name="house_name"]').value = name;
+    modal.querySelector('input[name="address"]').value = address;
+    
+    // Select emoji
+    const picker = modal.querySelector('.modal-emoji-picker');
+    const emojiBtn = Array.from(picker.querySelectorAll('.emoji-btn')).find(b => b.textContent.trim() === emoji);
+    if (emojiBtn) selectModalEmoji(emojiBtn, emoji);
+    
+    modal.showModal();
+}
+</script>
 {% endblock %}

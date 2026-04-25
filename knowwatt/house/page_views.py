@@ -34,22 +34,70 @@ def house_list(request):
 @login_required
 def house_create(request):
     if request.method == 'POST':
-        form = HouseForm(request.POST)
-        if form.is_valid():
-            house = form.save(commit=False)
-            # Generate a unique join code
+        house_name = request.POST.get('house_name')
+        address = request.POST.get('address')
+        emoji = request.POST.get('emoji', '🏠')
+        lat = request.POST.get('lat')
+        long = request.POST.get('long')
+        join_code = request.POST.get('join_code')
+
+        if not house_name or not address:
+            messages.error(request, "Name and address are required.")
+            return redirect('page-house-list')
+
+        house = House(
+            house_name=house_name,
+            address=address,
+            emoji=emoji
+        )
+
+        if lat:
+            try: house.lat = float(lat)
+            except ValueError: pass
+        if long:
+            try: house.long = float(long)
+            except ValueError: pass
+
+        if join_code:
+            if House.objects.filter(join_code=join_code.upper()).exists():
+                messages.error(request, f'Join code "{join_code}" is already taken.')
+                return redirect('page-house-list')
+            house.join_code = join_code.upper()
+        else:
+            # Generate unique join code
             while True:
                 code = generate_join_code()
                 if not House.objects.filter(join_code=code).exists():
                     house.join_code = code
                     break
-            house.save()
-            HouseMember.objects.create(house=house, user=request.user, role='owner')
-            messages.success(request, f'House "{house.house_name}" created.')
-            return redirect('page-house-detail', pk=house.pk)
-    else:
-        form = HouseForm()
-    return render(request, 'houses/house_form.html', {'form': form, 'editing': False})
+        
+        house.save()
+        HouseMember.objects.create(house=house, user=request.user, role='owner')
+        messages.success(request, f'House "{house.house_name}" created.')
+        return redirect('page-house-detail', pk=house.pk)
+    
+    return redirect('page-house-list')
+
+
+@login_required
+def house_detail_main(request):
+    """Entry point for the unified dashboard. Selects the last used house or the first available one."""
+    # Try to get last used house from preferences
+    last_house_id = None
+    if hasattr(request.user, 'preferences'):
+        last_house_id = request.user.preferences.last_house_id
+
+    if last_house_id:
+        membership = HouseMember.objects.filter(user=request.user, house_id=last_house_id).first()
+        if membership:
+            return redirect('page-house-detail', pk=last_house_id)
+
+    # Fallback to first available
+    membership = HouseMember.objects.filter(user=request.user).first()
+    if not membership:
+        messages.info(request, "You don't have any houses yet. Create or join one to get started!")
+        return redirect('page-house-create')
+    return redirect('page-house-detail', pk=membership.house.pk)
 
 
 @login_required
@@ -59,6 +107,13 @@ def house_detail(request, pk):
     if not membership:
         messages.error(request, 'You are not a member of this house.')
         return redirect('page-house-list')
+
+    # Update last used house preference
+    from account.models import UserPreference
+    pref, _ = UserPreference.objects.get_or_create(user=request.user)
+    if pref.last_house_id != house.id:
+        pref.last_house_id = house.id
+        pref.save()
 
     # All user houses for the house selector
     user_houses = House.objects.filter(members__user=request.user)
@@ -80,7 +135,7 @@ def house_detail(request, pk):
         recorded_at__date=today,
     ).aggregate(total=Sum('energy_kwh'))['total'] or 0
 
-    alerts = house.alert_events.filter(status='pending').order_by('-created_at')
+    alerts = house.alert_events.filter(status='pending').order_by('-triggered_at')
 
     return render(request, 'home/app.html', {
         'active_house': house,
@@ -149,14 +204,28 @@ def house_edit(request, pk):
         return redirect('page-house-detail', pk=pk)
 
     if request.method == 'POST':
-        form = HouseForm(request.POST, instance=house)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'House updated.')
-            return redirect('page-house-detail', pk=pk)
-    else:
-        form = HouseForm(instance=house)
-    return render(request, 'houses/house_form.html', {'form': form, 'editing': True, 'house': house})
+        # Update fields from POST data (since we're using custom modal forms)
+        house.house_name = request.POST.get('house_name', house.house_name)
+        house.address = request.POST.get('address', house.address)
+        house.emoji = request.POST.get('emoji', house.emoji)
+        
+        lat = request.POST.get('lat')
+        long = request.POST.get('long')
+        if lat: house.lat = float(lat)
+        if long: house.long = float(long)
+        
+        join_code = request.POST.get('join_code')
+        if join_code and join_code != house.join_code:
+            if not House.objects.filter(join_code=join_code).exists():
+                house.join_code = join_code
+            else:
+                messages.error(request, f'Join code "{join_code}" is already in use.')
+
+        house.save()
+        messages.success(request, 'House updated.')
+        return redirect('page-house-detail', pk=pk)
+    
+    return redirect('page-house-detail', pk=pk)
 
 
 @require_POST

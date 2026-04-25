@@ -1,50 +1,141 @@
-{% extends "app/base.html" %}
+{% extends "home/base.html" %}
 {% load static %}
-{% block title %}Profile — KnowWatt{% endblock %}
-{% block nav_account %}active{% endblock %}
+{% block title %}Profile | KnowWatt{% endblock %}
 
 {% block content %}
-<div class="page active">
-  <div class="center-panel">
-    <div class="top-bar">
-      <div>
-        <div class="top-bar-title">Profile</div>
-        <div class="top-bar-sub">{{ user_obj.username }}</div>
-      </div>
+<main class="col-main" style="padding: 24px;">
+    <div style="margin-bottom: 24px;">
+        <h1 style="margin: 0; font-size: 24px;">Account Settings</h1>
+        <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 14px;">Manage your profile and security</p>
     </div>
-    <div class="dashboard-content">
-      <div style="max-width:480px;">
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header"><div class="card-title">Account Info</div></div>
-          <div style="padding:16px;">
-            <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
-              <div style="width:56px; height:56px; border-radius:50%; background:var(--accent-dim); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; color:var(--accent);">
-                {{ user_obj.username|first|upper }}
-              </div>
-              <div>
-                <div style="font-size:18px; font-weight:700;">{{ user_obj.username }}</div>
-                <div style="font-size:13px; color:var(--text3);">{{ user_obj.email|default:"No email" }}</div>
-              </div>
+
+    <div style="max-width: 600px;">
+        <!-- Profile Card -->
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px;">
+                <div style="width: 80px; height: 80px; border-radius: 50%; background: rgba(0, 242, 255, 0.1); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: var(--accent);">
+                    {{ user_obj.username|first|upper }}
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 20px;">{{ user_obj.username }}</h2>
+                    <p style="margin: 4px 0 0; color: var(--text-muted);">{{ user_obj.email|default:"No email set" }}</p>
+                </div>
             </div>
-            <div style="font-size:12px; color:var(--text3);">
-              Joined: {{ user_obj.date_joined|date:"M d, Y" }}
+
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+                <div style="display: flex; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+                    <span style="color: var(--text-muted);">Member Since</span>
+                    <span>{{ user_obj.date_joined|date:"F d, Y" }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+                    <span style="color: var(--text-muted);">Account Type</span>
+                    <span style="color: var(--accent);">Standard User</span>
+                </div>
             </div>
-          </div>
         </div>
 
-        <div style="display:flex; gap:10px;">
-          <a href="{% url 'page-profile-edit' %}" style="flex:1; padding:10px; background:var(--accent); border:none; border-radius:10px; color:#000; font-size:13px; font-weight:600; text-align:center; text-decoration:none;">Edit Profile</a>
-          <a href="{% url 'page-password-change' %}" style="flex:1; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; color:var(--text2); font-size:13px; font-weight:500; text-align:center; text-decoration:none;">Change Password</a>
+        <!-- Actions -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <button onclick="document.getElementById('edit-profile-modal').showModal()" style="padding: 14px; background: var(--accent); color: black; border-radius: 8px; border: none; font-weight: 700; text-align: center; font-size: 14px; cursor: pointer;">Update Profile</button>
+            <button onclick="document.getElementById('change-password-modal').showModal()" style="padding: 14px; background: var(--surface); border: 1px solid var(--border); color: white; border-radius: 8px; font-weight: 700; text-align: center; font-size: 14px; cursor: pointer;">Change Password</button>
         </div>
 
-        <div style="margin-top:16px;">
-          <form action="{% url 'logout' %}" method="post" style="display:block; width:100%;">
+        <!-- Danger Zone -->
+        <div style="padding: 24px; border: 1px solid rgba(248, 113, 113, 0.2); background: rgba(248, 113, 113, 0.05); border-radius: 12px;">
+            <h3 style="margin: 0 0 8px; color: #f87171; font-size: 16px;">Danger Zone</h3>
+            <p style="margin: 0 0 20px; font-size: 13px; color: var(--text-muted);">Once you sign out, you'll need to provide your credentials to access your dashboard again.</p>
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" style="padding: 12px 20px; background: #f87171; color: black; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px;">Log Out of Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <dialog id="edit-profile-modal">
+        <div class="modal-header">
+            <h3>Update Profile</h3>
+            <button onclick="document.getElementById('edit-profile-modal').close()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:20px;">&times;</button>
+        </div>
+        <form method="post" action="{% url 'page-profile-edit' %}">
             {% csrf_token %}
-            <button type="submit" style="display:block; width:100%; padding:10px; background:rgba(255,77,106,.1); border:1px solid rgba(255,77,106,.3); border-radius:10px; color:var(--danger); font-size:13px; font-weight:600; cursor:pointer;">Log Out</button>
-          </form>
+            <div class="modal-body">
+                {% for field in profile_form %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div style="font-size:12px; color:#f87171; margin-top:4px;">{{ field.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="document.getElementById('edit-profile-modal').close()" class="btn" style="flex: 1;">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 2; font-weight: 700;">Save Changes</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Change Password Modal -->
+    <dialog id="change-password-modal">
+        <div class="modal-header">
+            <h3>Change Password</h3>
+            <button onclick="document.getElementById('change-password-modal').close()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:20px;">&times;</button>
         </div>
-      </div>
-    </div>
-  </div>
-</div>
+        <form method="post" action="{% url 'page-password-change' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                {% for field in password_form %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <div style="font-size:12px; color:#f87171; margin-top:4px;">{{ field.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="document.getElementById('change-password-modal').close()" class="btn" style="flex: 1;">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 2; font-weight: 700;">Update Password</button>
+            </div>
+        </form>
+    </dialog>
+</main>
+
+<style>
+    /* Styling for Django auto-generated form inputs */
+    input[type="text"], input[type="email"], input[type="password"] {
+        width: 100%;
+        padding: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: white;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-family: inherit;
+        outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    
+    .helptext, .helptext ul {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin: 4px 0;
+        padding-left: 14px;
+    }
+</style>
+
+{% block script %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        {% if open_modal %}
+        const modalId = '{{ open_modal }}';
+        const modal = document.getElementById(modalId);
+        if (modal) modal.showModal();
+        {% endif %}
+    });
+</script>
+{% endblock %}
 {% endblock %}

@@ -2,7 +2,8 @@ from django.urls import path
 from . import page_views
 
 urlpatterns = [
-    path('', page_views.house_list, name='page-house-list'),
+    path('', page_views.house_detail_main, name='page-house-detail-main'),
+    path('list/', page_views.house_list, name='page-house-list'),
     path('create/', page_views.house_create, name='page-house-create'),
     path('join/', page_views.house_join, name='page-house-join'),
     path('<uuid:pk>/', page_views.house_detail, name='page-house-detail'),
