@@ -119,3 +119,27 @@ class HouseMember(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.house.house_name} ({self.role})"
+
+
+class Invite(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('denied', 'Denied'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='invites')
+    inviter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_invites')
+    invitee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_invites')
+    role = models.CharField(max_length=20, choices=HouseMember.ROLE_CHOICES, default='member')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'house_invite'
+        verbose_name = 'House Invite'
+        verbose_name_plural = 'House Invites'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Invite to {self.invitee.username} for {self.house.house_name} ({self.status})"

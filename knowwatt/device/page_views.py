@@ -27,19 +27,34 @@ def plug_create(request, house_pk):
         return redirect('page-house-detail', pk=house_pk)
 
     if request.method == 'POST':
-        form = SmartPlugForm(request.POST)
-        if form.is_valid():
-            plug = form.save(commit=False)
-            plug.house = house
-            plug.registered_by = request.user
-            plug.save()
-            messages.success(request, f'Plug "{plug.name}" added.')
+        name = request.POST.get('name')
+        plug_code = request.POST.get('plug_code')
+        room_id = request.POST.get('room')
+        
+        if not name or not plug_code:
+            messages.error(request, 'Name and code are required.')
             return redirect('page-house-detail', pk=house_pk)
-    else:
-        form = SmartPlugForm()
-    return render(request, 'devices/plug_form.html', {
-        'form': form, 'house': house, 'editing': False,
-    })
+
+        if SmartPlug.objects.filter(plug_code=plug_code).exists():
+            messages.error(request, f'Plug code "{plug_code}" is already registered.')
+            return redirect('page-house-detail', pk=house_pk)
+
+        plug = SmartPlug(
+            house=house,
+            name=name,
+            plug_code=plug_code,
+            registered_by=request.user
+        )
+        
+        if room_id:
+            from house.models import Room
+            plug.room = get_object_or_404(Room, pk=room_id, house=house)
+            
+        plug.save()
+        messages.success(request, f'Plug "{plug.name}" registered successfully.')
+        return redirect('page-house-detail', pk=house_pk)
+    
+    return redirect('page-house-detail', pk=house_pk)
 
 
 @login_required
@@ -52,16 +67,25 @@ def plug_edit(request, house_pk, plug_pk):
         return redirect('page-house-detail', pk=house_pk)
 
     if request.method == 'POST':
-        form = SmartPlugEditForm(request.POST, instance=plug)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Plug updated.')
-            return redirect('page-house-detail', pk=house_pk)
-    else:
-        form = SmartPlugEditForm(instance=plug)
-    return render(request, 'devices/plug_form.html', {
-        'form': form, 'house': house, 'plug': plug, 'editing': True,
-    })
+        name = request.POST.get('name')
+        room_id = request.POST.get('room_id')
+        
+        if name:
+            plug.name = name
+        
+        if room_id:
+            from house.models import Room
+            room = get_object_or_404(Room, pk=room_id, house=house)
+            plug.room = room
+        elif room_id == "": # Unassigned
+            plug.room = None
+            
+        plug.save()
+        messages.success(request, f'Plug "{plug.name}" updated.')
+        return redirect('page-house-detail', pk=house_pk)
+    
+    return redirect('page-house-detail', pk=house_pk)
+
 
 
 @require_POST

@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib.auth.models import User
 from django.contrib import messages
-from .models import House, HouseMember, Room, generate_join_code
+from .models import House, HouseMember, Room, Invite, generate_join_code
 from .forms import HouseForm, HouseMemberInviteForm, HouseMemberRoleForm
 from device.models import SmartPlug, ElectricalDevice
 from energy.models import EnergyReading
@@ -28,7 +28,18 @@ def house_list(request):
             'member_count': HouseMember.objects.filter(house=m.house).count(),
             'plug_count': SmartPlug.objects.filter(house=m.house).count(),
         })
-    return render(request, 'houses/house_list.html', {'houses': houses})
+    
+    # Received invites (incoming)
+    incoming_invites = Invite.objects.filter(invitee=request.user, status='pending').select_related('house', 'inviter')
+    
+    # Sent invites (outgoing)
+    sent_invites = Invite.objects.filter(inviter=request.user).select_related('house', 'invitee')
+
+    return render(request, 'houses/house_list.html', {
+        'houses': houses,
+        'incoming_invites': incoming_invites,
+        'sent_invites': sent_invites,
+    })
 
 
 @login_required
@@ -125,6 +136,17 @@ def house_detail(request, pk):
     # Summary Stats
     total_power = 0.0
     all_plugs = house.plugs.all()
+    
+    # Simple Sync Check Simulation
+    # In a real scenario, this would check against a hardware registry
+    for plug in all_plugs:
+        if not plug.is_verified:
+            # Already marked as unverified
+            pass
+        elif len(plug.plug_code) < 4: # Simulated check
+            plug.is_verified = False
+            plug.save()
+
     for plug in all_plugs:
         latest = EnergyReading.objects.filter(plug=plug).order_by('-recorded_at').first()
         total_power += latest.power_w if latest else 0.0
@@ -136,6 +158,9 @@ def house_detail(request, pk):
     ).aggregate(total=Sum('energy_kwh'))['total'] or 0
 
     alerts = house.alert_events.filter(status='pending').order_by('-triggered_at')
+    
+    # Members for the management modal
+    members = house.members.all().select_related('user')
 
     return render(request, 'home/app.html', {
         'active_house': house,
@@ -146,6 +171,7 @@ def house_detail(request, pk):
         'total_power': round(total_power, 1),
         'today_kwh': round(today_kwh, 2),
         'alerts': alerts,
+        'members': members,
     })
 
 
@@ -243,22 +269,7 @@ def house_delete(request, pk):
 
 @login_required
 def house_members(request, pk):
-    house = get_object_or_404(House, pk=pk)
-    membership = get_user_membership(house, request.user)
-    if not membership:
-        messages.error(request, 'You are not a member of this house.')
-        return redirect('page-house-list')
-
-    members = HouseMember.objects.filter(house=house).select_related('user')
-    invite_form = HouseMemberInviteForm()
-    role_form = HouseMemberRoleForm()
-    return render(request, 'houses/house_members.html', {
-        'house': house,
-        'membership': membership,
-        'members': members,
-        'invite_form': invite_form,
-        'role_form': role_form,
-    })
+    return redirect('page-house-detail', pk=pk)
 
 
 @require_POST
@@ -268,28 +279,66 @@ def house_member_invite(request, pk):
     membership = get_user_membership(house, request.user)
     if not membership or membership.role not in ('owner', 'admin'):
         messages.error(request, 'Only owner or admin can invite members.')
-        return redirect('page-house-members', pk=pk)
+        return redirect('page-house-detail', pk=pk)
 
-    form = HouseMemberInviteForm(request.POST)
-    if form.is_valid():
-        email = form.cleaned_data['email']
-        role = form.cleaned_data['role']
-        if role == 'admin' and membership.role != 'owner':
-            messages.error(request, 'Only owner can invite admins.')
-            return redirect('page-house-members', pk=pk)
-        try:
-            invited_user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            messages.error(request, 'No user with that email exists.')
-            return redirect('page-house-members', pk=pk)
-        if HouseMember.objects.filter(house=house, user=invited_user).exists():
-            messages.error(request, 'User is already a member.')
-            return redirect('page-house-members', pk=pk)
-        HouseMember.objects.create(house=house, user=invited_user, role=role)
-        messages.success(request, f'{invited_user.username} invited as {role}.')
-    else:
-        messages.error(request, 'Invalid form data.')
-    return redirect('page-house-members', pk=pk)
+    email = request.POST.get('email')
+    role = request.POST.get('role', 'member')
+
+    if role == 'admin' and membership.role != 'owner':
+        messages.error(request, 'Only owner can invite admins.')
+        return redirect('page-house-detail', pk=pk)
+    try:
+        invited_user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        messages.error(request, 'No user with that email exists.')
+        return redirect('page-house-detail', pk=pk)
+    
+    if HouseMember.objects.filter(house=house, user=invited_user).exists():
+        messages.error(request, 'User is already a member.')
+        return redirect('page-house-detail', pk=pk)
+    
+    if Invite.objects.filter(house=house, invitee=invited_user, status='pending').exists():
+        messages.error(request, 'User already has a pending invitation.')
+        return redirect('page-house-detail', pk=pk)
+    
+    Invite.objects.create(
+        house=house, 
+        inviter=request.user, 
+        invitee=invited_user, 
+        role=role
+    )
+    messages.success(request, f'Invitation sent to {invited_user.username}.')
+    return redirect('page-house-detail', pk=pk)
+
+
+@require_POST
+@login_required
+def accept_invite(request, pk):
+    invite = get_object_or_404(Invite, pk=pk, invitee=request.user, status='pending')
+    
+    # Create house membership
+    HouseMember.objects.get_or_create(
+        house=invite.house,
+        user=request.user,
+        defaults={'role': invite.role}
+    )
+    
+    invite.status = 'accepted'
+    invite.save()
+    
+    messages.success(request, f'You have joined {invite.house.house_name}.')
+    return redirect('page-house-list')
+
+
+@require_POST
+@login_required
+def deny_invite(request, pk):
+    invite = get_object_or_404(Invite, pk=pk, invitee=request.user, status='pending')
+    invite.status = 'denied'
+    invite.save()
+    
+    messages.success(request, f'Invitation to {invite.house.house_name} denied.')
+    return redirect('page-house-list')
 
 
 @require_POST
@@ -301,24 +350,23 @@ def house_member_update_role(request, pk, member_pk):
 
     if not membership or membership.role not in ('owner', 'admin'):
         messages.error(request, 'Insufficient permissions.')
-        return redirect('page-house-members', pk=pk)
+        return redirect('page-house-detail', pk=pk)
     if target.role == 'owner':
         messages.error(request, 'Cannot change owner role.')
-        return redirect('page-house-members', pk=pk)
+        return redirect('page-house-detail', pk=pk)
     if membership.role == 'admin' and target.role == 'admin':
         messages.error(request, 'Admin cannot change another admin.')
-        return redirect('page-house-members', pk=pk)
+        return redirect('page-house-detail', pk=pk)
 
-    form = HouseMemberRoleForm(request.POST)
-    if form.is_valid():
-        new_role = form.cleaned_data['role']
+    new_role = request.POST.get('role')
+    if new_role:
         if new_role == 'admin' and membership.role != 'owner':
             messages.error(request, 'Only owner can assign admin role.')
         else:
             target.role = new_role
             target.save()
             messages.success(request, f'Role updated to {new_role}.')
-    return redirect('page-house-members', pk=pk)
+    return redirect('page-house-detail', pk=pk)
 
 
 @require_POST
@@ -330,17 +378,17 @@ def house_member_remove(request, pk, member_pk):
 
     if not membership or membership.role not in ('owner', 'admin'):
         messages.error(request, 'Insufficient permissions.')
-        return redirect('page-house-members', pk=pk)
+        return redirect('page-house-detail', pk=pk)
     if target.role == 'owner':
         messages.error(request, 'Cannot remove owner.')
-        return redirect('page-house-members', pk=pk)
+        return redirect('page-house-detail', pk=pk)
     if membership.role == 'admin' and target.role == 'admin':
         messages.error(request, 'Admin cannot remove another admin.')
-        return redirect('page-house-members', pk=pk)
+        return redirect('page-house-detail', pk=pk)
 
     target.delete()
     messages.success(request, 'Member removed.')
-    return redirect('page-house-members', pk=pk)
+    return redirect('page-house-detail', pk=pk)
 
 
 @require_POST
@@ -377,4 +425,6 @@ def house_join(request):
         HouseMember.objects.create(house=house, user=request.user, role='member')
         messages.success(request, f'You joined "{house.house_name}"!')
         return redirect('page-house-detail', pk=house.pk)
-    return render(request, 'houses/house_join.html')
+    
+    # GET request - we don't need the join page anymore as it's a modal
+    return redirect('page-house-list')

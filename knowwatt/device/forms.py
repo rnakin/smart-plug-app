@@ -35,7 +35,7 @@ class SmartPlugEditForm(forms.ModelForm):
 class ElectricalDeviceForm(forms.ModelForm):
     class Meta:
         model = ElectricalDevice
-        fields = ['name', 'device_type', 'rated_power_watts', 'risk_level', 'auto_cutoff_minutes']
+        fields = ['name', 'device_type', 'rated_power_watts', 'until_notify_minutes', 'until_alert_minutes', 'until_cutoff_minutes']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'modal-input',
@@ -46,8 +46,15 @@ class ElectricalDeviceForm(forms.ModelForm):
                 'class': 'modal-input',
                 'placeholder': 'Watts',
             }),
-            'risk_level': forms.Select(attrs={'class': 'modal-input'}),
-            'auto_cutoff_minutes': forms.NumberInput(attrs={
+            'until_notify_minutes': forms.NumberInput(attrs={
+                'class': 'modal-input',
+                'placeholder': 'Minutes (blank = disabled)',
+            }),
+            'until_alert_minutes': forms.NumberInput(attrs={
+                'class': 'modal-input',
+                'placeholder': 'Minutes (blank = disabled)',
+            }),
+            'until_cutoff_minutes': forms.NumberInput(attrs={
                 'class': 'modal-input',
                 'placeholder': 'Minutes (blank = disabled)',
             }),

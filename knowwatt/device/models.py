@@ -25,6 +25,7 @@ class SmartPlug(models.Model):
     location = models.CharField(max_length=255, blank=True, default='')
     is_on = models.BooleanField(default=False)
     online_status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='offline')
+    is_verified = models.BooleanField(default=True, help_text='Whether the device is synced with the hardware registry')
     registered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -46,11 +47,6 @@ class SmartPlug(models.Model):
 
 class ElectricalDevice(models.Model):
     """Electrical appliance that can be plugged into a smart plug"""
-    RISK_CHOICES = [
-        ('low', 'Low'),
-        ('medium', 'Medium'),
-        ('high', 'High'),
-    ]
     DEVICE_TYPE_CHOICES = [
         ('appliance', 'Appliance'),
         ('entertainment', 'Entertainment'),
@@ -66,11 +62,20 @@ class ElectricalDevice(models.Model):
     name = models.CharField(max_length=255)
     device_type = models.CharField(max_length=30, choices=DEVICE_TYPE_CHOICES, default='other')
     rated_power_watts = models.FloatField(help_text='Rated power in watts from spec')
-    risk_level = models.CharField(max_length=10, choices=RISK_CHOICES, default='low')
-    auto_cutoff_minutes = models.IntegerField(
+
+    until_notify_minutes = models.IntegerField(
         null=True, blank=True,
         help_text='Auto power-off after this many minutes of continuous use (null = disabled)'
     )
+    until_alert_minutes = models.IntegerField(
+        null=True, blank=True,
+        help_text='Auto power-off after this many minutes of continuous use (null = disabled)'
+    )
+    until_cutoff_minutes = models.IntegerField(
+        null=True, blank=True,
+        help_text='Auto power-off after this many minutes of continuous use (null = disabled)'
+    )
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

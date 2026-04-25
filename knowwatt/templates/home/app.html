@@ -166,31 +166,23 @@
             </div>
           </summary>
           {% for plug in room.plugs.all %}
-            <div class="plug-item">
+            <div class="plug-item" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', {{ plug.is_verified|yesno:'true,false' }})">
               <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
               <div style="flex: 1;">
-                <div style="font-weight: 500;">{{ plug.name }}</div>
-                <div style="font-size: 11px; color: var(--text-muted);">{{ plug.plug_code }}</div>
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                {% if plug.is_on %}
-                  <span style="color: var(--accent); font-weight: bold;">ON</span>
-                {% else %}
-                  <span style="color: var(--text-muted);">OFF</span>
-                {% endif %}
-                <form method="POST" action="{% url 'move-plug' active_house.id %}" style="display:inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="plug_id" value="{{ plug.id }}">
-                    <select name="room_id" onchange="this.form.submit()" style="background:none; border:none; color:var(--text-muted); font-size:10px; cursor:pointer; width: 60px;">
-                        <option value="">Move...</option>
-                        <option value="">Unassigned</option>
-                        {% for r in rooms %}
-                            {% if r.id != room.id %}
-                                <option value="{{ r.id }}">{{ r.name }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                </form>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
+                        {% if not plug.is_verified %}
+                            <span style="background: #f87171; color: black; font-size: 8px; font-weight: 900; padding: 2px 4px; border-radius: 4px; text-transform: uppercase;">NOT SYNC</span>
+                        {% endif %}
+                    </div>
+                    {% if plug.is_on %}
+                      <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
+                    {% else %}
+                      <span style="color: var(--text-muted); font-weight: 800; font-size: 11px; letter-spacing: 1px;">OFF</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">ID: {{ plug.plug_code }}</div>
               </div>
             </div>
           {% endfor %}
@@ -201,27 +193,34 @@
         <details>
           <summary><span>📦 Unassigned</span> <span style="font-size: 11px; color: var(--text-muted);">{{ unassigned_plugs.count }}</span></summary>
           {% for plug in unassigned_plugs %}
-            <div class="plug-item">
+            <div class="plug-item" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', 'Unassigned', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', {{ plug.is_verified|yesno:'true,false' }})">
               <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
               <div style="flex: 1;">
-                <div style="font-weight: 500;">{{ plug.name }}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
+                        {% if not plug.is_verified %}
+                            <span style="background: #f87171; color: black; font-size: 8px; font-weight: 900; padding: 2px 4px; border-radius: 4px; text-transform: uppercase;">NOT SYNC</span>
+                        {% endif %}
+                    </div>
+                    {% if plug.is_on %}
+                      <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
+                    {% else %}
+                      <span style="color: var(--text-muted); font-weight: 800; font-size: 11px; letter-spacing: 1px;">OFF</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">ID: {{ plug.plug_code }}</div>
               </div>
-              <form method="POST" action="{% url 'move-plug' active_house.id %}" style="display:inline;">
-                {% csrf_token %}
-                <input type="hidden" name="plug_id" value="{{ plug.id }}">
-                <select name="room_id" onchange="this.form.submit()" style="background:none; border:none; color:var(--text-muted); font-size:10px; cursor:pointer; width: 60px;">
-                    <option value="">Assign...</option>
-                    {% for r in rooms %}
-                        <option value="{{ r.id }}">{{ r.name }}</option>
-                    {% endfor %}
-                </select>
-            </form>
             </div>
           {% endfor %}
         </details>
       {% endif %}
 
-      <div style="padding: 10px; margin-top: auto;">
+      <div style="padding: 10px; margin-top: auto; display: flex; flex-direction: column; gap: 8px;">
+        <button onclick="document.getElementById('add-plug-modal').showModal()" 
+                style="width: 100%; padding: 12px; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; cursor: pointer; font-weight: 700;">
+          + Register New Plug
+        </button>
         <button onclick="document.getElementById('add-room-modal').showModal()" 
                 style="width: 100%; padding: 12px; background: none; border: 1px dashed var(--border); color: var(--text-muted); border-radius: 8px; cursor: pointer;">
           + Create Room
@@ -238,7 +237,10 @@
         <span style="font-size: 13px; color: var(--text-muted);">{{ active_house.address }}</span>
       </div>
       <div style="display: flex; gap: 12px;">
+        {% if membership.role == 'owner' or membership.role == 'admin' %}
+        <button class="btn" onclick="document.getElementById('manage-members-modal').showModal()">Members</button>
         <button class="btn" onclick="document.getElementById('edit-house-modal').showModal()">Settings</button>
+        {% endif %}
         <button class="btn" onclick="window.location.reload()">Refresh</button>
       </div>
     </header>
@@ -288,6 +290,101 @@
   </aside>
 
   <!-- Modals -->
+  <dialog id="plug-detail-modal">
+    <div class="modal-header">
+      <div style="flex: 1;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h3 id="modal-plug-title">Plug Name - <span style="font-weight: 400; color: var(--text-muted);">Room</span></h3>
+            <span id="modal-plug-sync-tag" style="display: none; background: #f87171; color: black; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 6px; text-transform: uppercase;">NOT SYNC</span>
+        </div>
+        <div id="modal-plug-id" style="font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-top: 4px;">ID: ...</div>
+      </div>
+      <div id="modal-plug-status-badge" style="font-size: 10px; text-transform: uppercase; font-weight: 800; padding: 4px 10px; border-radius: 20px;">ONLINE</div>
+      <button onclick="document.getElementById('plug-detail-modal').close()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:24px; margin-left: 20px;">&times;</button>
+    </div>
+    
+    <div class="modal-body">
+        <!-- Quick Control -->
+        <div style="background: var(--bg); border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border: 1px solid var(--border);">
+            <div>
+                <div style="font-weight: 700; font-size: 16px;">Power Control</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Toggle the relay state of the plug</div>
+            </div>
+            <form method="POST" id="modal-plug-control-form" action="">
+                {% csrf_token %}
+                <input type="hidden" name="action" id="modal-plug-action-val" value="">
+                <button type="submit" id="modal-plug-power-btn" class="btn" style="padding: 12px 24px; font-size: 14px; font-weight: 800;">
+                    TURN ON
+                </button>
+            </form>
+        </div>
+
+        <details class="adv-toggle">
+            <summary>Edit Plug Details</summary>
+            <div class="adv-content">
+                <form method="POST" id="modal-plug-edit-form" action="">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" name="name" id="modal-plug-name-input" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Location / Room</label>
+                        <select name="room_id" id="modal-plug-room-select" class="form-control">
+                            <option value="">Unassigned</option>
+                            {% for r in rooms %}
+                                <option value="{{ r.id }}">{{ r.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Update Details</button>
+                </form>
+            </div>
+        </details>
+
+        <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 12px;">Danger Zone</div>
+            <form method="POST" id="modal-plug-delete-form" action="" onsubmit="return confirm('Permanently remove this plug?')">
+                {% csrf_token %}
+                <button type="submit" class="btn" style="width: 100%; color: #f87171; border-color: rgba(248, 113, 113, 0.2); background: rgba(248, 113, 113, 0.05);">Remove Plug from House</button>
+            </form>
+        </div>
+    </div>
+  </dialog>
+
+  <dialog id="add-plug-modal">
+    <div class="modal-header">
+      <h3>Register New Smart Plug</h3>
+      <button onclick="document.getElementById('add-plug-modal').close()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:20px;">&times;</button>
+    </div>
+    <form method="POST" action="{% url 'page-plug-create' active_house.id %}">
+      {% csrf_token %}
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Plug Name</label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Living Room Lamp" required>
+        </div>
+        <div class="form-group">
+            <label>Plug Code (QR/Manual)</label>
+            <input type="text" name="plug_code" class="form-control" placeholder="Enter unique code" required>
+        </div>
+        <div class="form-group">
+          <label>Initial Room</label>
+          <select name="room" class="form-control">
+            <option value="">Unassigned</option>
+            {% for r in rooms %}
+                <option value="{{ r.id }}">{{ r.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="document.getElementById('add-plug-modal').close()" class="btn" style="flex: 1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex: 1; font-weight: 700;">Register Plug</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="add-room-modal">
     <div class="modal-header">
       <h3>Create New Room</h3>
@@ -316,4 +413,71 @@
       </div>
     </form>
   </dialog>
+{% endblock %}
+
+{% block script %}
+<script>
+    function openPlugModal(id, name, roomName, code, isOn, status, isVerified) {
+        const modal = document.getElementById('plug-detail-modal');
+        
+        // Update Title & ID
+        document.getElementById('modal-plug-title').innerHTML = `${name} - <span style="font-weight: 400; color: var(--text-muted);">${roomName}</span>`;
+        document.getElementById('modal-plug-id').textContent = `ID: ${code}`;
+        
+        // Update Sync Tag
+        const syncTag = document.getElementById('modal-plug-sync-tag');
+        syncTag.style.display = isVerified ? 'none' : 'inline-block';
+
+        // Update Status Badge
+        const badge = document.getElementById('modal-plug-status-badge');
+        badge.textContent = status.toUpperCase();
+        if (status === 'online') {
+            badge.style.background = 'var(--accent-dim)';
+            badge.style.color = 'var(--accent)';
+        } else {
+            badge.style.background = 'rgba(255,255,255,0.05)';
+            badge.style.color = 'var(--text-muted)';
+        }
+        
+        // Update Power Button
+        const pwrBtn = document.getElementById('modal-plug-power-btn');
+        const actionInput = document.getElementById('modal-plug-action-val');
+        const controlForm = document.getElementById('modal-plug-control-form');
+        
+        controlForm.action = `/houses/{{ active_house.id }}/plugs/${id}/control/`;
+        
+        if (isOn === 'on') {
+            pwrBtn.textContent = 'TURN OFF';
+            pwrBtn.style.background = 'rgba(248, 113, 113, 0.1)';
+            pwrBtn.style.color = '#f87171';
+            pwrBtn.style.borderColor = 'rgba(248, 113, 113, 0.2)';
+            actionInput.value = 'off';
+        } else {
+            pwrBtn.textContent = 'TURN ON';
+            pwrBtn.style.background = 'var(--accent)';
+            pwrBtn.style.color = 'black';
+            pwrBtn.style.borderColor = 'transparent';
+            actionInput.value = 'on';
+        }
+
+        // Update Edit Form
+        const editForm = document.getElementById('modal-plug-edit-form');
+        editForm.action = `/houses/{{ active_house.id }}/plugs/${id}/edit/`;
+        document.getElementById('modal-plug-name-input').value = name;
+        
+        // Set room select
+        const roomSelect = document.getElementById('modal-plug-room-select');
+        for (let i = 0; i < roomSelect.options.length; i++) {
+            if (roomSelect.options[i].text === roomName) {
+                roomSelect.selectedIndex = i;
+                break;
+            }
+        }
+
+        // Update Delete Form
+        document.getElementById('modal-plug-delete-form').action = `/houses/{{ active_house.id }}/plugs/${id}/delete/`;
+        
+        modal.showModal();
+    }
+</script>
 {% endblock %}

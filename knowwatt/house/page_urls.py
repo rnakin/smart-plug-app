@@ -17,4 +17,6 @@ urlpatterns = [
     path('<uuid:pk>/rooms/create/', page_views.create_room, name='create-room'),
     path('<uuid:pk>/rooms/<uuid:room_pk>/delete/', page_views.delete_room, name='delete-room'),
     path('<uuid:pk>/plugs/move/', page_views.move_plug, name='move-plug'),
+    path('invites/<uuid:pk>/accept/', page_views.accept_invite, name='accept-invite'),
+    path('invites/<uuid:pk>/deny/', page_views.deny_invite, name='deny-invite'),
 ]
