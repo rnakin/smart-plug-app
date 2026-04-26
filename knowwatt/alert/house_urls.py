@@ -9,6 +9,7 @@ from .views import (
     AlertEventListView,
     AlertEventActionView,
     AlertTriggerView,
+    SessionRespondView,
 )
 
 urlpatterns = [
@@ -17,4 +18,7 @@ urlpatterns = [
     path('alerts/events/', AlertEventListView.as_view(), name='alert-event-list'),
     path('alerts/events/<uuid:event_id>/action/', AlertEventActionView.as_view(), name='alert-event-action'),
     path('alerts/trigger/', AlertTriggerView.as_view(), name='alert-trigger'),
+
+    # Escalation response — user replies to a notify/alert prompt
+    path('sessions/<uuid:session_id>/respond/', SessionRespondView.as_view(), name='session-respond'),
 ]

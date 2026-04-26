@@ -1,0 +1,197 @@
+/* ═══════════════════════════════════════════════════════════
+   ESCALATION NOTIFICATION SYSTEM
+   Soft toasts (notify) → loud modal (alert) → calm cutoff
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Stack container — bottom-right corner ─────────────────── */
+#esc-stack {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 8000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  max-width: 320px;
+  pointer-events: none;
+}
+
+/* ── Overlay — shown when any card is at alert/cutoff level ─── */
+#esc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 7900;
+  background: rgba(0, 0, 0, 0);
+  pointer-events: none;
+  transition: background 0.4s ease;
+}
+#esc-overlay.active {
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+}
+
+/* ── Base card ─────────────────────────────────────────────── */
+.esc-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  pointer-events: auto;
+  animation: escSlideIn 0.28s cubic-bezier(0.34, 1.26, 0.64, 1);
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+
+@keyframes escSlideIn {
+  from { opacity: 0; transform: translateX(40px) scale(0.95); }
+  to   { opacity: 1; transform: translateX(0)    scale(1); }
+}
+
+/* ── Notify level — soft toast ─────────────────────────────── */
+.esc-card.notify {
+  border-color: var(--border);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+
+/* ── Alert level — prominent, pulsing border ───────────────── */
+.esc-card.alert {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 2px rgba(255,170,58,0.20), 0 6px 28px rgba(0,0,0,0.35);
+  animation: escSlideIn 0.28s cubic-bezier(0.34, 1.26, 0.64, 1),
+             escPulse 1.4s ease-in-out infinite;
+  /* Larger card for more presence */
+  min-width: 300px;
+  z-index: 8100;
+  position: relative;
+}
+
+@keyframes escPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255,170,58,0.20), 0 6px 28px rgba(0,0,0,0.35); }
+  50%       { box-shadow: 0 0 0 5px rgba(255,170,58,0.35), 0 8px 32px rgba(0,0,0,0.4); }
+}
+
+/* ── Cutoff level — dim, settled ───────────────────────────── */
+.esc-card.cutoff {
+  border-color: var(--danger);
+  box-shadow: 0 4px 20px rgba(255,77,106,0.15);
+  animation: none;
+  opacity: 0.92;
+}
+
+/* ── Body flash on alert ────────────────────────────────────── */
+body.esc-flash {
+  animation: bodyFlash 0.8s ease-out;
+}
+@keyframes bodyFlash {
+  0%   { background: rgba(255,170,58,0.10); }
+  100% { background: transparent; }
+}
+
+/* ── Card header ─────────────────────────────────────────────── */
+.esc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.esc-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.esc-device-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+
+.esc-plug-name {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── Message ─────────────────────────────────────────────────── */
+.esc-msg {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.esc-msg.warn {
+  color: var(--warn);
+}
+
+.esc-msg.danger {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ── Actions ─────────────────────────────────────────────────── */
+.esc-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.esc-btn {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  border: 1px solid transparent;
+  transition: opacity 0.15s;
+}
+.esc-btn:hover { opacity: 0.82; }
+.esc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.esc-btn.yes {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+.esc-btn.no {
+  background: rgba(255,77,106,0.10);
+  color: var(--danger);
+  border-color: rgba(255,77,106,0.25);
+}
+
+.esc-btn.dismiss {
+  background: var(--surface2);
+  color: var(--text2);
+  border-color: var(--border);
+}
+
+/* ── Level badge ─────────────────────────────────────────────── */
+.esc-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+.esc-level-badge.notify { background: rgba(77,159,255,0.12); color: var(--accent2); }
+.esc-level-badge.alert  { background: rgba(255,170,58,0.15); color: var(--warn); }
+.esc-level-badge.cutoff { background: rgba(255,77,106,0.12); color: var(--danger); }
+
+/* ── Auto-cutoff strip at bottom of cutoff card ─────────────── */
+.esc-cutoff-strip {
+  margin-top: 10px;
+  padding: 7px 10px;
+  background: rgba(255,77,106,0.08);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--danger);
+  font-weight: 600;
+  text-align: center;
+}

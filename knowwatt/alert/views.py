@@ -426,6 +426,75 @@ class PushTokenView(APIView):
         return Response({'error': 'Token not found'}, status=404)
 
 
+class SessionRespondView(APIView):
+    """
+    POST /api/houses/<house_id>/sessions/<session_id>/respond/
+    Body: { "action": "reset" | "cutoff" }
+
+    reset  — cancel escalation timers and reschedule from zero
+             (user says they are still using the device)
+    cutoff — cancel timers, turn off relay, end the session
+             (user says they are done / no longer using it)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, house_id, session_id):
+        from device.models import PlugSession
+        from alert.escalation import cancel_escalation, reset_escalation
+        from alert.engine import execute_auto_off, end_session, broadcast_session_ended
+
+        membership, err = require_membership(house_id, request.user)
+        if err:
+            return err
+
+        try:
+            session = PlugSession.objects.select_related(
+                'plug', 'plug__house', 'device'
+            ).get(id=session_id, plug__house_id=house_id)
+        except PlugSession.DoesNotExist:
+            return Response({'error': 'Session not found'}, status=404)
+
+        if not session.is_active:
+            # Session already ended — tell the frontend so it can dismiss the UI
+            return Response(
+                {'error': 'Session is no longer active', 'session_id': str(session_id)},
+                status=400,
+            )
+
+        action = request.data.get('action')
+        plug = session.plug
+
+        if action == 'reset':
+            reset_escalation(str(session.id))
+            return Response({
+                'message': 'Timer reset — escalation restarted from zero',
+                'session_id': str(session.id),
+            })
+
+        elif action == 'cutoff':
+            cancel_escalation(str(session.id))
+            execute_auto_off(plug)
+            end_session(session)
+            broadcast_session_ended(
+                house_id=str(house_id),
+                session_id=str(session.id),
+                plug_id=str(plug.id),
+                plug_name=plug.name,
+                device_name=session.device.name if session.device else '',
+                reason='user_cutoff',
+            )
+            return Response({
+                'message': 'Plug turned off and session ended',
+                'session_id': str(session.id),
+            })
+
+        else:
+            return Response(
+                {'error': 'action must be "reset" or "cutoff"'},
+                status=400,
+            )
+
+
 class UserNotificationsView(APIView):
     """
     GET /api/alerts/notifications/

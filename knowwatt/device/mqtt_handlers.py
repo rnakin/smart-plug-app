@@ -58,10 +58,26 @@ def handle_nfc_event(client, topic, payload_dict):
 
         # ── device removed ──────────────────────────────────────
         if not uid or uid == 'null':
+            # Collect active sessions before ending them so we can cancel timers
+            ending_sessions = list(
+                PlugSession.objects.filter(plug=plug, is_active=True).values_list('id', flat=True)
+            )
             PlugSession.objects.filter(plug=plug, is_active=True).update(
                 is_active=False,
                 ended_at=now()
             )
+            # Cancel escalation timers for every session that just ended
+            from alert.escalation import cancel_escalation
+            from alert.engine import broadcast_session_ended
+            for sid in ending_sessions:
+                cancel_escalation(str(sid))
+                broadcast_session_ended(
+                    house_id=house_id,
+                    session_id=str(sid),
+                    plug_id=str(plug.id),
+                    plug_name=plug.name,
+                    reason='nfc_removed',
+                )
             print(f"NFC null: device removed from plug {plug_id}")
             async_to_sync(channel_layer.group_send)(
                 f"house_{house_id}",
@@ -82,15 +98,36 @@ def handle_nfc_event(client, topic, payload_dict):
             nfc_tag = None
 
         if nfc_tag and nfc_tag.device:
+            # Cancel timers for any session being displaced by the new scan
+            ending_sessions = list(
+                PlugSession.objects.filter(plug=plug, is_active=True).values_list('id', flat=True)
+            )
             PlugSession.objects.filter(plug=plug, is_active=True).update(
                 is_active=False,
                 ended_at=now()
             )
-            PlugSession.objects.create(
+            from alert.escalation import cancel_escalation, schedule_escalation
+            from alert.engine import broadcast_session_ended
+            for sid in ending_sessions:
+                cancel_escalation(str(sid))
+                broadcast_session_ended(
+                    house_id=house_id,
+                    session_id=str(sid),
+                    plug_id=str(plug.id),
+                    plug_name=plug.name,
+                    reason='nfc_removed',
+                )
+
+            new_session = PlugSession.objects.create(
                 plug=plug,
                 device=nfc_tag.device,
                 nfc_tag=nfc_tag,
             )
+            # Arm escalation timers for the new session (only if device has limits set)
+            device = nfc_tag.device
+            if device.until_notify_minutes or device.until_alert_minutes or device.until_cutoff_minutes:
+                schedule_escalation(str(new_session.id))
+
             print(f"NFC known: {uid} → {nfc_tag.device.name} on plug {plug_id}")
             async_to_sync(channel_layer.group_send)(
                 f"house_{house_id}",

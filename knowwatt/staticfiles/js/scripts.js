@@ -47,6 +47,7 @@ let houses = [], currentPlugs = [], activeHouseId = null, activeHouseName = '', 
 function setActiveHouse(id, name, role) {
   activeHouseId = id; activeHouseName = name; activeHouseRole = role;
   loadPlugs(); loadAlertPills(); loadEnergyStats();
+  connectHouseWS(id);
 }
 
 // ── Alert badge ───────────────────────────────────────────────────────────────
@@ -1459,4 +1460,308 @@ if (activeHouseId) {
       });
     }
   })();
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// HOUSE WEBSOCKET — real-time house-level events
+// Handles: nfc_known, nfc_unknown, device_removed
+//          escalation_notify, escalation_alert, escalation_cutoff
+//          session_ended
+// ══════════════════════════════════════════════════════════════════
+
+let _houseWS = null;
+let _houseWSId = null;
+let _houseWSRetryTimer = null;
+
+function connectHouseWS(houseId) {
+  if (!houseId) return;
+  // Already connected to the same house
+  if (_houseWSId === houseId && _houseWS && _houseWS.readyState === WebSocket.OPEN) return;
+
+  // Close existing connection if switching houses
+  if (_houseWS) {
+    _houseWS.onclose = null; // prevent auto-retry on intentional close
+    _houseWS.close();
+    _houseWS = null;
+  }
+  if (_houseWSRetryTimer) clearTimeout(_houseWSRetryTimer);
+
+  _houseWSId = houseId;
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  _houseWS = new WebSocket(`${proto}://${window.location.host}/ws/house/${houseId}/`);
+
+  _houseWS.onopen = () => {
+    console.log(`[House WS] connected to house ${houseId}`);
+  };
+
+  _houseWS.onmessage = (e) => {
+    try { handleHouseWSMessage(JSON.parse(e.data)); }
+    catch (err) { console.warn('[House WS] parse error', err); }
+  };
+
+  _houseWS.onerror = (err) => console.warn('[House WS] error', err);
+
+  _houseWS.onclose = () => {
+    console.log(`[House WS] closed — reconnecting in 4s`);
+    _houseWSRetryTimer = setTimeout(() => {
+      if (_houseWSId === houseId) connectHouseWS(houseId);
+    }, 4000);
+  };
+}
+
+function handleHouseWSMessage(data) {
+  const ev = data.event;
+
+  // ── NFC / session events ────────────────────────────────────────
+  if (ev === 'nfc_known' || ev === 'nfc_unknown' || ev === 'device_removed') {
+    // Refresh plug list for live digital twin updates
+    if (typeof loadPlugs === 'function') loadPlugs();
+    return;
+  }
+
+  // ── Escalation events ───────────────────────────────────────────
+  if (ev === 'escalation_notify') { escHandleNotify(data); return; }
+  if (ev === 'escalation_alert')  { escHandleAlert(data);  return; }
+  if (ev === 'escalation_cutoff') { escHandleCutoff(data); return; }
+  if (ev === 'session_ended')     { escHandleSessionEnded(data); return; }
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// ESCALATION UI
+// Per-session cards stacked in #esc-stack
+// Levels: notify → alert → cutoff
+// ══════════════════════════════════════════════════════════════════
+
+// Track active escalation cards: session_id → DOM element
+const _escCards = {};
+
+// ── Audio (Web Audio API) ─────────────────────────────────────────
+let _escAudioCtx = null;
+let _escAlertInterval = null;
+
+function _escGetAudioCtx() {
+  if (!_escAudioCtx) _escAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _escAudioCtx;
+}
+
+function _escPlayBeep(freq = 880, duration = 0.18, gain = 0.25) {
+  try {
+    const ctx = _escGetAudioCtx();
+    const osc = ctx.createOscillator();
+    const vol = ctx.createGain();
+    osc.connect(vol); vol.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    vol.gain.setValueAtTime(gain, ctx.currentTime);
+    vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch (e) {}
+}
+
+function _escStartAlertSound() {
+  _escStopAlertSound();
+  _escPlayBeep(880, 0.18, 0.3);
+  setTimeout(() => _escPlayBeep(1100, 0.18, 0.3), 220);
+  // Repeat every 3 seconds while any alert-level card exists
+  _escAlertInterval = setInterval(() => {
+    const hasAlert = Object.values(_escCards).some(c => c.classList.contains('alert'));
+    if (!hasAlert) { _escStopAlertSound(); return; }
+    _escPlayBeep(880, 0.18, 0.3);
+    setTimeout(() => _escPlayBeep(1100, 0.18, 0.3), 220);
+  }, 3000);
+}
+
+function _escStopAlertSound() {
+  if (_escAlertInterval) { clearInterval(_escAlertInterval); _escAlertInterval = null; }
+}
+
+// ── Overlay ────────────────────────────────────────────────────────
+function _escUpdateOverlay() {
+  const overlay = document.getElementById('esc-overlay');
+  if (!overlay) return;
+  const hasHighLevel = Object.values(_escCards).some(
+    c => c.classList.contains('alert') || c.classList.contains('cutoff')
+  );
+  overlay.classList.toggle('active', hasHighLevel);
+}
+
+// ── Body flash ─────────────────────────────────────────────────────
+function _escFlashBody() {
+  document.body.classList.remove('esc-flash');
+  // Force reflow then re-add
+  void document.body.offsetWidth;
+  document.body.classList.add('esc-flash');
+  setTimeout(() => document.body.classList.remove('esc-flash'), 800);
+}
+
+// ── Build a card element ───────────────────────────────────────────
+function _escBuildCard(data, level) {
+  const sid = data.session_id;
+  const card = document.createElement('div');
+  card.className = `esc-card ${level}`;
+  card.dataset.sid = sid;
+  _escRenderCardContent(card, data, level);
+  return card;
+}
+
+function _escRenderCardContent(card, data, level) {
+  const sid = data.session_id;
+  const deviceName = data.device_name || 'Device';
+  const plugName = data.plug_name || 'Plug';
+  const notifyMin = data.notify_minutes;
+  const alertMin = data.alert_minutes;
+  const cutoffMin = data.cutoff_minutes;
+
+  const icon = level === 'notify' ? '⏱' : level === 'alert' ? '⚠️' : '⚡';
+  const badgeLabel = level === 'notify' ? 'REMINDER' : level === 'alert' ? 'ALERT' : 'AUTO CUTOFF';
+
+  let msgText, extraHtml = '', actionsHtml = '';
+
+  if (level === 'notify') {
+    msgText = `Still using <strong>${deviceName}</strong>? Active for ${notifyMin} min on <em>${plugName}</em>.`;
+    actionsHtml = `
+      <button class="esc-btn yes" onclick="escRespond('${sid}', 'reset', this)">Yes, reset timer</button>
+      <button class="esc-btn no"  onclick="escRespond('${sid}', 'cutoff', this)">No, turn off</button>`;
+  } else if (level === 'alert') {
+    msgText = `<strong>${deviceName}</strong> has been on for ${alertMin} min. Still using it?`;
+    actionsHtml = `
+      <button class="esc-btn yes" onclick="escRespond('${sid}', 'reset', this)">Yes, reset timer</button>
+      <button class="esc-btn no"  onclick="escRespond('${sid}', 'cutoff', this)">No, turn off</button>`;
+  } else {
+    // cutoff — auto-off fired, user just needs to dismiss
+    msgText = `<strong>${deviceName}</strong> was on for ${cutoffMin} min with no response.`;
+    extraHtml = `<div class="esc-cutoff-strip">Auto cutoff triggered — plug turned off</div>`;
+    actionsHtml = `<button class="esc-btn dismiss" onclick="escDismiss('${sid}')">Dismiss</button>`;
+  }
+
+  card.innerHTML = `
+    <div class="esc-level-badge ${level}">${icon} ${badgeLabel}</div>
+    <div class="esc-header">
+      <span class="esc-device-name">${deviceName}</span>
+      <span class="esc-plug-name">${plugName}</span>
+    </div>
+    <div class="esc-msg${level === 'alert' ? ' warn' : level === 'cutoff' ? ' danger' : ''}">${msgText}</div>
+    ${extraHtml}
+    <div class="esc-actions">${actionsHtml}</div>`;
+}
+
+// ── Handlers per level ─────────────────────────────────────────────
+
+function escHandleNotify(data) {
+  const sid = data.session_id;
+  let card = _escCards[sid];
+
+  if (!card) {
+    card = _escBuildCard(data, 'notify');
+    document.getElementById('esc-stack').appendChild(card);
+    _escCards[sid] = card;
+  } else {
+    // Upgrade from cutoff? (shouldn't happen, but be safe)
+    card.className = 'esc-card notify';
+    _escRenderCardContent(card, data, 'notify');
+  }
+  _escUpdateOverlay();
+}
+
+function escHandleAlert(data) {
+  const sid = data.session_id;
+  let card = _escCards[sid];
+
+  if (!card) {
+    card = _escBuildCard(data, 'alert');
+    document.getElementById('esc-stack').appendChild(card);
+    _escCards[sid] = card;
+  } else {
+    card.className = 'esc-card alert';
+    _escRenderCardContent(card, data, 'alert');
+  }
+
+  _escUpdateOverlay();
+  _escFlashBody();
+  _escStartAlertSound();
+}
+
+function escHandleCutoff(data) {
+  const sid = data.session_id;
+  let card = _escCards[sid];
+
+  if (!card) {
+    card = _escBuildCard(data, 'cutoff');
+    document.getElementById('esc-stack').appendChild(card);
+    _escCards[sid] = card;
+  } else {
+    card.className = 'esc-card cutoff';
+    _escRenderCardContent(card, data, 'cutoff');
+  }
+
+  _escStopAlertSound();
+  _escUpdateOverlay();
+
+  // Auto-dismiss cutoff card after 12 s
+  setTimeout(() => escDismiss(sid), 12000);
+}
+
+function escHandleSessionEnded(data) {
+  // Session ended cleanly (NFC removed, or user responded via another device)
+  escDismiss(data.session_id);
+  // Refresh digital twin
+  if (typeof loadPlugs === 'function') loadPlugs();
+}
+
+// ── User actions ───────────────────────────────────────────────────
+
+async function escRespond(sessionId, action, btn) {
+  if (!_houseWSId) return;
+  const btns = btn.closest('.esc-actions')?.querySelectorAll('button');
+  if (btns) btns.forEach(b => b.disabled = true);
+
+  try {
+    const res = await fetch(
+      `/api/houses/${_houseWSId}/sessions/${sessionId}/respond/`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ action }),
+      }
+    );
+
+    if (res.ok) {
+      if (action === 'cutoff') {
+        // Server will broadcast session_ended; dismiss immediately
+        escDismiss(sessionId);
+        if (typeof loadPlugs === 'function') loadPlugs();
+      } else {
+        // Reset — remove card (new notify will come in after the interval restarts)
+        escDismiss(sessionId);
+      }
+    } else {
+      const data = await res.json();
+      if (data.error && data.error.includes('longer active')) {
+        // Session already ended on the server — just dismiss
+        escDismiss(sessionId);
+      } else {
+        if (btns) btns.forEach(b => b.disabled = false);
+      }
+    }
+  } catch (e) {
+    if (btns) btns.forEach(b => b.disabled = false);
+  }
+}
+
+function escDismiss(sessionId) {
+  const card = _escCards[sessionId];
+  if (card) {
+    card.style.transition = 'opacity 0.25s, transform 0.25s';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(30px)';
+    setTimeout(() => { card.remove(); }, 260);
+    delete _escCards[sessionId];
+  }
+  // Stop sound if no more alert-level cards
+  const hasAlert = Object.values(_escCards).some(c => c.classList.contains('alert'));
+  if (!hasAlert) _escStopAlertSound();
+  _escUpdateOverlay();
 }
