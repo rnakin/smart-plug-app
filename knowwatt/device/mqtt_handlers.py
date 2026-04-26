@@ -7,7 +7,7 @@ from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from device.models import ElectricalDevice, NFCTag, PlugSession,SmartPlug
-
+from django.utils.timezone import now
 logger = logging.getLogger(__name__)
 from django.db import close_old_connections
 
@@ -37,6 +37,7 @@ def send_plug_update(plug_code, event, uid, known, device_name=None, rated_watts
 
 
 def handle_nfc_event(client, topic, payload_dict):
+    print(f"handle_nfc_event called: {payload_dict}")  # add this first line
     try:
         close_old_connections()
 
@@ -44,12 +45,12 @@ def handle_nfc_event(client, topic, payload_dict):
         uid = payload_dict.get('uid')
 
         if not plug_id:
-            logger.warning("handle_nfc_event: missing plug_id")
+            print("handle_nfc_event: missing plug_id")
             return
 
         plug = SmartPlug.objects.select_related('house').filter(plug_code=plug_id).first()
         if not plug:
-            logger.warning(f"handle_nfc_event: no plug found for {plug_id}")
+            print(f"handle_nfc_event: no plug found for {plug_id}")
             return
 
         house_id = str(plug.house.id)
@@ -61,7 +62,7 @@ def handle_nfc_event(client, topic, payload_dict):
                 is_active=False,
                 ended_at=now()
             )
-            logger.info(f"NFC null: device removed from plug {plug_id}")
+            print(f"NFC null: device removed from plug {plug_id}")
             async_to_sync(channel_layer.group_send)(
                 f"house_{house_id}",
                 {
@@ -69,6 +70,7 @@ def handle_nfc_event(client, topic, payload_dict):
                     "event": "device_removed",
                     "plug_code": plug_id,
                     "plug_id": str(plug.id),
+                    "online_status": "online",
                 }
             )
             return
@@ -89,7 +91,7 @@ def handle_nfc_event(client, topic, payload_dict):
                 device=nfc_tag.device,
                 nfc_tag=nfc_tag,
             )
-            logger.info(f"NFC known: {uid} → {nfc_tag.device.name} on plug {plug_id}")
+            print(f"NFC known: {uid} → {nfc_tag.device.name} on plug {plug_id}")
             async_to_sync(channel_layer.group_send)(
                 f"house_{house_id}",
                 {
@@ -98,10 +100,11 @@ def handle_nfc_event(client, topic, payload_dict):
                     "plug_code": plug_id,
                     "plug_id": str(plug.id),
                     "device_name": nfc_tag.device.name,
+                    "online_status": "online",
                 }
             )
         else:
-            logger.info(f"NFC unknown: {uid} on plug {plug_id}")
+            print(f"NFC unknown: {uid} on plug {plug_id}")
             async_to_sync(channel_layer.group_send)(
                 f"house_{house_id}",
                 {
@@ -111,13 +114,14 @@ def handle_nfc_event(client, topic, payload_dict):
                     "plug_id": str(plug.id),
                     "plug_name": plug.name,
                     "uid": uid,
+                    "online_status": "online",
                 }
             )
 
     except Exception as e:
-        logger.error(f"handle_nfc_event error: {e}")
+        print(f"handle_nfc_event ERROR: {e}")
         import traceback
-        logger.error(traceback.format_exc())
+        print(traceback.format_exc())
     finally:
         close_old_connections()
 

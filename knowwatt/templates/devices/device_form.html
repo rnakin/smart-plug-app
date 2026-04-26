@@ -111,18 +111,22 @@
 
 {% block script %}
 <script>
+function getCsrfToken() {
+    const match = document.cookie.match(/(^|;\s*)csrftoken=([^;]+)/);
+    return match ? match.pop() : '';
+}
+
 async function removeTag(tagId) {
     if (!confirm('Unpair this tag from this device?')) return;
     
     // Get the JWT token from the session/context if possible, or assume it's in localStorage
     // In a real app we'd have a more robust way to get this
-    const token = '{{ request.session.token }}' || localStorage.getItem('token');
-    
     const res = await fetch(`/api/houses/{{ house.pk }}/nfc/${tagId}/`, {
         method: 'PATCH',
+        credentials: 'same-origin',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
+            'X-CSRFToken': getCsrfToken()
         },
         body: JSON.stringify({ device_id: null })
     });
@@ -138,14 +142,12 @@ async function removeTag(tagId) {
 async function pairTag() {
     const tagId = document.getElementById('unassigned-tag-select').value;
     if (!tagId) return alert('Please select a tag');
-    
-    const token = '{{ request.session.token }}' || localStorage.getItem('token');
-    
     const res = await fetch(`/api/houses/{{ house.pk }}/nfc/${tagId}/`, {
         method: 'PATCH',
+        credentials: 'same-origin',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
+            'X-CSRFToken': getCsrfToken()
         },
         body: JSON.stringify({ device_id: '{{ device.pk }}' })
     });
@@ -159,5 +161,4 @@ async function pairTag() {
 }
 </script>
 {% endblock %}
-
 

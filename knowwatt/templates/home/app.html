@@ -166,32 +166,34 @@
             </div>
           </summary>
           {% for plug in room.plugs.all %}
-            <div class="plug-item" data-plug-code="{{ plug.plug_code }}"style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', '{{ plug.current_device.name|default:'None'|escapejs }}')">
-              <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
-              <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
-                    </div>
-                    {% if plug.is_on %}
-                      <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                        <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
-                        <span style="color: var(--accent); font-size: 10px; font-family: 'DM Mono', monospace;">{{ plug.current_power_w }}W</span>
-                      </div>
-                    {% else %}
-                      <span style="color: var(--text-muted); font-weight: 800; font-size: 11px; letter-spacing: 1px;">OFF</span>
-                    {% endif %}
-                </div>
-                <div style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">
-                  {% if plug.current_device %}
-                    {{ plug.current_device.name }}
-                  {% else %}
-                    {{ plug.plug_code }}
-                  {% endif %}
-                </div>
-              </div>
+  <div class="plug-item" data-plug-code="{{ plug.plug_code }}" data-plug-id="{{ plug.id }}" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', '{{ plug.current_device.name|default:'None'|escapejs }}')">
+    <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
+    <div style="flex: 1;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
+        </div>
+        <div class="power-status">
+          {% if plug.is_on %}
+            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+              <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
+              <span style="color: var(--accent); font-size: 10px; font-family: 'DM Mono', monospace;">{{ plug.current_power_w }}W</span>
             </div>
-          {% endfor %}
+          {% else %}
+            <span style="color: var(--text-muted); font-weight: 800; font-size: 11px; letter-spacing: 1px;">OFF</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="device-name" style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">
+        {% if plug.current_device %}
+          {{ plug.current_device.name }}
+        {% else %}
+          {{ plug.plug_code }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endfor %}
         </details>
       {% endfor %}
 
@@ -509,16 +511,14 @@
     }
 
     function updatePlugItem(data) {
-        const item = document.querySelector(`.plug-item[data-plug-code="${data.plug_code}"]`);
-        if (!item) return;
+    const item = document.querySelector(`.plug-item[data-plug-code="${data.plug_code}"]`);
+    if (!item) return;
 
-        // status dot
-        item.querySelector('.status-dot').className =
-            `status-dot ${data.online_status === 'online' ? 'status-online' : 'status-offline'}`;
+    const dot = item.querySelector('.status-dot');
+    if (dot) dot.className = `status-dot ${data.online_status === 'online' ? 'status-online' : 'status-offline'}`;
 
-
-        // power status
-        const powerDiv = item.querySelector('.power-status');
+    const powerDiv = item.querySelector('.power-status');
+    if (powerDiv) {
         if (data.is_on) {
             powerDiv.innerHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;">
                 <span style="color:var(--accent);font-weight:800;font-size:11px;letter-spacing:1px;">ON</span>
@@ -527,10 +527,11 @@
         } else {
             powerDiv.innerHTML = `<span style="color:var(--text-muted);font-weight:800;font-size:11px;letter-spacing:1px;">OFF</span>`;
         }
-
-        // device name
-        item.querySelector('.device-name').textContent = data.current_device_name || 'None';
     }
+
+    const deviceName = item.querySelector('.device-name');
+    if (deviceName) deviceName.textContent = data.current_device_name || 'None';
+}
 
     function updateModalIfOpen(data) {
         if (currentPlugId != data.plug_id) return;
@@ -579,7 +580,9 @@
         document.getElementById('modal-plug-id').textContent = `ID: ${code}`;
 
         const syncTag = document.getElementById('modal-plug-sync-tag');
-        syncTag.style.display = isVerified ? 'none' : 'inline-block';
+        if (syncTag) {
+            syncTag.style.display = isVerified ? 'none' : 'inline-block';
+        }
 
         const badge = document.getElementById('modal-plug-status-badge');
         badge.textContent = status.toUpperCase();
@@ -635,6 +638,7 @@
   const houseWs = new WebSocket(`ws://${location.host}/ws/house/{{ active_house.id }}/`);
 
   houseWs.onmessage = (e) => {
+    console.log('House WS message:', e.data);  // add this temporarily
     const data = JSON.parse(e.data);
 
     if (data.event === 'nfc_known') {
