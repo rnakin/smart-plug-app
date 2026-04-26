@@ -8,8 +8,8 @@ from .models import House, HouseMember, Room, Invite, generate_join_code
 from .forms import HouseForm, HouseMemberInviteForm, HouseMemberRoleForm
 from device.models import SmartPlug, ElectricalDevice
 from energy.models import EnergyReading
-from django.db.models import Sum
-from django.utils import timezone
+from django.db.models import Sum, Avg, Max
+from django.db.models.functions import TruncDate
 from datetime import date, timedelta
 
 
@@ -159,8 +159,27 @@ def house_detail(request, pk):
 
     alerts = house.alert_events.filter(status='pending').order_by('-triggered_at')
     
+    # Chart Data
+    chart_start = today - timedelta(days=7)
+    chart_data = (
+        EnergyReading.objects
+        .filter(plug__house=house, recorded_at__date__gte=chart_start, recorded_at__date__lte=today)
+        .annotate(period=TruncDate('recorded_at'))
+        .values('period')
+        .annotate(total_kwh=Sum('energy_kwh'))
+        .order_by('period')
+    )
+    chart_data_fmt = [
+        {
+            'period': row['period'].isoformat() if row['period'] else '',
+            'total_kwh': round(row['total_kwh'] or 0, 4),
+        }
+        for row in chart_data
+    ]
+
     # Members for the management modal
     members = house.members.all().select_related('user')
+    devices = house.devices.all()
 
     return render(request, 'home/app.html', {
         'active_house': house,
@@ -172,6 +191,8 @@ def house_detail(request, pk):
         'today_kwh': round(today_kwh, 2),
         'alerts': alerts,
         'members': members,
+        'chart_data': chart_data_fmt,
+        'devices': devices,
     })
 
 

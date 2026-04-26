@@ -3,6 +3,10 @@
 
 {% block title %}{{ active_house.house_name }} | KnowWatt Dashboard{% endblock %}
 
+{% block header %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block extra_css %}
     /* Left Column Elements */
     .house-selector { 
@@ -276,10 +280,7 @@
     <div style="padding: 0 24px;">
       <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; min-height: 400px;">
         <div style="margin-bottom: 20px; font-weight: 700;">Energy Trends</div>
-        <!-- Placeholder for Chart -->
-        <div style="height: 300px; background: rgba(255,255,255,0.02); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
-          Energy Chart Module
-        </div>
+        <div style="padding:16px; height:260px;"><canvas id="energy-chart"></canvas></div>
       </div>
     </div>
   </main>
@@ -630,6 +631,37 @@
 
         modal.showModal();
     }
+
+    const chartData = {{ chart_data|safe }};
+    const labels = chartData.map(d => {
+      const dt = new Date(d.period + 'T00:00:00');
+      return dt.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    });
+    const values = chartData.map(d => d.total_kwh);
+
+    new Chart(document.getElementById('energy-chart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'kWh',
+          data: values,
+          backgroundColor: 'rgba(0, 217, 139, 0.25)',
+          borderColor: 'rgba(0, 217, 139, 0.8)',
+          borderWidth: 1.5,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#888898', font: { size: 11 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#888898', font: { size: 11 } } },
+        }
+      }
+    });
 
     document.addEventListener('DOMContentLoaded', initPlugSockets);
 

@@ -74,10 +74,8 @@ class SmartPlug(models.Model):#this is use by the app
 
     @property
     def current_power_w(self):
-        # Using EnergyLog instead of EnergyReading if EnergyReading is not available here
-        # Actually checking EnergyLog in this file
-        latest = self.energy_logs.order_by('-timestamp').first()
-        return round(latest.watts, 1) if latest else 0.0
+        latest = self.energy_readings.order_by('-recorded_at').first()
+        return round(latest.power_w, 1) if latest else 0.0
 
     class Meta:
         db_table = 'smart_plug'
