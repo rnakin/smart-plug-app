@@ -134,47 +134,49 @@ def house_detail(request, pk):
     unassigned_plugs = house.plugs.filter(room__isnull=True)
 
     # Summary Stats
-    total_power = 0.0
     all_plugs = house.plugs.all()
-    
-    # Simple Sync Check Simulation
-    # In a real scenario, this would check against a hardware registry
-    for plug in all_plugs:
-        if not plug.is_verified:
-            # Already marked as unverified
-            pass
-        elif len(plug.plug_code) < 4: # Simulated check
-            plug.is_verified = False
-            plug.save()
 
+    # Real-time total power: sum of latest reading per plug
+    total_power = 0.0
     for plug in all_plugs:
         latest = EnergyReading.objects.filter(plug=plug).order_by('-recorded_at').first()
         total_power += latest.power_w if latest else 0.0
 
+    # Today's energy: max cumulative kWh per plug for today
     today = date.today()
-    today_kwh = EnergyReading.objects.filter(
-        plug__house=house,
-        recorded_at__date=today,
-    ).aggregate(total=Sum('energy_kwh'))['total'] or 0
+    today_kwh = 0.0
+    for plug in all_plugs:
+        max_reading = EnergyReading.objects.filter(
+            plug=plug, recorded_at__date=today
+        ).order_by('-energy_kwh').first()
+        if max_reading:
+            today_kwh += max_reading.energy_kwh
 
     alerts = house.alert_events.filter(status='pending').order_by('-triggered_at')
     
-    # Chart Data
+    # Chart Data — daily max kWh per day (cumulative reading)
     chart_start = today - timedelta(days=7)
-    chart_data = (
+    daily_readings = (
         EnergyReading.objects
         .filter(plug__house=house, recorded_at__date__gte=chart_start, recorded_at__date__lte=today)
-        .annotate(period=TruncDate('recorded_at'))
-        .values('period')
-        .annotate(total_kwh=Sum('energy_kwh'))
-        .order_by('period')
+        .annotate(day=TruncDate('recorded_at'))
+        .values('plug_id', 'day')
+        .annotate(max_kwh=Max('energy_kwh'))
+        .order_by('day')
     )
+    # Aggregate across all plugs per day
+    day_totals = {}
+    for row in daily_readings:
+        day = row['day']
+        if day:
+            day_totals[day] = day_totals.get(day, 0) + (row['max_kwh'] or 0)
+
     chart_data_fmt = [
         {
-            'period': row['period'].isoformat() if row['period'] else '',
-            'total_kwh': round(row['total_kwh'] or 0, 4),
+            'period': day.isoformat() if day else '',
+            'total_kwh': round(total, 4),
         }
-        for row in chart_data
+        for day, total in sorted(day_totals.items())
     ]
 
     # Members for the management modal

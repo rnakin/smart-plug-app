@@ -1,3 +1,6 @@
+import json
+import logging
+import threading
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -5,6 +8,31 @@ from django.contrib import messages
 from .models import SmartPlug, ElectricalDevice, NFCTag, ValidSmartPlug
 from .forms import SmartPlugForm, SmartPlugEditForm, ElectricalDeviceForm
 from house.models import House, HouseMember
+
+logger = logging.getLogger(__name__)
+
+
+def _mqtt_relay_async(plug_code, action):
+    """Fire-and-forget MQTT relay control in a background thread."""
+    def _send():
+        import paho.mqtt.publish as mqtt_publish
+        from django.conf import settings
+        command = "turn_on" if action == "on" else "turn_off"
+        try:
+            auth = None
+            if getattr(settings, 'MQTT_USER', None) and getattr(settings, 'MQTT_PASSWORD', None):
+                auth = {'username': settings.MQTT_USER, 'password': settings.MQTT_PASSWORD}
+            mqtt_publish.single(
+                f"{plug_code}/command",
+                payload=json.dumps({"command": command}),
+                hostname=settings.MQTT_BROKER,
+                port=settings.MQTT_PORT,
+                auth=auth,
+                qos=1,
+            )
+        except Exception as e:
+            logger.error(f"MQTT relay failed for {plug_code}: {e}")
+    threading.Thread(target=_send, daemon=True).start()
 
 
 def check_membership(house, user, min_role=None):
@@ -124,10 +152,12 @@ def plug_control(request, house_pk, plug_pk):
     if action == 'on':
         plug.is_on = True
         plug.save()
+        _mqtt_relay_async(plug.plug_code, 'on')
         messages.success(request, f'{plug.name} turned ON.')
     elif action == 'off':
         plug.is_on = False
         plug.save()
+        _mqtt_relay_async(plug.plug_code, 'off')
         messages.success(request, f'{plug.name} turned OFF.')
     return redirect('page-house-detail', pk=house_pk)
 

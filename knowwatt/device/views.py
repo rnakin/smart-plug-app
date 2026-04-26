@@ -1,3 +1,6 @@
+import json
+import logging
+import threading
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -9,6 +12,32 @@ from house.models import House, HouseMember
 from energy.models import EnergyReading
 
 from django.http import JsonResponse
+
+logger = logging.getLogger(__name__)
+
+
+def _mqtt_relay_async(plug_code, action):
+    """Fire-and-forget MQTT relay control in a background thread."""
+    def _send():
+        import paho.mqtt.publish as mqtt_publish
+        from django.conf import settings
+        command = "turn_on" if action == "on" else "turn_off"
+        try:
+            auth = None
+            if getattr(settings, 'MQTT_USER', None) and getattr(settings, 'MQTT_PASSWORD', None):
+                auth = {'username': settings.MQTT_USER, 'password': settings.MQTT_PASSWORD}
+            mqtt_publish.single(
+                f"{plug_code}/command",
+                payload=json.dumps({"command": command}),
+                hostname=settings.MQTT_BROKER,
+                port=settings.MQTT_PORT,
+                auth=auth,
+                qos=1,
+            )
+        except Exception as e:
+            logger.error(f"MQTT relay failed for {plug_code}: {e}")
+    threading.Thread(target=_send, daemon=True).start()
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def get_membership(house_id, user):
@@ -197,6 +226,7 @@ class SmartPlugControlView(APIView):
             return Response({'error': 'action must be "on" or "off"'}, status=400)
 
         plug.save()
+        _mqtt_relay_async(plug.plug_code, action)
         return Response({'id': str(plug.id), 'is_on': plug.is_on})
 
 
@@ -619,15 +649,17 @@ from django.views.decorators.http import require_POST
 from django.http import HttpResponse
 
 @require_POST
+@require_POST
 def publish_command(request, plug_id):
-    """
-    Publishes a turn_on/turn_off command to MQTT and returns a pending HTMX state.
-    """
     action = request.POST.get('action')
+    print(f"publish_command called: plug={plug_id} action={action}")
+
+    if action == 'on': action = 'turn_on'
+    elif action == 'off': action = 'turn_off'
+
     if action not in ['turn_on', 'turn_off']:
         return HttpResponse("Invalid action", status=400)
 
-    # Topic: <plug_id>/command
     topic = f"{plug_id}/command"
     payload = json.dumps({"command": action})
 
@@ -635,17 +667,22 @@ def publish_command(request, plug_id):
     if settings.MQTT_USER and settings.MQTT_PASSWORD:
         auth = {'username': settings.MQTT_USER, 'password': settings.MQTT_PASSWORD}
 
-    # Stateless publish
-    publish.single(
-        topic,
-        payload=payload,
-        hostname=settings.MQTT_BROKER,
-        port=settings.MQTT_PORT,
-        auth=auth,
-        qos=1
-    )
+    try:
+        publish.single(
+            topic,
+            payload=payload,
+            hostname=settings.MQTT_BROKER,
+            port=settings.MQTT_PORT,
+            auth=auth,
+            tls={'ca_certs': None} if settings.MQTT_USE_TLS else None,
+            qos=1
+        )
+        print(f"MQTT published: {topic} → {payload}")
+    except Exception as e:
+        print(f"MQTT PUBLISH FAILED: {e}")
+        import traceback
+        print(traceback.format_exc())
 
-    # Return the pending state partial
     return render(request, 'device/partials/_button_pending.html', {
         'plug_id': plug_id,
         'action': action

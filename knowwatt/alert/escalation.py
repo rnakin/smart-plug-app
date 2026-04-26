@@ -59,6 +59,7 @@ def reset_escalation(session_id: str):
 def _do_schedule(session_id: str):
     """Load session from DB and arm timers based on device settings."""
     close_old_connections()
+    print(f"[ESCALATION] _do_schedule called for session {session_id}")
     try:
         from device.models import PlugSession
 
@@ -115,6 +116,7 @@ def _do_schedule(session_id: str):
         with _timers_lock:
             _timers[sid] = timers
 
+        print(f"[ESCALATION] Armed for session {sid} | notify={device.until_notify_minutes}m alert={device.until_alert_minutes}m cutoff={device.until_cutoff_minutes}m")
         logger.info(
             f"Escalation armed for session {sid} | "
             f"notify={device.until_notify_minutes}m "
@@ -123,6 +125,9 @@ def _do_schedule(session_id: str):
         )
 
     except Exception as e:
+        print(f"[ESCALATION] _do_schedule error: {e}")
+        import traceback
+        traceback.print_exc()
         logger.error(f"_do_schedule error: {e}", exc_info=True)
     finally:
         close_old_connections()
@@ -131,6 +136,7 @@ def _do_schedule(session_id: str):
 def _fire_stage(plug_id: str, session_id: str, house_id: str, level: str):
     """Timer callback — checks session is still active then acts."""
     close_old_connections()
+    print(f"[ESCALATION] Timer fired: level={level} session={session_id}")
     try:
         from device.models import PlugSession
 
@@ -151,6 +157,9 @@ def _fire_stage(plug_id: str, session_id: str, house_id: str, level: str):
             _broadcast_escalation(house_id, session, level)
 
     except Exception as e:
+        print(f"[ESCALATION] _fire_stage({level}) error: {e}")
+        import traceback
+        traceback.print_exc()
         logger.error(f"_fire_stage({level}) error: {e}", exc_info=True)
     finally:
         close_old_connections()
@@ -179,6 +188,7 @@ def _handle_cutoff(session, house_id: str):
     # Cancel any remaining notify/alert timers (they shouldn't exist, but be safe)
     cancel_escalation(str(session.id))
 
+    print(f"[ESCALATION] Auto cutoff executed for session {session.id}")
     logger.info(f"Auto cutoff executed for session {session.id}")
 
 
@@ -207,4 +217,5 @@ def _broadcast_escalation(house_id: str, session, level: str):
             "house_id": str(house_id),
         },
     )
+    print(f"[ESCALATION] Broadcast escalation_{level} for session {session.id}")
     logger.info(f"Broadcast escalation_{level} for session {session.id}")

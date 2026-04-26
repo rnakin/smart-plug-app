@@ -73,6 +73,11 @@ class SmartPlug(models.Model):#this is use by the app
         return session.device if session else None
 
     @property
+    def active_session(self):
+        """Return the active PlugSession (with device pre-fetched), or None."""
+        return self.sessions.filter(is_active=True).select_related('device').first()
+
+    @property
     def current_power_w(self):
         latest = self.energy_readings.order_by('-recorded_at').first()
         return round(latest.power_w, 1) if latest else 0.0

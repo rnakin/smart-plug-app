@@ -137,6 +137,12 @@ def handle_nfc_event(client, topic, payload_dict):
                     "plug_code": plug_id,
                     "plug_id": str(plug.id),
                     "device_name": nfc_tag.device.name,
+                    "device_id": str(nfc_tag.device.id),
+                    "session_id": str(new_session.id),
+                    "session_started": new_session.started_at.isoformat(),
+                    "notify_min": device.until_notify_minutes,
+                    "alert_min": device.until_alert_minutes,
+                    "cutoff_min": device.until_cutoff_minutes,
                     "online_status": "online",
                 }
             )

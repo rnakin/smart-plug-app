@@ -169,15 +169,26 @@
               </form>
             </div>
           </summary>
-          {% for plug in room.plugs.all %}
-  <div class="plug-item" data-plug-code="{{ plug.plug_code }}" data-plug-id="{{ plug.id }}" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', '{{ plug.current_device.name|default:'None'|escapejs }}')">
+          {% for plug in room.plugs.all %}{% with sess=plug.active_session %}
+  <div class="plug-item"
+       data-plug-code="{{ plug.plug_code }}"
+       data-plug-id="{{ plug.id }}"
+       {% if sess %}
+       data-session-id="{{ sess.id }}"
+       data-session-started="{{ sess.started_at.isoformat }}"
+       data-notify-min="{{ sess.device.until_notify_minutes|default:'' }}"
+       data-alert-min="{{ sess.device.until_alert_minutes|default:'' }}"
+       data-cutoff-min="{{ sess.device.until_cutoff_minutes|default:'' }}"
+       {% endif %}
+       data-relay-on="{{ plug.is_on|yesno:'1,0' }}"
+       data-plug-name="{{ plug.name|escapejs }}"
+       style="cursor: pointer;"
+       onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', '{{ plug.current_device.name|default:'None'|escapejs }}')">
     <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
-    <div style="flex: 1;">
+    <div style="flex: 1; min-width: 0;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
-        </div>
-        <div class="power-status">
+        <div style="font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ plug.name }}</div>
+        <div class="power-status" style="flex-shrink:0; margin-left:6px;">
           {% if plug.is_on %}
             <div style="display: flex; flex-direction: column; align-items: flex-end;">
               <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
@@ -189,30 +200,39 @@
         </div>
       </div>
       <div class="device-name" style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">
-        {% if plug.current_device %}
-          {{ plug.current_device.name }}
-        {% else %}
-          {{ plug.plug_code }}
-        {% endif %}
+        {% if plug.current_device %}{{ plug.current_device.name }}{% else %}{{ plug.plug_code }}{% endif %}
       </div>
+      <!-- Live countdown timer — shown when a device session is active -->
+      <div class="session-timer" style="display:none; margin-top:5px; font-size:10px; font-family:'DM Mono',monospace;"></div>
     </div>
   </div>
-{% endfor %}
+{% endwith %}{% endfor %}
         </details>
       {% endfor %}
 
       {% if unassigned_plugs %}
         <details>
           <summary><span>📦 Unassigned</span> <span style="font-size: 11px; color: var(--text-muted);">{{ unassigned_plugs.count }}</span></summary>
-{% for plug in unassigned_plugs %}
-  <div class="plug-item"data-plug-code="{{ plug.plug_code }}" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}','{{ plug.current_device.name|default:'None'|escapejs }}')">
+{% for plug in unassigned_plugs %}{% with sess=plug.active_session %}
+  <div class="plug-item"
+       data-plug-code="{{ plug.plug_code }}"
+       data-plug-id="{{ plug.id }}"
+       {% if sess %}
+       data-session-id="{{ sess.id }}"
+       data-session-started="{{ sess.started_at.isoformat }}"
+       data-notify-min="{{ sess.device.until_notify_minutes|default:'' }}"
+       data-alert-min="{{ sess.device.until_alert_minutes|default:'' }}"
+       data-cutoff-min="{{ sess.device.until_cutoff_minutes|default:'' }}"
+       {% endif %}
+       data-relay-on="{{ plug.is_on|yesno:'1,0' }}"
+       data-plug-name="{{ plug.name|escapejs }}"
+       style="cursor: pointer;"
+       onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', 'Unassigned', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}','{{ plug.current_device.name|default:'None'|escapejs }}')">
     <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
-    <div style="flex: 1;">
+    <div style="flex: 1; min-width: 0;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
-        </div>
-        <div class="power-status">
+        <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
+        <div class="power-status" style="flex-shrink:0; margin-left:6px;">
           {% if plug.is_on %}
             <div style="display: flex; flex-direction: column; align-items: flex-end;">
               <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
@@ -224,11 +244,12 @@
         </div>
       </div>
       <div class="device-name" style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">
-        {{ plug.current_device.name|default:"None" }}
+        {% if plug.current_device %}{{ plug.current_device.name }}{% else %}{{ plug.plug_code }}{% endif %}
       </div>
+      <div class="session-timer" style="display:none; margin-top:5px; font-size:10px; font-family:'DM Mono',monospace;"></div>
     </div>
   </div>
-{% endfor %}
+{% endwith %}{% endfor %}
         </details>
       {% endif %}
 
@@ -285,19 +306,38 @@
     </div>
   </main>
 
-  <!-- COLUMN 3: ALERTS -->
-  <aside class="col-right">
-    <div class="alert-header">Alerts & System</div>
-    <div class="alert-list">
+  <!-- COLUMN 3: NOTIFICATIONS & ALERTS -->
+  <aside class="col-right" style="display:flex;flex-direction:column;overflow:hidden;">
+
+    <!-- Header -->
+    <div style="padding:16px 18px 12px; border-bottom:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:space-between;">
+      <span style="font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.6px;">Notifications &amp; Alerts</span>
+      <span id="notif-count" style="display:none; background:rgba(255,170,58,0.18); color:#ffaa3a; font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; line-height:1.6;">0</span>
+    </div>
+
+    <!-- Live active sessions with relay-aware timers -->
+    <div id="live-sessions-panel" style="flex-shrink:0; border-bottom:1px solid var(--border); padding:10px 12px;">
+      <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); font-weight:600; margin-bottom:8px;">Active Sessions</div>
+      <div id="live-sessions-list">
+        <div style="font-size:12px; color:var(--text-muted); text-align:center; padding:8px 0;">No active sessions</div>
+      </div>
+    </div>
+
+    <!-- Notification feed (live escalation + DB alerts) -->
+    <div id="notif-feed" style="flex:1; overflow-y:auto; padding:10px 12px; display:flex; flex-direction:column; gap:8px;">
       {% for alert in alerts %}
-        <div class="alert-card">
-          <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">{{ alert.rule_name }}</div>
-          <div style="font-size: 12px; color: var(--text-muted);">{{ alert.message }}</div>
-          <div style="font-size: 10px; margin-top: 8px; color: var(--text-muted);">{{ alert.triggered_at|timesince }} ago</div>
+        <div class="notif-card db-alert" style="padding:12px 14px; border-radius:10px; background:rgba(255,77,106,0.05); border:1px solid rgba(255,77,106,0.15);">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:10px; background:rgba(255,77,106,0.12); color:#f87171; padding:1px 7px; border-radius:20px; font-weight:700; text-transform:uppercase;">Alert</span>
+          </div>
+          <div style="font-size:13px; font-weight:600; color:var(--text);">{{ alert.title }}</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:3px;">{{ alert.message }}</div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:6px;">{{ alert.triggered_at|timesince }} ago</div>
         </div>
       {% empty %}
-        <div style="text-align: center; color: var(--text-muted); padding-top: 40px;">
-          No active alerts
+        <div id="notif-empty" style="text-align:center; color:var(--text-muted); padding:24px 0; font-size:12px;">
+          <div style="font-size:24px; margin-bottom:8px;">🔔</div>
+          No notifications
         </div>
       {% endfor %}
     </div>
@@ -324,8 +364,8 @@
                 <div style="font-weight: 700; font-size: 16px;">Power Control</div>
                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Toggle the relay state of the plug</div>
             </div>
-            <form method="POST" id="modal-plug-control-form" action="">
-                {% csrf_token %}
+            
+            <form id="modal-plug-control-form">
                 <input type="hidden" name="action" id="modal-plug-action-val" value="">
                 <button type="submit" id="modal-plug-power-btn" class="btn" style="padding: 12px 24px; font-size: 14px; font-weight: 800;">
                     TURN ON
@@ -490,6 +530,26 @@
 
 {% block script %}
 <script>
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('modal-plug-control-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const btn = document.getElementById('modal-plug-power-btn');
+
+        btn.textContent = '...';
+        btn.disabled = true;
+
+        try {
+            await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+            });
+        } catch (err) {
+            console.error('Command failed:', err);
+        }
+    });
+});
     let currentPlugId = null;
     const plugSockets = {};
 
@@ -530,8 +590,19 @@
         }
     }
 
+    // ── Track relay state changes for timer ───────────────────────
+    const plugId    = item.dataset.plugId;
+    const wasOn     = item.dataset.relayOn === '1';
+    const isNowOn   = !!data.is_on;
+    if (plugId && wasOn !== isNowOn) {
+      if (isNowOn) relayTurnedOn(plugId, item.dataset.sessionStarted);
+      else         relayTurnedOff(plugId);
+    }
+    item.dataset.relayOn = isNowOn ? '1' : '0';
+
     const deviceName = item.querySelector('.device-name');
-    if (deviceName) deviceName.textContent = data.current_device_name || 'None';
+    if (deviceName && data.current_device_name !== undefined)
+      deviceName.textContent = data.current_device_name || 'None';
 }
 
     function updateModalIfOpen(data) {
@@ -559,12 +630,14 @@
             pwrBtn.style.background = 'rgba(248, 113, 113, 0.1)';
             pwrBtn.style.color = '#f87171';
             pwrBtn.style.borderColor = 'rgba(248, 113, 113, 0.2)';
+            pwrBtn.disabled = false;
             actionInput.value = 'off';
         } else {
             pwrBtn.textContent = 'TURN ON';
             pwrBtn.style.background = 'var(--accent)';
             pwrBtn.style.color = 'black';
             pwrBtn.style.borderColor = 'transparent';
+             pwrBtn.disabled = false;
             actionInput.value = 'on';
         }
 
@@ -597,9 +670,6 @@
 
         const pwrBtn = document.getElementById('modal-plug-power-btn');
         const actionInput = document.getElementById('modal-plug-action-val');
-        const controlForm = document.getElementById('modal-plug-control-form');
-
-        controlForm.action = `/houses/{{ active_house.id }}/plugs/${id}/control/`;
 
         if (isOn === 'on') {
             pwrBtn.textContent = 'TURN OFF';
@@ -663,38 +733,445 @@
       }
     });
 
-    document.addEventListener('DOMContentLoaded', initPlugSockets);
+    document.addEventListener('DOMContentLoaded', () => {
+      initPlugSockets();
+      initRelayTracking();
+      updateAllTimers();
 
+      // ── Plug control form → fetch (no page reload) ──
+      const ctrlForm = document.getElementById('modal-plug-control-form');
+      if (ctrlForm) {
+        ctrlForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const plugCode = document.getElementById('modal-plug-id')?.textContent?.replace('ID: ', '').trim();
+          if (!plugCode) return;
+          const action = document.getElementById('modal-plug-action-val').value;
+          const btn = document.getElementById('modal-plug-power-btn');
+          btn.disabled = true;
+          btn.textContent = '...';
+          try {
+            await fetch(`/plugs/${plugCode}/command/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({ action, csrfmiddlewaretoken: '{{ csrf_token }}' }),
+            });
+          } catch(e) {
+            console.warn('Plug control fetch failed', e);
+            btn.disabled = false;
+          }
+          // WS will update the button state automatically
+        });
+      }
+    });
 
-      // ── House WebSocket ──────────────────────────────────────────
-  const houseWs = new WebSocket(`ws://${location.host}/ws/house/{{ active_house.id }}/`);
+  // ══════════════════════════════════════════════════════════════════
+  // RELAY-AWARE TIMER TRACKING
+  // Only accumulate on-time when plug.is_on is true.
+  // relayOnAt[plugId]   = JS timestamp when relay last turned ON (null if off)
+  // relayAccum[plugId]  = seconds accumulated before current on-period
+  // ══════════════════════════════════════════════════════════════════
+  const relayOnAt  = {};   // plugId → Date.now() or null
+  const relayAccum = {};   // plugId → accumulated seconds
 
-  houseWs.onmessage = (e) => {
-    console.log('House WS message:', e.data);  // add this temporarily
-    const data = JSON.parse(e.data);
+  function initRelayTracking() {
+    document.querySelectorAll('.plug-item[data-session-started]').forEach(item => {
+      const plugId  = item.dataset.plugId;
+      const isOn    = item.dataset.relayOn === '1';
+      const started = new Date(item.dataset.sessionStarted).getTime();
+      if (!plugId || isNaN(started)) return;
+      relayAccum[plugId] = 0;
+      if (isOn) {
+        // Best estimate: relay on since session started
+        relayOnAt[plugId] = started;
+      } else {
+        relayOnAt[plugId] = null;
+      }
+    });
+  }
 
+  function relayTurnedOn(plugId, sessionStarted) {
+    // sessionStarted is an ISO string from data attribute (may be null if no session)
+    if (!relayAccum[plugId]) relayAccum[plugId] = 0;
+    relayOnAt[plugId] = Date.now();
+  }
+
+  function relayTurnedOff(plugId) {
+    const onAt = relayOnAt[plugId];
+    if (onAt) {
+      relayAccum[plugId] = (relayAccum[plugId] || 0) + (Date.now() - onAt) / 1000;
+    }
+    relayOnAt[plugId] = null;
+  }
+
+  function clearRelayTracking(plugId) {
+    delete relayOnAt[plugId];
+    delete relayAccum[plugId];
+  }
+
+  function getRelayElapsedMin(plugId) {
+    const onAt  = relayOnAt[plugId];
+    const accum = relayAccum[plugId] || 0;
+    const total = onAt ? accum + (Date.now() - onAt) / 1000 : accum;
+    return total / 60;
+  }
+
+  function fmtDuration(totalSeconds) {
+    if (totalSeconds < 0) totalSeconds = 0;
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = Math.floor(totalSeconds % 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s.toString().padStart(2,'0')}s`;
+    return `${s}s`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // COUNTDOWN TIMERS (plug sidebar items) — only counts when relay ON
+  // ══════════════════════════════════════════════════════════════════
+  function updateAllTimers() {
+    document.querySelectorAll('.plug-item[data-session-started]').forEach(item => {
+      const plugId    = item.dataset.plugId;
+      const timerEl   = item.querySelector('.session-timer');
+      if (!timerEl || !plugId) return;
+
+      const notifyMin = parseFloat(item.dataset.notifyMin) || null;
+      const alertMin  = parseFloat(item.dataset.alertMin)  || null;
+      const cutoffMin = parseFloat(item.dataset.cutoffMin) || null;
+      const isOn      = item.dataset.relayOn === '1';
+
+      if (!notifyMin && !alertMin && !cutoffMin) {
+        timerEl.style.display = 'none';
+        return;
+      }
+      timerEl.style.display = 'block';
+
+      if (!isOn) {
+        timerEl.innerHTML = `<span style="color:#555;">⏸ relay off</span>`;
+        return;
+      }
+
+      const elapsedMin = getRelayElapsedMin(plugId);
+      let html;
+
+      if (cutoffMin && elapsedMin >= cutoffMin - 0.05) {
+        html = `<span style="color:#f87171;">⚡ cutoff exceeded</span>`;
+      } else if (alertMin && elapsedMin >= alertMin - 0.05) {
+        const rem = cutoffMin ? fmtDuration((cutoffMin - elapsedMin) * 60) : '—';
+        html = `<span style="color:#f87171;">🔴 cutoff ${cutoffMin ? 'in ' + rem : 'soon'}</span>`;
+      } else if (notifyMin && elapsedMin >= notifyMin - 0.05) {
+        const nextMin = alertMin || cutoffMin;
+        const rem = nextMin ? fmtDuration((nextMin - elapsedMin) * 60) : '—';
+        html = `<span style="color:#ffaa3a;">🟡 alarm ${nextMin ? 'in ' + rem : 'soon'}</span>`;
+      } else {
+        const firstMin = notifyMin || alertMin || cutoffMin;
+        const rem = fmtDuration((firstMin - elapsedMin) * 60);
+        const label = notifyMin ? 'notify' : alertMin ? 'alarm' : 'cutoff';
+        html = `<span style="color:#888;">⏱ ${label} in ${rem}</span>`;
+      }
+      timerEl.innerHTML = html;
+    });
+
+    updateLiveSessions();
+  }
+  setInterval(updateAllTimers, 1000);
+
+  // ══════════════════════════════════════════════════════════════════
+  // LIVE SESSIONS PANEL (right column)
+  // ══════════════════════════════════════════════════════════════════
+  function updateLiveSessions() {
+    const list = document.getElementById('live-sessions-list');
+    if (!list) return;
+    const items = document.querySelectorAll('.plug-item[data-session-started]');
+    if (items.length === 0) {
+      list.innerHTML = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">No active sessions</div>`;
+      return;
+    }
+    list.innerHTML = '';
+    items.forEach(item => {
+      const plugId    = item.dataset.plugId;
+      const plugName  = item.dataset.plugName  || item.querySelector('div[style*="font-weight: 600"]')?.textContent || '—';
+      const devName   = item.querySelector('.device-name')?.textContent || '—';
+      const isOn      = item.dataset.relayOn === '1';
+      const notifyMin = parseFloat(item.dataset.notifyMin) || null;
+      const alertMin  = parseFloat(item.dataset.alertMin)  || null;
+      const cutoffMin = parseFloat(item.dataset.cutoffMin) || null;
+      const elapsedMin = getRelayElapsedMin(plugId);
+      const elapsedSec = elapsedMin * 60;
+
+      // Progress bar width
+      const maxMin = cutoffMin || alertMin || notifyMin || 30;
+      const pct    = Math.min(100, (elapsedMin / maxMin) * 100);
+
+      // Color
+      let barColor = '#4d9fff';
+      let stateLabel = isOn ? `ON · ${fmtDuration(elapsedSec)}` : '⏸ relay off';
+      if (isOn) {
+        if      (cutoffMin && elapsedMin >= cutoffMin - 0.05) { barColor = '#f87171'; }
+        else if (alertMin  && elapsedMin >= alertMin  - 0.05) { barColor = '#f87171'; }
+        else if (notifyMin && elapsedMin >= notifyMin - 0.05) { barColor = '#ffaa3a'; }
+        else                                                    { barColor = '#00f2ff'; }
+      }
+
+      // Next milestone label
+      let nextLabel = '';
+      if (isOn) {
+        if (cutoffMin && elapsedMin >= cutoffMin - 0.05) nextLabel = '⚡ auto-cutoff exceeded';
+        else if (alertMin && elapsedMin >= alertMin - 0.05) { const r = fmtDuration((cutoffMin - elapsedMin) * 60); nextLabel = `🔴 cutoff in ${cutoffMin ? r : '?'}`; }
+        else if (notifyMin && elapsedMin >= notifyMin - 0.05) { const next = alertMin || cutoffMin; nextLabel = next ? `🟡 alarm in ${fmtDuration((next - elapsedMin) * 60)}` : '🟡 alarm soon'; }
+        else { const first = notifyMin || alertMin || cutoffMin; if (first) nextLabel = `⏱ notify in ${fmtDuration((first - elapsedMin) * 60)}`; }
+      }
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;';
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-size:12px;font-weight:600;">${devName !== '—' ? devName : plugName}</span>
+          <span style="font-size:10px;color:${isOn ? barColor : '#555'};font-weight:700;font-family:'DM Mono',monospace;">${stateLabel}</span>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:5px;">${plugName}</div>
+        <div style="height:3px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:2px;transition:width 1s linear;"></div>
+        </div>
+        ${nextLabel ? `<div style="font-size:10px;margin-top:4px;">${nextLabel}</div>` : ''}`;
+      list.appendChild(card);
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // NOTIFICATION FEED (right column) — prepend cards on WS events
+  // ══════════════════════════════════════════════════════════════════
+  function addNotifCard(level, deviceName, plugName, msg, sessionId) {
+    const feed = document.getElementById('notif-feed');
+    if (!feed) return;
+
+    // Remove empty state
+    const empty = document.getElementById('notif-empty');
+    if (empty) empty.remove();
+
+    const colors = { notify: { bg:'rgba(77,159,255,0.07)', border:'rgba(77,159,255,0.2)', badge:'rgba(77,159,255,0.15)', text:'#4d9fff', icon:'⏱', label:'REMINDER' },
+                     alert:  { bg:'rgba(255,170,58,0.07)',  border:'rgba(255,170,58,0.2)',  badge:'rgba(255,170,58,0.15)',  text:'#ffaa3a', icon:'⚠️', label:'ALERT' },
+                     cutoff: { bg:'rgba(255,77,106,0.07)',  border:'rgba(255,77,106,0.2)',  badge:'rgba(255,77,106,0.15)',  text:'#f87171', icon:'⚡', label:'AUTO CUTOFF' } };
+    const c = colors[level] || colors.notify;
+
+    const card = document.createElement('div');
+    card.dataset.sessionId = sessionId;
+    card.className = 'notif-card';
+    card.style.cssText = `padding:12px 14px;border-radius:10px;background:${c.bg};border:1px solid ${c.border};`;
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+        <span style="font-size:10px;background:${c.badge};color:${c.text};padding:1px 8px;border-radius:20px;font-weight:700;text-transform:uppercase;">${c.icon} ${c.label}</span>
+        <span style="font-size:10px;color:var(--text-muted);">${new Date().toLocaleTimeString()}</span>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:var(--text);">${deviceName}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${plugName}</div>
+      <div style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.5;">${msg}</div>`;
+    feed.insertBefore(card, feed.firstChild);
+
+    // Update badge
+    const badge = document.getElementById('notif-count');
+    if (badge) {
+      const n = (parseInt(badge.textContent) || 0) + 1;
+      badge.textContent = n; badge.style.display = 'inline';
+    }
+  }
+
+  function removeNotifCard(sessionId) {
+    document.querySelectorAll(`.notif-card[data-session-id="${sessionId}"]`).forEach(c => c.remove());
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // ESCALATION MODAL
+  // ══════════════════════════════════════════════════════════════════
+  let _escModalSessionId = null;
+  let _escModalOntimeInterval = null;
+
+  function openEscModal(data, level) {
+    _escModalSessionId = data.session_id;
+    const deviceName = data.device_name || 'Device';
+    const plugName   = data.plug_name   || 'Plug';
+
+    const badgeEl = document.getElementById('esc-modal-badge');
+    const msgEl   = document.getElementById('esc-modal-msg');
+    const cutEl   = document.getElementById('esc-modal-cutoff-strip');
+    const footerEl = document.getElementById('esc-modal-footer');
+    const ontimeEl = document.getElementById('esc-modal-ontime');
+
+    document.getElementById('esc-modal-device').textContent = deviceName;
+    document.getElementById('esc-modal-plug').textContent   = plugName;
+
+    if (level === 'notify') {
+      badgeEl.innerHTML = '⏱ REMINDER';
+      badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(77,159,255,0.15);color:#4d9fff;';
+      msgEl.innerHTML = `<strong>${deviceName}</strong> has been on for <strong>${data.notify_minutes} minutes</strong>. Are you still using it?`;
+      cutEl.style.display = 'none';
+      footerEl.innerHTML = `
+        <button onclick="escModalRespond('reset')" class="btn btn-primary" style="flex:1;font-weight:700;">✅ Yes, still using it</button>
+        <button onclick="escModalRespond('cutoff')" class="btn" style="flex:1;color:#f87171;border-color:rgba(255,77,106,0.3);background:rgba(255,77,106,0.06);font-weight:700;">🔌 No, turn it off</button>`;
+    } else if (level === 'alert') {
+      badgeEl.innerHTML = '⚠️ ALERT';
+      badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(255,170,58,0.15);color:#ffaa3a;';
+      msgEl.innerHTML = `<strong>${deviceName}</strong> has been running for <strong>${data.alert_minutes} minutes</strong> — no response to the reminder. Is anyone using it?`;
+      cutEl.style.display = 'none';
+      footerEl.innerHTML = `
+        <button onclick="escModalRespond('reset')" class="btn btn-primary" style="flex:1;font-weight:700;">✅ Yes, still using it</button>
+        <button onclick="escModalRespond('cutoff')" class="btn" style="flex:1;color:#f87171;border-color:rgba(255,77,106,0.3);background:rgba(255,77,106,0.06);font-weight:700;">🔌 No, turn it off</button>`;
+    } else {
+      // cutoff — already happened
+      badgeEl.innerHTML = '⚡ AUTO CUTOFF';
+      badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(255,77,106,0.15);color:#f87171;';
+      msgEl.innerHTML = `<strong>${deviceName}</strong> was automatically turned off after ${data.cutoff_minutes} minutes with no response.`;
+      cutEl.style.display = 'block';
+      footerEl.innerHTML = `<button onclick="closeEscModal()" class="btn" style="flex:1;font-weight:700;">Dismiss</button>`;
+    }
+
+    // Live on-time counter inside modal
+    if (_escModalOntimeInterval) clearInterval(_escModalOntimeInterval);
+    const plugId = document.querySelector(`.plug-item[data-session-id="${data.session_id}"]`)?.dataset?.plugId;
+    function refreshOntime() {
+      if (!plugId) { ontimeEl.textContent = '—'; return; }
+      const sec = getRelayElapsedMin(plugId) * 60;
+      ontimeEl.textContent = fmtDuration(sec);
+    }
+    refreshOntime();
+    _escModalOntimeInterval = setInterval(refreshOntime, 1000);
+
+    document.getElementById('escalation-modal').showModal();
+  }
+
+  function closeEscModal() {
+    if (_escModalOntimeInterval) { clearInterval(_escModalOntimeInterval); _escModalOntimeInterval = null; }
+    document.getElementById('escalation-modal').close();
+    _escModalSessionId = null;
+  }
+
+  async function escModalRespond(action) {
+    if (!_escModalSessionId) return;
+    const sid = _escModalSessionId;
+    document.getElementById('esc-modal-footer').querySelectorAll('button').forEach(b => b.disabled = true);
+    try {
+      const res = await fetch(`/api/houses/{{ active_house.id }}/sessions/${sid}/respond/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ action }),
+      });
+      closeEscModal();
+      if (action === 'cutoff') {
+        clearTimerAttrsBySession(sid);
+        removeNotifCard(sid);
+        addNotifCard('cutoff', '—', '—', 'Plug turned off by user.', sid);
+      }
+    } catch(e) {
+      document.getElementById('esc-modal-footer').querySelectorAll('button').forEach(b => b.disabled = false);
+    }
+  }
+
+  // ── Sound ─────────────────────────────────────────────────────────
+  let _escAudioCtx = null, _escBeepInterval = null;
+  function _beep(freq, dur, vol) {
+    try {
+      if (!_escAudioCtx) _escAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = _escAudioCtx.createOscillator(), g = _escAudioCtx.createGain();
+      osc.connect(g); g.connect(_escAudioCtx.destination);
+      osc.frequency.value = freq; osc.type = 'sine';
+      g.gain.setValueAtTime(vol, _escAudioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, _escAudioCtx.currentTime + dur);
+      osc.start(); osc.stop(_escAudioCtx.currentTime + dur);
+    } catch(e) {}
+  }
+  function _startAlertSound() {
+    _stopAlertSound();
+    _beep(880, 0.2, 0.3); setTimeout(() => _beep(1100, 0.2, 0.3), 260);
+    _escBeepInterval = setInterval(() => { _beep(880, 0.2, 0.3); setTimeout(() => _beep(1100, 0.2, 0.3), 260); }, 3500);
+  }
+  function _stopAlertSound() { if (_escBeepInterval) { clearInterval(_escBeepInterval); _escBeepInterval = null; } }
+
+  // ── Timer attr helpers ────────────────────────────────────────────
+  function clearTimerAttrs(item) {
+    const plugId = item.dataset.plugId;
+    if (plugId) clearRelayTracking(plugId);
+    ['sessionId','sessionStarted','notifyMin','alertMin','cutoffMin'].forEach(k => delete item.dataset[k]);
+    item.dataset.relayOn = '0';
+    const t = item.querySelector('.session-timer');
+    if (t) { t.style.display = 'none'; t.innerHTML = ''; }
+  }
+  function clearTimerAttrsBySession(sessionId) {
+    const item = document.querySelector(`.plug-item[data-session-id="${sessionId}"]`);
+    if (item) clearTimerAttrs(item);
+  }
+
+  // ── Timer attr helpers ────────────────────────────────────────────
+  function clearTimerAttrs(item) {
+    const plugId = item.dataset.plugId;
+    if (plugId) clearRelayTracking(plugId);
+    ['sessionId','sessionStarted','notifyMin','alertMin','cutoffMin'].forEach(k => delete item.dataset[k]);
+    item.dataset.relayOn = '0';
+    const t = item.querySelector('.session-timer');
+    if (t) { t.style.display = 'none'; t.innerHTML = ''; }
+  }
+  function clearTimerAttrsBySession(sessionId) {
+    const item = document.querySelector(`.plug-item[data-session-id="${sessionId}"]`);
+    if (item) clearTimerAttrs(item);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // PAGE-SPECIFIC house event handler
+  // (global escalation WS + modal are in base.html)
+  // ══════════════════════════════════════════════════════════════════
+  window.handleHouseEvent = function(data) {
     if (data.event === 'nfc_known') {
       const item = document.querySelector(`.plug-item[data-plug-code="${data.plug_code}"]`);
-      if (item) item.querySelector('.device-name').textContent = data.device_name;
-      if (currentPlugId == data.plug_id) {
-        document.getElementById('modal-device-name').textContent = `Device: ${data.device_name}`;
+      if (item) {
+        item.querySelector('.device-name').textContent = data.device_name;
+        if (data.session_id) {
+          item.dataset.sessionId      = data.session_id;
+          item.dataset.sessionStarted = data.session_started;
+          item.dataset.notifyMin      = data.notify_min  || '';
+          item.dataset.alertMin       = data.alert_min   || '';
+          item.dataset.cutoffMin      = data.cutoff_min  || '';
+          if (item.dataset.relayOn === '1') relayTurnedOn(item.dataset.plugId, data.session_started);
+        }
       }
+      if (currentPlugId == data.plug_id)
+        document.getElementById('modal-device-name').textContent = `Device: ${data.device_name}`;
+      return;
     }
 
-    if (data.event === 'nfc_unknown') {
-      openNfcSetupModal(data);
-    }
+    if (data.event === 'nfc_unknown') { openNfcSetupModal(data); return; }
 
     if (data.event === 'device_removed') {
-    const item = document.querySelector(`.plug-item[data-plug-code="${data.plug_code}"]`);
-    if (item) item.querySelector('.device-name').textContent = 'None';
-    if (currentPlugId == data.plug_id) {
+      const item = document.querySelector(`.plug-item[data-plug-code="${data.plug_code}"]`);
+      if (item) { item.querySelector('.device-name').textContent = 'None'; clearTimerAttrs(item); }
+      if (currentPlugId == data.plug_id)
         document.getElementById('modal-device-name').textContent = 'Device: None';
+      return;
     }
-}
-  };
 
-  houseWs.onerror = (e) => console.warn('House WS error', e);
+    // Add notification cards to right panel
+    if (data.event === 'escalation_notify') {
+      addNotifCard('notify', data.device_name, data.plug_name,
+        `Active for ${data.notify_minutes} min. Still using it?`, data.session_id);
+      return;
+    }
+    if (data.event === 'escalation_alert') {
+      addNotifCard('alert', data.device_name, data.plug_name,
+        `Running for ${data.alert_minutes} min — no response to reminder.`, data.session_id);
+      if (typeof _startAlertSound === 'function') _startAlertSound();
+      return;
+    }
+    if (data.event === 'escalation_cutoff') {
+      if (typeof _stopAlertSound === 'function') _stopAlertSound();
+      addNotifCard('cutoff', data.device_name, data.plug_name,
+        `Auto cutoff after ${data.cutoff_minutes} min.`, data.session_id);
+      clearTimerAttrsBySession(data.session_id);
+      return;
+    }
+    if (data.event === 'session_ended') {
+      if (typeof _stopAlertSound === 'function') _stopAlertSound();
+      clearTimerAttrsBySession(data.session_id);
+      removeNotifCard(data.session_id);
+      return;
+    }
+  };
 
   // ── NFC Modal state ──────────────────────────────────────────
   let nfcCurrentUid = null;

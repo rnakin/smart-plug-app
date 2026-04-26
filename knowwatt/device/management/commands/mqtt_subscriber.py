@@ -13,7 +13,8 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from paho.mqtt import client as mqtt
 
-from device.models import SmartPlug, EnergyLog
+from device.models import SmartPlug, PlugSession
+from energy.models import EnergyReading
 from device.mqtt_handlers import handle_nfc_event
 from django.db import close_old_connections
 logger = logging.getLogger(__name__)
@@ -122,52 +123,86 @@ class Command(BaseCommand):
 
             self.stdout.write(f"Processing status for {plug_id}: {data}")
 
-            is_online_val = data.get('state') == 'online'
-            online_status_val = data.get('state', 'offline')
+            # Fetch current plug state to detect hardware relay change
+            plug = SmartPlug.objects.filter(plug_code=plug_id).first()
+            if not plug:
+                self.stdout.write(f"No SmartPlug found with plug_code {plug_id}")
+                return
+
+            was_on = plug.is_on
+            relay_now = bool(data.get('relay', False))
 
             updated_count = SmartPlug.objects.filter(plug_code=plug_id).update(
-                is_online=is_online_val,
-                online_status=online_status_val,
+                is_online=data.get('state') == 'online',
+                online_status=data.get('state', 'offline'),
                 uptime=data.get('uptime', 0),
-                relay_state=data.get('relay', False),
-                is_on=data.get('relay', False),
+                relay_state=relay_now,
+                is_on=relay_now,
                 rssi=data.get('rssi'),
                 ip_address=data.get('ip'),
             )
 
-            if updated_count == 0:
-                self.stdout.write(f"No SmartPlug found with plug_code {plug_id}")
-            else:
-                self.stdout.write(f"Successfully updated status for {plug_id}")
-                # Broadcast via WebSockets
-                try:
-                    channel_layer = get_channel_layer()
-                    plug = SmartPlug.objects.filter(plug_code=plug_id).first()
+            self.stdout.write(f"Successfully updated status for {plug_id} (relay={'on' if relay_now else 'off'})")
 
-                    if plug:
+            # ── Hardware button turned relay OFF ──────────────────────
+            if was_on and not relay_now:
+                self.stdout.write(f"Hardware relay-off detected for {plug_id} — cancelling escalation timers")
+                # End all active sessions and cancel timers
+                ending_sessions = list(
+                    PlugSession.objects.filter(plug=plug, is_active=True).values_list('id', 'device__name')
+                )
+                PlugSession.objects.filter(plug=plug, is_active=True).update(
+                    is_active=False, ended_at=timezone.now()
+                )
+                for sid, dev_name in ending_sessions:
+                    from alert.escalation import cancel_escalation
+                    cancel_escalation(str(sid))
+                    try:
+                        channel_layer = get_channel_layer()
                         async_to_sync(channel_layer.group_send)(
-                            f"plug_{plug_id}",
+                            f"house_{str(plug.house_id)}",
                             {
-                                "type": "plug.update",
+                                "type": "house.event",
+                                "event": "session_ended",
+                                "session_id": str(sid),
                                 "plug_id": str(plug.id),
-                                "plug_code": plug_id,
-                                "online_status": online_status_val,
-                                "is_on": data.get('relay', False),
-                                "current_power_w": plug.current_power_w,        # @property → hits energy_logs
-                                "is_verified": True,
-                                "current_device_name": plug.current_device.name if plug.current_device else None,  # @property → hits sessions
+                                "plug_name": plug.name,
+                                "device_name": dev_name or "Unknown",
+                                "reason": "hardware_button",
+                                "house_id": str(plug.house_id),
                             }
                         )
-                        self.stdout.write(f"Broadcast sent to plug {plug_id}")
-                except Exception as broadcast_error:
-                    logger.error(f"Broadcast failed: {broadcast_error}")
-                    self.stdout.write(f"Broadcast FAILED: {broadcast_error}")  # add this
-                    import traceback
-                    self.stdout.write(traceback.format_exc())  # add this — shows full error
+                    except Exception as e:
+                        self.stderr.write(f"session_ended broadcast failed: {e}")
+
+            # Broadcast via WebSockets
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"plug_{plug_id}",
+                    {
+                        "type": "plug.update",
+                        "plug_id": str(plug.id),
+                        "plug_code": plug_id,
+                        "online_status": data.get('state', 'offline'),
+                        "is_on": relay_now,
+                        "current_power_w": plug.current_power_w,
+                        "is_verified": True,
+                        "current_device_name": plug.current_device.name if plug.current_device else None,
+                    }
+                )
+                self.stdout.write(f"Broadcast sent to plug {plug_id}")
+            except Exception as broadcast_error:
+                logger.error(f"Broadcast failed: {broadcast_error}")
+                self.stdout.write(f"Broadcast FAILED: {broadcast_error}")
+                import traceback
+                self.stdout.write(traceback.format_exc())
 
             logger.debug("Status updated for plug %s", plug_id)
         except Exception as e:
             self.stderr.write(f"Error in _handle_status: {e}")
+            import traceback
+            self.stderr.write(traceback.format_exc())
         finally:
             close_old_connections()
 
@@ -181,9 +216,9 @@ class Command(BaseCommand):
 
             self.stdout.write(f"Processing energy data for {plug_id}")
             try:
-                plug = SmartPlug.objects.get(plug_code=plug_id)
+                plug = SmartPlug.objects.select_related('house').get(plug_code=plug_id)
             except SmartPlug.DoesNotExist:
-                self.stdout.write(f"Discarding energy log — SmartPlug '{plug_id}' does not exist")
+                self.stdout.write(f"Discarding energy reading — SmartPlug '{plug_id}' does not exist")
                 return
 
             ts_str = data.get('timestamp')
@@ -193,17 +228,22 @@ class Command(BaseCommand):
             else:
                 aware_dt = timezone.now()
 
-            EnergyLog.objects.create(
+            # Link to active session if one exists
+            active_session = PlugSession.objects.filter(
+                plug=plug, is_active=True
+            ).select_related('device').first()
+
+            EnergyReading.objects.create(
                 plug=plug,
-                watts=data.get('watts', 0.0),
-                kwh=data.get('kwh', 0.0),
-                volts=data.get('volts', 0.0),
-                amps=data.get('amps', 0.0),
-                frequency=data.get('frequency', 0.0),
-                pf=data.get('pf', 0.0),
-                timestamp=aware_dt,
+                session=active_session,
+                device=active_session.device if active_session else None,
+                power_w=data.get('watts', 0.0),
+                energy_kwh=data.get('kwh', 0.0),
+                voltage_v=data.get('volts', 0.0),
+                current_a=data.get('amps', 0.0),
+                recorded_at=aware_dt,
             )
-            self.stdout.write(f"Successfully created EnergyLog for {plug_id}")
+            self.stdout.write(f"Successfully created EnergyReading for {plug_id}: {data.get('watts', 0.0)}W")
 
             # Broadcast via WebSockets
             try:
@@ -214,6 +254,7 @@ class Command(BaseCommand):
                         "type": "plug.update",
                         "event": "energy",
                         "plug_code": plug_id,
+                        "plug_id": str(plug.id),
                         "watts": data.get('watts', 0.0),
                         "volts": data.get('volts', 0.0),
                         "amps": data.get('amps', 0.0),
@@ -223,9 +264,11 @@ class Command(BaseCommand):
             except Exception as broadcast_error:
                 self.stderr.write(f"Broadcast failed: {broadcast_error}")
 
-            logger.debug("EnergyLog created for plug %s", plug_id)
+            logger.debug("EnergyReading created for plug %s", plug_id)
         except Exception as e:
             self.stderr.write(f"Error in _handle_energy: {e}")
+            import traceback
+            self.stderr.write(traceback.format_exc())
         finally:
             close_old_connections()
 
