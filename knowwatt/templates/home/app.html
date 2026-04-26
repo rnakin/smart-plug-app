@@ -166,15 +166,12 @@
             </div>
           </summary>
           {% for plug in room.plugs.all %}
-            <div class="plug-item" data-plug-code="{{ plug.plug_code }}"style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', {{ plug.is_verified|yesno:'true,false' }}, '{{ plug.current_device.name|default:'None'|escapejs }}')">
+            <div class="plug-item" data-plug-code="{{ plug.plug_code }}"style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', '{{ plug.current_device.name|default:'None'|escapejs }}')">
               <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
               <div style="flex: 1;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
-                        {% if not plug.is_verified %}
-                            <span style="background: #f87171; color: black; font-size: 8px; font-weight: 900; padding: 2px 4px; border-radius: 4px; text-transform: uppercase;">NOT SYNC</span>
-                        {% endif %}
                     </div>
                     {% if plug.is_on %}
                       <div style="display: flex; flex-direction: column; align-items: flex-end;">
@@ -202,15 +199,12 @@
         <details>
           <summary><span>📦 Unassigned</span> <span style="font-size: 11px; color: var(--text-muted);">{{ unassigned_plugs.count }}</span></summary>
 {% for plug in unassigned_plugs %}
-  <div class="plug-item"data-plug-code="{{ plug.plug_code }}" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', {{ plug.is_verified|yesno:'true,false' }}, '{{ plug.current_device.name|default:'None'|escapejs }}')">
+  <div class="plug-item"data-plug-code="{{ plug.plug_code }}" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}','{{ plug.current_device.name|default:'None'|escapejs }}')">
     <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
     <div style="flex: 1;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
-          {% if not plug.is_verified %}
-            <span class="not-sync-badge" style="background: #f87171; color: black; font-size: 8px; font-weight: 900; padding: 2px 4px; border-radius: 4px; text-transform: uppercase;">NOT SYNC</span>
-          {% endif %}
         </div>
         <div class="power-status">
           {% if plug.is_on %}
@@ -312,7 +306,6 @@
       <div style="flex: 1;">
         <div style="display: flex; align-items: center; gap: 10px;">
             <h3 id="modal-plug-title">Plug Name - <span style="font-weight: 400; color: var(--text-muted);">Room</span></h3>
-            <span id="modal-plug-sync-tag" style="display: none; background: #f87171; color: black; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 6px; text-transform: uppercase;">NOT SYNC</span>
         </div>
         <div id="modal-device-name" style="font-size: 14px; font-weight: 600; color: var(--accent); margin-top: 4px;">Device: None</div>
         <div id="modal-plug-id" style="font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-top: 4px;">ID: ...</div>
@@ -431,6 +424,65 @@
       </div>
     </form>
   </dialog>
+
+  <!-- NFC Setup Modal -->
+<dialog id="nfc-setup-modal">
+  <div class="modal-header">
+    <h3>New NFC Tag Detected</h3>
+    <button onclick="closeNfcModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:20px;">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div style="font-size:12px; color:var(--text-muted); font-family:'DM Mono',monospace; margin-bottom:4px;">TAG UID</div>
+    <div id="nfc-uid-display" style="font-size:13px; font-weight:700; font-family:'DM Mono',monospace; color:var(--accent); background:var(--accent-dim); padding:8px 12px; border-radius:8px; margin-bottom:16px;"></div>
+
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+      Detected on plug: <span id="nfc-plug-name" style="color:var(--text); font-weight:600;"></span>
+    </div>
+
+    <!-- Tab toggle -->
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <button id="nfc-tab-existing" onclick="switchNfcTab('existing')" class="btn btn-primary" style="flex:1; font-size:12px;">Map to Existing Device</button>
+      <button id="nfc-tab-new" onclick="switchNfcTab('new')" class="btn" style="flex:1; font-size:12px;">Create New Device</button>
+    </div>
+
+    <!-- Existing device tab -->
+    <div id="nfc-panel-existing">
+      <div class="form-group">
+        <label>Select Device</label>
+        <select id="nfc-device-select" class="form-control">
+          <option value="">— choose device —</option>
+          {% for device in devices %}
+            <option value="{{ device.id }}">{{ device.name }} ({{ device.rated_power_watts }}W)</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- New device tab -->
+    <div id="nfc-panel-new" style="display:none;">
+      <div class="form-group">
+        <label>Device Name</label>
+        <input type="text" id="nfc-new-name" class="form-control" placeholder="e.g. Desk Lamp">
+      </div>
+      <div class="form-group">
+        <label>Rated Power (W)</label>
+        <input type="number" id="nfc-new-power" class="form-control" placeholder="e.g. 60">
+      </div>
+    </div>
+
+    <div style="form-group; margin-top:8px;">
+      <label>Tag Label <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label>
+      <input type="text" id="nfc-tag-label" class="form-control" placeholder="e.g. spare tag, bedroom tag">
+    </div>
+
+    <div id="nfc-error-msg" style="display:none; color:#f87171; font-size:12px; margin-top:12px; padding:8px 12px; background:rgba(248,113,113,0.1); border-radius:8px;"></div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" onclick="closeNfcModal()" class="btn" style="flex:1;">Cancel</button>
+    <button type="button" onclick="submitNfcSetup()" id="nfc-submit-btn" class="btn btn-primary" style="flex:1; font-weight:700;">Save & Map</button>
+  </div>
+</dialog>
 {% endblock %}
 
 {% block script %}
@@ -464,14 +516,6 @@
         item.querySelector('.status-dot').className =
             `status-dot ${data.online_status === 'online' ? 'status-online' : 'status-offline'}`;
 
-        // not sync badge
-        const badge = item.querySelector('.not-sync-badge');
-        if (!data.is_verified && !badge) {
-            item.querySelector('[style*="font-weight: 600"]').parentElement
-                .insertAdjacentHTML('beforeend', `<span class="not-sync-badge" style="background:#f87171;color:black;font-size:8px;font-weight:900;padding:2px 4px;border-radius:4px;text-transform:uppercase;">NOT SYNC</span>`);
-        } else if (data.is_verified && badge) {
-            badge.remove();
-        }
 
         // power status
         const powerDiv = item.querySelector('.power-status');
@@ -504,8 +548,6 @@
             badge.style.color = 'var(--text-muted)';
         }
 
-        // sync tag
-        document.getElementById('modal-plug-sync-tag').style.display = data.is_verified ? 'none' : 'inline-block';
 
         // power button
         const pwrBtn = document.getElementById('modal-plug-power-btn');
@@ -587,5 +629,132 @@
     }
 
     document.addEventListener('DOMContentLoaded', initPlugSockets);
+
+
+      // ── House WebSocket ──────────────────────────────────────────
+  const houseWs = new WebSocket(`ws://${location.host}/ws/house/{{ active_house.id }}/`);
+
+  houseWs.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+
+    if (data.event === 'nfc_known') {
+      const item = document.querySelector(`.plug-item[data-plug-code="${data.plug_code}"]`);
+      if (item) item.querySelector('.device-name').textContent = data.device_name;
+      if (currentPlugId == data.plug_id) {
+        document.getElementById('modal-device-name').textContent = `Device: ${data.device_name}`;
+      }
+    }
+
+    if (data.event === 'nfc_unknown') {
+      openNfcSetupModal(data);
+    }
+
+    if (data.event === 'device_removed') {
+    const item = document.querySelector(`.plug-item[data-plug-code="${data.plug_code}"]`);
+    if (item) item.querySelector('.device-name').textContent = 'None';
+    if (currentPlugId == data.plug_id) {
+        document.getElementById('modal-device-name').textContent = 'Device: None';
+    }
+}
+  };
+
+  houseWs.onerror = (e) => console.warn('House WS error', e);
+
+  // ── NFC Modal state ──────────────────────────────────────────
+  let nfcCurrentUid = null;
+  let nfcCurrentPlugId = null;
+  let nfcActiveTab = 'existing';
+
+  function openNfcSetupModal(data) {
+    nfcCurrentUid = data.uid;
+    nfcCurrentPlugId = data.plug_id;
+
+    document.getElementById('nfc-uid-display').textContent = data.uid;
+    document.getElementById('nfc-plug-name').textContent = data.plug_name;
+    document.getElementById('nfc-error-msg').style.display = 'none';
+    document.getElementById('nfc-tag-label').value = '';
+    document.getElementById('nfc-new-name').value = '';
+    document.getElementById('nfc-new-power').value = '';
+    document.getElementById('nfc-device-select').selectedIndex = 0;
+
+    switchNfcTab('existing');
+    document.getElementById('nfc-setup-modal').showModal();
+  }
+
+  function closeNfcModal() {
+    document.getElementById('nfc-setup-modal').close();
+    nfcCurrentUid = null;
+    nfcCurrentPlugId = null;
+  }
+
+  function switchNfcTab(tab) {
+    nfcActiveTab = tab;
+    document.getElementById('nfc-panel-existing').style.display = tab === 'existing' ? 'block' : 'none';
+    document.getElementById('nfc-panel-new').style.display = tab === 'new' ? 'block' : 'none';
+    document.getElementById('nfc-tab-existing').className = `btn ${tab === 'existing' ? 'btn-primary' : ''}`;
+    document.getElementById('nfc-tab-new').className = `btn ${tab === 'new' ? 'btn-primary' : ''}`;
+  }
+
+  async function submitNfcSetup() {
+    const btn = document.getElementById('nfc-submit-btn');
+    const errDiv = document.getElementById('nfc-error-msg');
+    errDiv.style.display = 'none';
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    const body = new FormData();
+    body.append('uid', nfcCurrentUid);
+    body.append('label', document.getElementById('nfc-tag-label').value);
+    body.append('tab', nfcActiveTab);
+    body.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    if (nfcActiveTab === 'existing') {
+      const deviceId = document.getElementById('nfc-device-select').value;
+      if (!deviceId) {
+        showNfcError('Please select a device.');
+        btn.textContent = 'Save & Map'; btn.disabled = false;
+        return;
+      }
+      body.append('device_id', deviceId);
+    } else {
+      const name = document.getElementById('nfc-new-name').value.trim();
+      const power = document.getElementById('nfc-new-power').value;
+      if (!name || !power) {
+        showNfcError('Please fill in device name and power.');
+        btn.textContent = 'Save & Map'; btn.disabled = false;
+        return;
+      }
+      body.append('device_name', name);
+      body.append('device_power', power);
+    }
+
+    try {
+      const res = await fetch(`/houses/{{ active_house.id }}/nfc/register/`, {
+        method: 'POST',
+        body,
+      });
+      const json = await res.json();
+
+      if (res.ok) {
+        closeNfcModal();
+      } else if (res.status === 409) {
+        showNfcError('This tag was already registered by someone else.');
+        setTimeout(closeNfcModal, 2000);
+      } else {
+        showNfcError(json.message || 'Something went wrong.');
+      }
+    } catch (err) {
+      showNfcError('Network error. Please try again.');
+    }
+
+    btn.textContent = 'Save & Map';
+    btn.disabled = false;
+  }
+
+  function showNfcError(msg) {
+    const el = document.getElementById('nfc-error-msg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
 </script>
 {% endblock %}

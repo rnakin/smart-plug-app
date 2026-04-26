@@ -6,9 +6,10 @@ import logging
 from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from device.models import ElectricalDevice, NFCTag, PlugSession,SmartPlug
 
 logger = logging.getLogger(__name__)
-
+from django.db import close_old_connections
 
 def send_plug_update(plug_code, event, uid, known, device_name=None, rated_watts=None, device_id=None):
     """
@@ -35,164 +36,88 @@ def send_plug_update(plug_code, event, uid, known, device_name=None, rated_watts
         logger.error(f'Failed to send WebSocket update: {e}')
 
 
-def handle_nfc_event(client, topic, payload_bytes=None, payload_dict=None):
-    """
-    Handle incoming NFC scan events from smart plugs.
-    
-    Args:
-        client: MQTT client instance for publishing responses (optional if called from management command)
-        topic: MQTT topic (format: {plug_code}/event)
-        payload_bytes: Raw payload bytes from MQTT message (optional)
-        payload_dict: Pre-parsed payload dictionary (optional)
-    """
-    # Import here to avoid circular imports
-    from device.models import SmartPlug, NFCTag, PlugSession, ElectricalDevice
-    
+def handle_nfc_event(client, topic, payload_dict):
     try:
-        # Step 1: Parse plug_code from topic
-        if '/' in topic:
-            topic_parts = topic.split('/')
-            plug_code = topic_parts[0]
-        else:
-            # Fallback if topic is just the plug_id (from management command)
-            plug_code = topic
+        close_old_connections()
 
-        logger.info(f'Processing NFC event for plug: {plug_code}')
-        
-        # Step 2: Parse JSON from payload_bytes or use payload_dict
-        if payload_dict:
-            payload = payload_dict
-        else:
-            try:
-                payload = json.loads(payload_bytes.decode('utf-8'))
-            except Exception as e:
-                logger.error(f'Failed to parse payload: {e}')
-                return
-        
-        # Step 4: Validate payload structure
-        if not isinstance(payload, dict):
-            logger.error(f'Invalid payload format')
-            return
-        
-        # Step 4: If type != "nfc_scan" → return silently
-        event_type = payload.get('type')
-        if event_type != 'nfc_scan':
-            logger.debug(f'Ignoring non-NFC event type: {event_type}')
-            return
-        
-        # Step 4: Look up SmartPlug by plug_code
-        try:
-            plug = SmartPlug.objects.get(plug_code=plug_code)
-        except SmartPlug.DoesNotExist:
-            logger.warning(f'SmartPlug not found for plug_code: {plug_code}')
-            return
-        
-        uid = payload.get('uid')
-        if uid == "null" or not uid:
-            detected = False
-        else:
-            detected = True
-        
-        # Step 5: If detected == False
-        if not detected:
-            logger.info(f'No tag detected on plug {plug_code}')
-            
-            # Close active PlugSession for this plug if one exists
-            now = timezone.now()
-            active_sessions = PlugSession.objects.filter(plug=plug, is_active=True)
-            if active_sessions.exists():
-                active_sessions.update(is_active=False, ended_at=now)
-                logger.info(f'Closed active session for plug {plug_code}')
-            
-            plug.active_uid = None
-            # Do NOT turn off the plug automatically if tag is removed, 
-            # as per general smart home behavior unless specified.
-            # But requirement says "update that plug Electrical device to the device associated"
-            # which implies the association is active when tag is present.
-            plug.save()
+        plug_id = payload_dict.get('plug_id')
+        uid = payload_dict.get('uid')
 
-            # Send WebSocket update for tag removal
-            send_plug_update(plug_code, 'nfc_removed', uid=None, known=False)
-            
+        if not plug_id:
+            logger.warning("handle_nfc_event: missing plug_id")
             return
-        
-        # Step 6: If detected == True, uid is present
-        if detected and uid:
-            now = timezone.now()
-            
-            # Look up NFCTag by tag_uid=uid
-            tag, created = NFCTag.objects.get_or_create(
-                tag_uid=uid,
-                defaults={'device': None, 'label': ''}
+
+        plug = SmartPlug.objects.select_related('house').filter(plug_code=plug_id).first()
+        if not plug:
+            logger.warning(f"handle_nfc_event: no plug found for {plug_id}")
+            return
+
+        house_id = str(plug.house.id)
+        channel_layer = get_channel_layer()
+
+        # ── device removed ──────────────────────────────────────
+        if not uid or uid == 'null':
+            PlugSession.objects.filter(plug=plug, is_active=True).update(
+                is_active=False,
+                ended_at=now()
             )
-            
-            plug.active_uid = uid
-            
-            # Check if tag has a registered device
-            if tag.device is not None:
-                logger.info(f'Known device: {tag.device.name}')
-                
-                # Close any existing active PlugSession for this plug
-                PlugSession.objects.filter(plug=plug, is_active=True).update(is_active=False, ended_at=now)
-                
-                # Create new PlugSession
-                PlugSession.objects.create(
-                    plug=plug,
-                    device=tag.device,
-                    nfc_tag=tag,
-                    is_active=True,
-                    started_at=now
-                )
-                
-                plug.save()
+            logger.info(f"NFC null: device removed from plug {plug_id}")
+            async_to_sync(channel_layer.group_send)(
+                f"house_{house_id}",
+                {
+                    "type": "house.event",
+                    "event": "device_removed",
+                    "plug_code": plug_id,
+                    "plug_id": str(plug.id),
+                }
+            )
+            return
 
-                # Publish to {plug_code}/config if client is available
-                if client:
-                    config_payload = {
-                        'uid': tag.tag_uid,
-                        'device_name': tag.device.name,
-                        'rated_watts': tag.device.rated_power_watts
-                    }
-                    publish_topic = f'{plug_code}/config'
-                    client.publish(publish_topic, json.dumps(config_payload))
-                
-                # Send WebSocket update for known device
-                send_plug_update(
-                    plug_code,
-                    'nfc_scan',
-                    uid=tag.tag_uid,
-                    known=True,
-                    device_id=str(tag.device.id),
-                    device_name=tag.device.name,
-                    rated_watts=tag.device.rated_power_watts
-                )
-                
-            else:
-                # tag.device is None (unknown/unregistered tag)
-                logger.info(f'Unknown tag: {uid}')
-                
-                # Close any other active PlugSession for this plug
-                PlugSession.objects.filter(plug=plug, is_active=True).update(is_active=False, ended_at=now)
-                
-                # Create PlugSession with device=None
-                PlugSession.objects.create(
-                    plug=plug,
-                    device=None,
-                    nfc_tag=tag,
-                    is_active=True,
-                    started_at=now
-                )
-                
-                plug.save()
-                
-                # Send WebSocket update so frontend shows popup
-                send_plug_update(plug_code, 'nfc_scan', uid=uid, known=False)
-    
-    except Exception as e:
-        logger.exception(f'Error handling NFC event: {e}')
+        # ── nfc scan ────────────────────────────────────────────
+        try:
+            nfc_tag = NFCTag.objects.select_related('device').get(tag_uid=uid)
+        except NFCTag.DoesNotExist:
+            nfc_tag = None
 
-    
+        if nfc_tag and nfc_tag.device:
+            PlugSession.objects.filter(plug=plug, is_active=True).update(
+                is_active=False,
+                ended_at=now()
+            )
+            PlugSession.objects.create(
+                plug=plug,
+                device=nfc_tag.device,
+                nfc_tag=nfc_tag,
+            )
+            logger.info(f"NFC known: {uid} → {nfc_tag.device.name} on plug {plug_id}")
+            async_to_sync(channel_layer.group_send)(
+                f"house_{house_id}",
+                {
+                    "type": "house.event",
+                    "event": "nfc_known",
+                    "plug_code": plug_id,
+                    "plug_id": str(plug.id),
+                    "device_name": nfc_tag.device.name,
+                }
+            )
+        else:
+            logger.info(f"NFC unknown: {uid} on plug {plug_id}")
+            async_to_sync(channel_layer.group_send)(
+                f"house_{house_id}",
+                {
+                    "type": "house.event",
+                    "event": "nfc_unknown",
+                    "plug_code": plug_id,
+                    "plug_id": str(plug.id),
+                    "plug_name": plug.name,
+                    "uid": uid,
+                }
+            )
+
     except Exception as e:
-        logger.exception(f'Error handling NFC event: {e}')
-        # Don't re-raise - let the subscriber handle connection cleanup
+        logger.error(f"handle_nfc_event error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+    finally:
+        close_old_connections()
 

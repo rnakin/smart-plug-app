@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from device import views
-
+from device.views import nfc_register_from_popup
 urlpatterns = [
     path('admin/', admin.site.urls),
 ]
@@ -23,13 +23,16 @@ urlpatterns += [
     path("houses/<uuid:house_pk>/", include("device.page_urls")),
     path("houses/<uuid:house_pk>/", include("energy.page_urls")),
     path("houses/<uuid:house_pk>/", include("alert.page_urls")),
+    path("houses/<uuid:house_id>/nfc/register/", nfc_register_from_popup, name='nfc-register-popup'),
 
-    # ── API endpoints (keep untouched) ──
-    path("api/houses/", include("house.urls")),
-    path("api/", include("device.urls")),
-    path("api/", include("alert.urls")),
-    
     # KnowWatt MQTT & HTMX endpoints
     path("plugs/<str:plug_id>/command/", views.publish_command, name='publish-command'),
     path("plugs/<str:plug_id>/relay-status/", views.relay_status, name='relay-status'),
+
+        # ── API endpoints (legacy)(keep untouched) ──
+    path("api/houses/", include("house.urls")),
+    path("api/", include("device.urls")),
+    path("api/", include("alert.urls")),
+
+    
 ]

@@ -8,7 +8,7 @@ from .models import SmartPlug, ElectricalDevice, NFCTag, PlugSession
 from house.models import House, HouseMember
 from energy.models import EnergyReading
 
-
+from django.http import JsonResponse
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def get_membership(house_id, user):
@@ -669,3 +669,67 @@ def relay_status(request, plug_id):
         'plug': plug
     })
 
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
+
+@login_required
+@require_POST
+def nfc_register_from_popup(request, house_id):
+    """
+    POST /houses/<house_id>/nfc/register/
+    Called from the NFC unknown popup modal.
+    Handles race condition via IntegrityError on tag_uid unique constraint.
+    """
+    uid = request.POST.get('uid', '').strip()
+    tab = request.POST.get('tab')  # 'existing' or 'new'
+    label = request.POST.get('label', '').strip()
+
+    if not uid:
+        return JsonResponse({'message': 'Missing NFC uid'}, status=400)
+
+    # verify membership
+    membership, err = require_membership(house_id, request.user)
+    if err:
+        return JsonResponse({'message': 'Not a member of this house'}, status=403)
+
+    # get or create device
+    if tab == 'existing':
+        device_id = request.POST.get('device_id', '').strip()
+        if not device_id:
+            return JsonResponse({'message': 'Please select a device'}, status=400)
+        try:
+            device = ElectricalDevice.objects.get(id=device_id, house_id=house_id)
+        except ElectricalDevice.DoesNotExist:
+            return JsonResponse({'message': 'Device not found'}, status=404)
+
+    elif tab == 'new':
+        name = request.POST.get('device_name', '').strip()
+        power = request.POST.get('device_power', '').strip()
+        if not name or not power:
+            return JsonResponse({'message': 'Device name and power are required'}, status=400)
+        try:
+            device = ElectricalDevice.objects.create(
+                house_id=house_id,
+                name=name,
+                rated_power_watts=float(power),
+                created_by=request.user,
+            )
+        except Exception as e:
+            return JsonResponse({'message': f'Failed to create device: {e}'}, status=500)
+    else:
+        return JsonResponse({'message': 'Invalid tab'}, status=400)
+
+    # save NFC tag — race condition handled here
+    try:
+        NFCTag.objects.create(
+            tag_uid=uid,
+            device=device,
+            label=label,
+            registered_by=request.user,
+        )
+    except IntegrityError:
+        # another user already registered this tag
+        return JsonResponse({'message': 'This tag was already registered by someone else'}, status=409)
+
+    return JsonResponse({'status': 'ok', 'device_name': device.name})

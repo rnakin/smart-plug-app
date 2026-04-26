@@ -15,7 +15,7 @@ from paho.mqtt import client as mqtt
 
 from device.models import SmartPlug, EnergyLog
 from device.mqtt_handlers import handle_nfc_event
-
+from django.db import close_old_connections
 logger = logging.getLogger(__name__)
 
 TOPIC_STATUS = "status"
@@ -154,7 +154,7 @@ class Command(BaseCommand):
                                 "online_status": online_status_val,
                                 "is_on": data.get('relay', False),
                                 "current_power_w": plug.current_power_w,        # @property → hits energy_logs
-                                "is_verified": plug.is_verified,
+                                "is_verified": True,
                                 "current_device_name": plug.current_device.name if plug.current_device else None,  # @property → hits sessions
                             }
                         )
