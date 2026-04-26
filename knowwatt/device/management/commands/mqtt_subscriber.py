@@ -14,6 +14,7 @@ from channels.layers import get_channel_layer
 from paho.mqtt import client as mqtt
 
 from device.models import SmartPlug, EnergyLog
+from device.mqtt_handlers import handle_nfc_event
 
 logger = logging.getLogger(__name__)
 
@@ -141,23 +142,28 @@ class Command(BaseCommand):
                 # Broadcast via WebSockets
                 try:
                     channel_layer = get_channel_layer()
-                    async_to_sync(channel_layer.group_send)(
-                        f"plug_{plug_id}",
-                        {
-                            "type": "plug.update",
-                            "event": "status",
-                            "plug_code": plug_id,
-                            "is_online": is_online_val,
-                            "online_status": online_status_val,
-                            "relay_state": data.get('relay', False),
-                            "is_on": data.get('relay', False),
-                            "uptime": data.get('uptime', 0),
-                            "rssi": data.get('rssi'),
-                            "ip_address": data.get('ip'),
-                        }
-                    )
+                    plug = SmartPlug.objects.filter(plug_code=plug_id).first()
+
+                    if plug:
+                        async_to_sync(channel_layer.group_send)(
+                            f"plug_{plug_id}",
+                            {
+                                "type": "plug.update",
+                                "plug_id": str(plug.id),
+                                "plug_code": plug_id,
+                                "online_status": online_status_val,
+                                "is_on": data.get('relay', False),
+                                "current_power_w": plug.current_power_w,        # @property → hits energy_logs
+                                "is_verified": plug.is_verified,
+                                "current_device_name": plug.current_device.name if plug.current_device else None,  # @property → hits sessions
+                            }
+                        )
+                        self.stdout.write(f"Broadcast sent to plug {plug_id}")
                 except Exception as broadcast_error:
                     logger.error(f"Broadcast failed: {broadcast_error}")
+                    self.stdout.write(f"Broadcast FAILED: {broadcast_error}")  # add this
+                    import traceback
+                    self.stdout.write(traceback.format_exc())  # add this — shows full error
 
             logger.debug("Status updated for plug %s", plug_id)
         except Exception as e:
@@ -260,30 +266,8 @@ class Command(BaseCommand):
                         self.stderr.write(f"Broadcast failed: {broadcast_error}")
 
             elif event_type == 'nfc_scan':
-                uid = data.get('uid')
-                self.stdout.write(f"Processing NFC scan {uid} for {plug_id}")
-                updated_count = SmartPlug.objects.filter(plug_code=plug_id).update(
-                    active_uid=None if uid == "null" else uid
-                )
-                if updated_count == 0:
-                    self.stdout.write(f"No SmartPlug found for NFC scan on {plug_id}")
-                else:
-                    self.stdout.write(f"Successfully updated NFC UID for {plug_id}")
-                    # Broadcast via WebSockets
-                    try:
-                        channel_layer = get_channel_layer()
-                        async_to_sync(channel_layer.group_send)(
-                            f"plug_{plug_id}",
-                            {
-                                "type": "plug.update",
-                                "event": "nfc_scan",
-                                "plug_code": plug_id,
-                                "active_uid": None if uid == "null" else uid
-                            }
-                        )
-                    except Exception as broadcast_error:
-                        self.stderr.write(f"Broadcast failed: {broadcast_error}")
-
+                # Delegate to the shared handler
+                handle_nfc_event(client=self.client, topic=plug_id, payload_dict=data)
             else:
                 logger.debug("Ignoring unknown event type '%s'", event_type)
 

@@ -29,6 +29,7 @@
       <div style="font-size:13px; color:var(--text3);">{{ house.address }} · {{ membership.role }}</div>
     </div>
     <div style="display:flex; gap:8px;">
+      <a href="{% url 'page-device-list' house_pk=house.pk %}" class="tbtn" style="text-decoration:none;">Devices</a>
       <a href="{% url 'page-plug-create' house_pk=house.pk %}" class="tbtn primary" style="text-decoration:none;">
         <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
         Add Plug
@@ -59,7 +60,13 @@
               <span style="font-size:11px; color:var(--text3); text-transform:uppercase;">{{ pd.plug.location|default:"—" }}</span>
               <div class="online-dot" id="dot-{{ pd.plug.plug_code }}" style="width:8px;height:8px;border-radius:50%;background:{% if pd.plug.online_status == 'online' %}var(--accent){% else %}var(--text3){% endif %};"></div>
             </div>
-            <div style="font-size:11px; color:var(--text3); font-family:'DM Mono',monospace;">{{ pd.plug.plug_code }}</div>
+            <div style="font-size:11px; color:var(--text3); font-family:'DM Mono',monospace;">
+              {% if pd.device %}
+                {{ pd.device.name }}
+              {% else %}
+                {{ pd.plug.plug_code }}
+              {% endif %}
+            </div>
             <div style="font-size:20px; margin:4px 0;" class="device-emoji">{{ pd.device_emoji }}</div>
             <div style="font-size:13px; font-weight:600;">{{ pd.plug.name }}</div>
             {% if pd.device %}
@@ -117,105 +124,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const plugCodes = [];
-    document.querySelectorAll('.plug-card').forEach(card => {
-        const code = card.dataset.plugCode;
-        if (code) plugCodes.push(code);
-    });
-
-    plugCodes.forEach(code => {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const socketUrl = `${protocol}//${window.location.host}/ws/plug/${code}/`;
-        const socket = new WebSocket(socketUrl);
-
-        socket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            console.log('WS Update:', data);
-
-            if (data.type === 'plug.update') {
-                updatePlugUI(data);
-            }
-        };
-
-        socket.onclose = function(e) {
-            console.log(`Socket closed for ${code}, retrying...`);
-            // Add reconnection logic if needed
-        };
-    });
-
-    function updatePlugUI(data) {
-        const card = document.getElementById(`plug-card-${data.plug_code}`);
-        if (!card) return;
-
-        // Update Online/Offline dot
-        const dot = document.getElementById(`dot-${data.plug_code}`);
-        if (dot && data.online_status) {
-            dot.style.background = data.online_status === 'online' ? 'var(--accent)' : 'var(--text3)';
-        }
-
-        // Update Relay State (ON/OFF)
-        if (data.relay_state !== undefined) {
-            if (data.relay_state) {
-                card.classList.add('on');
-            } else {
-                card.classList.remove('on');
-            }
-
-            // Update button text and action
-            const btnContainer = card.querySelector('.control-btn-container');
-            const form = card.querySelector('.control-form');
-            if (btnContainer && form) {
-                const actionInput = form.querySelector('input[name="action"]');
-                const btn = btnContainer.querySelector('.status-btn');
-                
-                if (data.relay_state) {
-                    actionInput.value = 'off';
-                    btn.textContent = 'ON';
-                    btn.style.background = 'var(--accent)';
-                    btn.style.color = '#000';
-                    btn.style.border = 'none';
-                } else {
-                    actionInput.value = 'on';
-                    btn.textContent = 'OFF';
-                    btn.style.background = 'var(--surface2)';
-                    btn.style.color = 'var(--text2)';
-                    btn.style.border = '1px solid var(--border)';
-                }
-            }
-        }
-
-        // Update Power (Watts)
-        if (data.watts !== undefined || data.event === 'energy' || data.event === 'status') {
-            const powerDisplay = card.querySelector('.power-display');
-            if (powerDisplay) {
-                const isOff = data.relay_state === false || (data.relay_state === undefined && !card.classList.contains('on'));
-                if (isOff) {
-                    powerDisplay.textContent = '—';
-                } else if (data.watts !== undefined) {
-                    powerDisplay.textContent = `${data.watts}W`;
-                }
-            }
-            updateTotalPower();
-        }
-        
-        // Update NFC scanned device name/emoji if available
-        if (data.event === 'nfc_scan' && data.device_name) {
-            const emojiEl = card.querySelector('.device-emoji');
-            const nameEl = card.querySelector('.device-name');
-            if (emojiEl) emojiEl.textContent = data.device_emoji || '🔌';
-            if (nameEl) nameEl.textContent = data.device_name;
-        }
-    }
-
-    function updateTotalPower() {
-        let total = 0;
-        document.querySelectorAll('.plug-card.on .power-display').forEach(el => {
-            const val = parseFloat(el.textContent);
-            if (!isNaN(val)) total += val;
-        });
-        const totalEl = document.getElementById('total-power-val');
-        if (totalEl) totalEl.textContent = `${total.toLocaleString()} W`;
-    }
+    // The shared scripts.js handles WebSocket connections and UI updates now.
+    // We just need to make sure the event 'houseChanged' or similar is triggered if needed,
+    // but the initial load in scripts.js should handle it if activeHouseId is set.
 });
 </script>
 {% endblock %}

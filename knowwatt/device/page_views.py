@@ -133,20 +133,39 @@ def plug_control(request, house_pk, plug_pk):
 
 
 @login_required
-def device_list(request, house_pk):
-    house = get_object_or_404(House, pk=house_pk)
-    membership = check_membership(house, request.user)
-    if not membership:
-        messages.error(request, 'You are not a member.')
+def device_list(request, house_pk=None):
+    user_memberships = HouseMember.objects.filter(user=request.user).select_related('house')
+    user_houses = [m.house for m in user_memberships]
+    
+    if not user_houses:
+        messages.info(request, "You don't have any houses yet.")
         return redirect('page-house-list')
 
-    devices = ElectricalDevice.objects.filter(house=house)
-    nfc_tags = NFCTag.objects.filter(device__house=house).select_related('device')
+    # Selected house from URL or query param or first available
+    selected_house_id = house_pk or request.GET.get('house')
+    house = None
+    if selected_house_id:
+        house = next((h for h in user_houses if str(h.id) == str(selected_house_id)), None)
+    
+    if not house:
+        house = user_houses[0]
+
+    membership = HouseMember.objects.filter(house=house, user=request.user).first()
+    
+    devices = ElectricalDevice.objects.filter(house=house).prefetch_related('nfc_tags')
+    
+    # Organize tags by device for easier template rendering
+    device_tags = {}
+    for device in devices:
+        device_tags[device.id] = list(device.nfc_tags.all())
+
     return render(request, 'devices/device_list.html', {
         'house': house,
+        'user_houses': user_houses,
         'membership': membership,
         'devices': devices,
-        'nfc_tags': nfc_tags,
+        'device_tags': device_tags,
+        'active_house': house, # For base.html
     })
 
 
@@ -191,8 +210,16 @@ def device_edit(request, house_pk, device_pk):
             return redirect('page-device-list', house_pk=house_pk)
     else:
         form = ElectricalDeviceForm(instance=device)
+    
+    # Get unassigned NFC tags for this house
+    # Unassigned tags are those where device is None
+    # We filter by registered_by as a proxy for house if no direct house link on tag
+    # or better, just get all where device is None and the user is a member of the house
+    unassigned_tags = NFCTag.objects.filter(device__isnull=True).order_by('-registered_at')
+
     return render(request, 'devices/device_form.html', {
         'form': form, 'house': house, 'device': device, 'editing': True,
+        'unassigned_tags': unassigned_tags,
     })
 
 

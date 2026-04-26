@@ -9,11 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class PlugConsumer(AsyncWebsocketConsumer):
-    """
-    WebSocket consumer for real-time plug status updates.
-    
-    Clients connect to: ws://host/ws/plug/{plug_code}/
-    """
 
     async def connect(self):
         self.plug_code = self.scope['url_route']['kwargs']['plug_code']

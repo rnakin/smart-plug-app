@@ -33,31 +33,26 @@ class SmartPlugEditForm(forms.ModelForm):
 
 
 class ElectricalDeviceForm(forms.ModelForm):
+    rated_power_watts = forms.IntegerField(required=False)
+    until_notify_minutes = forms.IntegerField(required=False)
+    until_alert_minutes = forms.IntegerField(required=False)
+    until_cutoff_minutes = forms.IntegerField(required=False)
+
     class Meta:
         model = ElectricalDevice
-        fields = ['name', 'device_type', 'rated_power_watts', 'until_notify_minutes', 'until_alert_minutes', 'until_cutoff_minutes']
+        fields = [
+            'name',
+            'rated_power_watts',
+            'until_notify_minutes',
+            'until_alert_minutes',
+            'until_cutoff_minutes'
+        ]
         widgets = {
-            'name': forms.TextInput(attrs={
-                'class': 'modal-input',
-                'placeholder': 'e.g. Refrigerator',
-            }),
-            'device_type': forms.Select(attrs={'class': 'modal-input'}),
-            'rated_power_watts': forms.NumberInput(attrs={
-                'class': 'modal-input',
-                'placeholder': 'Watts',
-            }),
-            'until_notify_minutes': forms.NumberInput(attrs={
-                'class': 'modal-input',
-                'placeholder': 'Minutes (blank = disabled)',
-            }),
-            'until_alert_minutes': forms.NumberInput(attrs={
-                'class': 'modal-input',
-                'placeholder': 'Minutes (blank = disabled)',
-            }),
-            'until_cutoff_minutes': forms.NumberInput(attrs={
-                'class': 'modal-input',
-                'placeholder': 'Minutes (blank = disabled)',
-            }),
+            'name': forms.TextInput(attrs={'class': 'modal-input', 'placeholder': 'e.g. Refrigerator'}),
+            'rated_power_watts': forms.NumberInput(attrs={'class': 'modal-input', 'placeholder': 'Watts'}),
+            'until_notify_minutes': forms.NumberInput(attrs={'class': 'modal-input', 'placeholder': 'Minutes (blank = disabled)'}),
+            'until_alert_minutes': forms.NumberInput(attrs={'class': 'modal-input', 'placeholder': 'Minutes (blank = disabled)'}),
+            'until_cutoff_minutes': forms.NumberInput(attrs={'class': 'modal-input', 'placeholder': 'Minutes (blank = disabled)'}),
         }
 
 

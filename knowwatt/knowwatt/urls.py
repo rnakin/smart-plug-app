@@ -19,6 +19,7 @@ urlpatterns += [
     # ── Page views (server-side rendered) ──
     path("account/", include("account.page_urls")),
     path("houses/", include("house.page_urls")),
+    path("devices/", include("device.page_urls_global")),
     path("houses/<uuid:house_pk>/", include("device.page_urls")),
     path("houses/<uuid:house_pk>/", include("energy.page_urls")),
     path("houses/<uuid:house_pk>/", include("alert.page_urls")),

@@ -67,6 +67,18 @@ class SmartPlug(models.Model):#this is use by the app
     def plug_id(self):
         return str(self.id)
 
+    @property
+    def current_device(self):
+        session = self.sessions.filter(is_active=True).select_related('device').first()
+        return session.device if session else None
+
+    @property
+    def current_power_w(self):
+        # Using EnergyLog instead of EnergyReading if EnergyReading is not available here
+        # Actually checking EnergyLog in this file
+        latest = self.energy_logs.order_by('-timestamp').first()
+        return round(latest.watts, 1) if latest else 0.0
+
     class Meta:
         db_table = 'smart_plug'
         verbose_name = 'Smart Plug'
@@ -79,20 +91,9 @@ class SmartPlug(models.Model):#this is use by the app
 
 class ElectricalDevice(models.Model):
     """Electrical appliance that can be plugged into a smart plug"""
-    DEVICE_TYPE_CHOICES = [
-        ('appliance', 'Appliance'),
-        ('entertainment', 'Entertainment'),
-        ('lighting', 'Lighting'),
-        ('hvac', 'HVAC'),
-        ('kitchen', 'Kitchen'),
-        ('office', 'Office'),
-        ('other', 'Other'),
-    ]
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='devices')
     name = models.CharField(max_length=255)
-    device_type = models.CharField(max_length=30, choices=DEVICE_TYPE_CHOICES, default='other')
     rated_power_watts = models.FloatField(help_text='Rated power in watts from spec')
 
     until_notify_minutes = models.IntegerField(
@@ -124,7 +125,8 @@ class ElectricalDevice(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return f"{self.name} ({self.device_type})"
+        return self.name
+
 
 
 class NFCTag(models.Model):

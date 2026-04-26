@@ -15,8 +15,7 @@ class SmartPlugAdmin(admin.ModelAdmin):
 
 @admin.register(ElectricalDevice)
 class ElectricalDeviceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'device_type', 'rated_power_watts', 'house')
-    list_filter = ('device_type',)
+    list_display = ('name', 'rated_power_watts', 'house')
     search_fields = ('name',)
 
 @admin.register(NFCTag)

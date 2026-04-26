@@ -226,7 +226,7 @@ class EnergyByDeviceView(APIView):
                 recorded_at__date__lte=end,
                 device__isnull=False,
             )
-            .values('device__id', 'device__name', 'device__device_type')
+            .values('device__id', 'device__name')
             .annotate(
                 total_kwh=Sum('energy_kwh'),
                 avg_power_w=Avg('power_w'),
@@ -239,7 +239,6 @@ class EnergyByDeviceView(APIView):
         return Response([{
             'device_id': str(row['device__id']),
             'device_name': row['device__name'],
-            'device_type': row['device__device_type'],
             'total_kwh': round(row['total_kwh'] or 0, 4),
             'avg_power_w': round(row['avg_power_w'] or 0, 2),
             'peak_power_w': round(row['peak_power_w'] or 0, 2),

@@ -208,13 +208,14 @@ function renderTwinRoom(r, canvas) {
     const cls = !isOnline ? 'off' : isOn ? 'on' : 'off';
     const emoji = p.device_emoji || '';
     const deviceLabel = p.device_name ? `<div class="pwatt" style="color:var(--text3);font-size:7px;">${p.device_name}</div>` : '';
+    const displayName = p.device_name || p.name;
     return `
-      <div class="plug-node ${cls}" onclick="openPlugDetailDrawer('${p.id}')">
+      <div class="plug-node ${cls}" data-plug-code="${p.plug_code}" onclick="openPlugDetailDrawer('${p.id}')">
         <div class="pico">${emoji}<div class="pring"></div></div>
-        <div class="pname">${p.name}</div>
+        <div class="pname">${displayName}</div>
         ${deviceLabel}
         <div class="pwatt">${isOn && p.current_power_w != null ? p.current_power_w.toFixed(0)+'W' : '—'}</div>
-        <div class="ptip">${p.name}${p.device_name ? ' · '+p.device_name : ''} · ${p.plug_code}</div>
+        <div class="ptip">${displayName} · ${p.plug_code}</div>
       </div>`;
   }).join('');
 
@@ -1238,53 +1239,186 @@ function connectPlugWebSocket(plugCode) {
 }
 
 function handlePlugUpdate(plugCode, data) {
-  // Find the plug card in the DOM
-  const plugCard = document.querySelector(`[data-plug-code="${plugCode}"]`);
-  if (!plugCard) return;
-  
-  if (data.event === 'nfc_scan' && data.known) {
-    // Known device detected
-    const deviceNameEl = plugCard.querySelector('.device-name');
-    const deviceTypeEl = plugCard.querySelector('.device-type');
-    const nfcStatusEl = plugCard.querySelector('.nfc-status');
-    
-    if (deviceNameEl) deviceNameEl.textContent = data.device_name || '—';
-    if (deviceTypeEl) deviceTypeEl.textContent = data.device_type || '—';
-    if (nfcStatusEl) {
-      nfcStatusEl.textContent = 'อุปกรณ์ตรวจพบ';
-      nfcStatusEl.className = 'nfc-status status-green';
+  // Update currentPlugs array
+  const plugIdx = currentPlugs.findIndex(p => p.plug_code === plugCode);
+  if (plugIdx !== -1) {
+    if (data.event === 'energy') {
+      currentPlugs[plugIdx].current_power_w = data.watts;
+    } else if (data.event === 'nfc_scan') {
+      currentPlugs[plugIdx].active_uid = data.uid;
+      if (data.known) {
+        currentPlugs[plugIdx].device_name = data.device_name;
+        currentPlugs[plugIdx].device_emoji = '🔌';
+      }
+    } else if (data.event === 'nfc_removed') {
+      currentPlugs[plugIdx].active_uid = null;
+      currentPlugs[plugIdx].device_name = null;
+      currentPlugs[plugIdx].device_emoji = null;
     }
-    
-    // Refresh plug data from server
-    loadPlugs();
-  }
-  
-  if (data.event === 'nfc_scan' && !data.known) {
-    // Unknown tag detected
-    const nfcStatusEl = plugCard.querySelector('.nfc-status');
-    
-    if (nfcStatusEl) {
-      nfcStatusEl.textContent = 'แท็กไม่รู้จัก — กรุณาลงทะเบียน';
-      nfcStatusEl.className = 'nfc-status status-orange';
+
+    } else if (data.event === 'status') {
+      currentPlugs[plugIdx].online_status = data.online_status;
+      currentPlugs[plugIdx].is_on = data.is_on;
+      currentPlugs[plugIdx].current_power_w = data.watts;
+    } else if (data.event === 'relay_on') {
+      currentPlugs[plugIdx].is_on = true;
+    } else if (data.event === 'relay_off') {
+      currentPlugs[plugIdx].is_on = false;
     }
   }
+
+  // Find the plug node in the digital twin
+  const node = document.querySelector(`.plug-node[data-plug-code="${plugCode}"]`);
   
-  if (data.event === 'nfc_removed') {
-    // Tag removed
-    const deviceNameEl = plugCard.querySelector('.device-name');
-    const deviceTypeEl = plugCard.querySelector('.device-type');
-    const nfcStatusEl = plugCard.querySelector('.nfc-status');
-    
-    if (deviceNameEl) deviceNameEl.textContent = '—';
-    if (deviceTypeEl) deviceTypeEl.textContent = '—';
-    if (nfcStatusEl) {
-      nfcStatusEl.textContent = 'ไม่มีอุปกรณ์';
-      nfcStatusEl.className = 'nfc-status status-gray';
+  if (data.event === 'energy' || data.event === 'status') {
+      if (node) {
+          const wattEl = node.querySelector('.pwatt');
+          const isOn = currentPlugs[plugIdx]?.is_on;
+          const isOnline = currentPlugs[plugIdx]?.online_status === 'online';
+          
+          if (wattEl) {
+              const watts = data.watts !== undefined ? data.watts : currentPlugs[plugIdx]?.current_power_w;
+              wattEl.textContent = (isOn && isOnline && watts != null) ? watts.toFixed(0) + 'W' : '—';
+          }
+          
+          // Update node classes
+          if (data.event === 'status') {
+              node.classList.toggle('on', isOn && isOnline);
+              node.classList.toggle('off', !isOnline || !isOn);
+          }
+      }
+      
+      // Update dashboard page
+      const dashWatt = document.querySelector(`[onclick*="togglePlugById('${currentPlugs[plugIdx]?.id}'"]`);
+      if (dashWatt) {
+          const pWatt = dashWatt.parentElement.querySelector('div[style*="font-family:\'DM Mono\'"]');
+          const watts = data.watts !== undefined ? data.watts : currentPlugs[plugIdx]?.current_power_w;
+          if (pWatt) pWatt.innerHTML = `${watts?.toFixed(0) || 0}<span style="font-size:12px; font-weight:400; color:var(--text2); margin-left:3px;">W</span>`;
+          
+          const dot = dashWatt.parentElement.querySelector('.plug-status-dot');
+          if (dot) {
+              const isOnline = currentPlugs[plugIdx]?.online_status === 'online';
+              dot.className = `plug-status-dot ${isOnline ? 'online' : 'offline'}`;
+          }
+      }
+  } else if (data.event === 'relay_on' || data.event === 'relay_off') {
+      if (node) {
+          const isOn = data.event === 'relay_on';
+          node.classList.toggle('on', isOn);
+          node.classList.toggle('off', !isOn);
+      }
+  } else if (data.event === 'nfc_scan') {
+      if (!data.known) {
+          showNFCRegistrationPopup(plugCode, data.uid);
+      } else {
+          // Known tag
+          const modal = document.getElementById('nfc-reg-modal');
+          if (modal && modal.dataset.uid === data.uid) {
+              closeNFCRegistrationPopup();
+          }
+          
+          if (node) {
+              // Replace plug name with electrical device name
+              const nameEl = node.querySelector('.pname');
+              if (nameEl) nameEl.textContent = data.device_name;
+              
+              const pico = node.querySelector('.pico');
+              if (pico) {
+                  pico.firstChild.textContent = '🔌';
+              }
+          }
+          renderDigitalTwin(); // Full re-render to ensure everything is consistent
+      }
+  } else if (data.event === 'nfc_removed') {
+      renderDigitalTwin();
+  }
+}
+
+function showNFCRegistrationPopup(plugCode, uid) {
+    const modal = document.getElementById('nfc-reg-modal');
+    if (!modal) {
+        // Create modal if it doesn't exist
+        const modalHtml = `
+            <dialog id="nfc-reg-modal" style="max-width:400px;">
+                <div class="modal-header">
+                    <h3>Register New Device</h3>
+                    <button onclick="closeNFCRegistrationPopup()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:20px;">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="font-size:13px; color:var(--text2); margin-bottom:16px;">
+                        An unknown NFC tag (UID: <code id="nfc-reg-uid"></code>) was detected on plug <b>${plugCode}</b>. 
+                        Please choose an existing device or create a new one.
+                    </p>
+                    <div class="form-group">
+                        <label>Select Electrical Device</label>
+                        <select id="nfc-device-select" class="form-control">
+                            <option value="">-- Choose Device --</option>
+                        </select>
+                    </div>
+                    <div style="text-align:center; margin:15px 0; color:var(--text3); font-size:12px;">— OR —</div>
+                    <button onclick="openCreateDeviceFromNFC()" class="btn" style="width:100%; border-style:dashed;">+ Create New Electrical Device</button>
+                </div>
+                <div class="modal-footer">
+                    <button onclick="closeNFCRegistrationPopup()" class="btn" style="flex:1;">Cancel</button>
+                    <button onclick="submitNFCRegistration()" class="btn btn-primary" style="flex:1;">Register Tag</button>
+                </div>
+            </dialog>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
     
-    // Refresh plug data from server
-    loadPlugs();
-  }
+    const nfcModal = document.getElementById('nfc-reg-modal');
+    document.getElementById('nfc-reg-uid').textContent = uid;
+    nfcModal.dataset.uid = uid;
+    nfcModal.dataset.plugCode = plugCode;
+    
+    // Load devices for the current house
+    loadDeviceOptions();
+    
+    nfcModal.showModal();
+}
+
+async function loadDeviceOptions() {
+    const devices = await apiGet(`/api/houses/${activeHouseId}/devices/`);
+    const select = document.getElementById('nfc-device-select');
+    // Keep first option
+    select.innerHTML = '<option value="">-- Choose Device --</option>';
+    devices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = d.name;
+        select.appendChild(opt);
+    });
+}
+
+function closeNFCRegistrationPopup() {
+    const modal = document.getElementById('nfc-reg-modal');
+    if (modal) modal.close();
+}
+
+function openCreateDeviceFromNFC() {
+    // Redirect to device creation page or show another modal
+    // For now, let's just redirect to the device list where they can add one
+    window.location.href = `/houses/${activeHouseId}/devices/add/`;
+}
+
+async function submitNFCRegistration() {
+    const modal = document.getElementById('nfc-reg-modal');
+    const uid = modal.dataset.uid;
+    const deviceId = document.getElementById('nfc-device-select').value;
+    
+    if (!deviceId) {
+        alert('Please select a device');
+        return;
+    }
+    
+    const res = await apiPost(`/api/nfc/${uid}/register/`, { device_id: deviceId });
+    if (res.ok) {
+        closeNFCRegistrationPopup();
+        // The backend will send a WebSocket update which handlePlugUpdate will catch and refresh the UI
+    } else {
+        alert('Registration failed: ' + (res.data?.error || 'Unknown error'));
+    }
 }
 
 // Initialize WebSocket connections when house changes

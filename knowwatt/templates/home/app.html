@@ -166,7 +166,7 @@
             </div>
           </summary>
           {% for plug in room.plugs.all %}
-            <div class="plug-item" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', {{ plug.is_verified|yesno:'true,false' }})">
+            <div class="plug-item" data-plug-code="{{ plug.plug_code }}"style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', {{ plug.is_verified|yesno:'true,false' }}, '{{ plug.current_device.name|default:'None'|escapejs }}')">
               <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
               <div style="flex: 1;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -177,12 +177,21 @@
                         {% endif %}
                     </div>
                     {% if plug.is_on %}
-                      <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
+                      <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                        <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
+                        <span style="color: var(--accent); font-size: 10px; font-family: 'DM Mono', monospace;">{{ plug.current_power_w }}W</span>
+                      </div>
                     {% else %}
                       <span style="color: var(--text-muted); font-weight: 800; font-size: 11px; letter-spacing: 1px;">OFF</span>
                     {% endif %}
                 </div>
-                <div style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">ID: {{ plug.plug_code }}</div>
+                <div style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">
+                  {% if plug.current_device %}
+                    {{ plug.current_device.name }}
+                  {% else %}
+                    {{ plug.plug_code }}
+                  {% endif %}
+                </div>
               </div>
             </div>
           {% endfor %}
@@ -192,27 +201,34 @@
       {% if unassigned_plugs %}
         <details>
           <summary><span>📦 Unassigned</span> <span style="font-size: 11px; color: var(--text-muted);">{{ unassigned_plugs.count }}</span></summary>
-          {% for plug in unassigned_plugs %}
-            <div class="plug-item" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', 'Unassigned', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', {{ plug.is_verified|yesno:'true,false' }})">
-              <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
-              <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
-                        {% if not plug.is_verified %}
-                            <span style="background: #f87171; color: black; font-size: 8px; font-weight: 900; padding: 2px 4px; border-radius: 4px; text-transform: uppercase;">NOT SYNC</span>
-                        {% endif %}
-                    </div>
-                    {% if plug.is_on %}
-                      <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
-                    {% else %}
-                      <span style="color: var(--text-muted); font-weight: 800; font-size: 11px; letter-spacing: 1px;">OFF</span>
-                    {% endif %}
-                </div>
-                <div style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">ID: {{ plug.plug_code }}</div>
-              </div>
+{% for plug in unassigned_plugs %}
+  <div class="plug-item"data-plug-code="{{ plug.plug_code }}" style="cursor: pointer;" onclick="openPlugModal('{{ plug.id }}', '{{ plug.name|escapejs }}', '{{ room.name|escapejs }}', '{{ plug.plug_code|escapejs }}', '{{ plug.is_on|yesno:'on,off' }}', '{{ plug.online_status|escapejs }}', {{ plug.is_verified|yesno:'true,false' }}, '{{ plug.current_device.name|default:'None'|escapejs }}')">
+    <div class="status-dot {% if plug.online_status == 'online' %}status-online{% else %}status-offline{% endif %}"></div>
+    <div style="flex: 1;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="font-weight: 600; font-size: 14px;">{{ plug.name }}</div>
+          {% if not plug.is_verified %}
+            <span class="not-sync-badge" style="background: #f87171; color: black; font-size: 8px; font-weight: 900; padding: 2px 4px; border-radius: 4px; text-transform: uppercase;">NOT SYNC</span>
+          {% endif %}
+        </div>
+        <div class="power-status">
+          {% if plug.is_on %}
+            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+              <span style="color: var(--accent); font-weight: 800; font-size: 11px; letter-spacing: 1px;">ON</span>
+              <span style="color: var(--accent); font-size: 10px; font-family: 'DM Mono', monospace;">{{ plug.current_power_w }}W</span>
             </div>
-          {% endfor %}
+          {% else %}
+            <span style="color: var(--text-muted); font-weight: 800; font-size: 11px; letter-spacing: 1px;">OFF</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="device-name" style="font-size: 11px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace;">
+        {{ plug.current_device.name|default:"None" }}
+      </div>
+    </div>
+  </div>
+{% endfor %}
         </details>
       {% endif %}
 
@@ -237,6 +253,7 @@
         <span style="font-size: 13px; color: var(--text-muted);">{{ active_house.address }}</span>
       </div>
       <div style="display: flex; gap: 12px;">
+        <a href="{% url 'page-device-list' house_pk=active_house.id %}" class="btn" style="text-decoration:none;">Devices</a>
         {% if membership.role == 'owner' or membership.role == 'admin' %}
         <button class="btn" onclick="document.getElementById('manage-members-modal').showModal()">Members</button>
         <button class="btn" onclick="document.getElementById('edit-house-modal').showModal()">Settings</button>
@@ -297,9 +314,10 @@
             <h3 id="modal-plug-title">Plug Name - <span style="font-weight: 400; color: var(--text-muted);">Room</span></h3>
             <span id="modal-plug-sync-tag" style="display: none; background: #f87171; color: black; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 6px; text-transform: uppercase;">NOT SYNC</span>
         </div>
+        <div id="modal-device-name" style="font-size: 14px; font-weight: 600; color: var(--accent); margin-top: 4px;">Device: None</div>
         <div id="modal-plug-id" style="font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-top: 4px;">ID: ...</div>
       </div>
-      <div id="modal-plug-status-badge" style="font-size: 10px; text-transform: uppercase; font-weight: 800; padding: 4px 10px; border-radius: 20px;">ONLINE</div>
+      <div id="modal-plug-status-badge" style="font-size: 10px; text-transform: uppercase; font-weight: 800; padding: 4px 10px; border-radius: 20px; background: var(--accent-dim); color: var(--accent);">ONLINE</div>
       <button onclick="document.getElementById('plug-detail-modal').close()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:24px; margin-left: 20px;">&times;</button>
     </div>
     
@@ -417,18 +435,110 @@
 
 {% block script %}
 <script>
-    function openPlugModal(id, name, roomName, code, isOn, status, isVerified) {
+    let currentPlugId = null;
+    const plugSockets = {};
+
+    function initPlugSockets() {
+        document.querySelectorAll('.plug-item').forEach(item => {
+            const plugCode = item.dataset.plugCode;
+            if (!plugCode || plugSockets[plugCode]) return;
+
+            const ws = new WebSocket(`ws://${location.host}/ws/plug/${plugCode}/`);
+            plugSockets[plugCode] = ws;
+
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                updatePlugItem(data);
+                updateModalIfOpen(data);
+            };
+
+            ws.onerror = (e) => console.warn(`WS error for plug ${plugCode}`, e);
+        });
+    }
+
+    function updatePlugItem(data) {
+        const item = document.querySelector(`.plug-item[data-plug-code="${data.plug_code}"]`);
+        if (!item) return;
+
+        // status dot
+        item.querySelector('.status-dot').className =
+            `status-dot ${data.online_status === 'online' ? 'status-online' : 'status-offline'}`;
+
+        // not sync badge
+        const badge = item.querySelector('.not-sync-badge');
+        if (!data.is_verified && !badge) {
+            item.querySelector('[style*="font-weight: 600"]').parentElement
+                .insertAdjacentHTML('beforeend', `<span class="not-sync-badge" style="background:#f87171;color:black;font-size:8px;font-weight:900;padding:2px 4px;border-radius:4px;text-transform:uppercase;">NOT SYNC</span>`);
+        } else if (data.is_verified && badge) {
+            badge.remove();
+        }
+
+        // power status
+        const powerDiv = item.querySelector('.power-status');
+        if (data.is_on) {
+            powerDiv.innerHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;">
+                <span style="color:var(--accent);font-weight:800;font-size:11px;letter-spacing:1px;">ON</span>
+                <span style="color:var(--accent);font-size:10px;font-family:'DM Mono',monospace;">${data.current_power_w ?? 0}W</span>
+            </div>`;
+        } else {
+            powerDiv.innerHTML = `<span style="color:var(--text-muted);font-weight:800;font-size:11px;letter-spacing:1px;">OFF</span>`;
+        }
+
+        // device name
+        item.querySelector('.device-name').textContent = data.current_device_name || 'None';
+    }
+
+    function updateModalIfOpen(data) {
+        if (currentPlugId != data.plug_id) return;
         const modal = document.getElementById('plug-detail-modal');
-        
-        // Update Title & ID
+        if (!modal.open) return;
+
+        // status badge
+        const badge = document.getElementById('modal-plug-status-badge');
+        badge.textContent = data.online_status.toUpperCase();
+        if (data.online_status === 'online') {
+            badge.style.background = 'var(--accent-dim)';
+            badge.style.color = 'var(--accent)';
+        } else {
+            badge.style.background = 'rgba(255,255,255,0.05)';
+            badge.style.color = 'var(--text-muted)';
+        }
+
+        // sync tag
+        document.getElementById('modal-plug-sync-tag').style.display = data.is_verified ? 'none' : 'inline-block';
+
+        // power button
+        const pwrBtn = document.getElementById('modal-plug-power-btn');
+        const actionInput = document.getElementById('modal-plug-action-val');
+        if (data.is_on) {
+            pwrBtn.textContent = 'TURN OFF';
+            pwrBtn.style.background = 'rgba(248, 113, 113, 0.1)';
+            pwrBtn.style.color = '#f87171';
+            pwrBtn.style.borderColor = 'rgba(248, 113, 113, 0.2)';
+            actionInput.value = 'off';
+        } else {
+            pwrBtn.textContent = 'TURN ON';
+            pwrBtn.style.background = 'var(--accent)';
+            pwrBtn.style.color = 'black';
+            pwrBtn.style.borderColor = 'transparent';
+            actionInput.value = 'on';
+        }
+
+        // device name
+        document.getElementById('modal-device-name').textContent = `Device: ${data.current_device_name || 'None'}`;
+    }
+
+    function openPlugModal(id, name, roomName, code, isOn, status, isVerified, deviceName) {
+        currentPlugId = id;
+        const modal = document.getElementById('plug-detail-modal');
+
         document.getElementById('modal-plug-title').innerHTML = `${name} - <span style="font-weight: 400; color: var(--text-muted);">${roomName}</span>`;
+        document.getElementById('modal-device-name').textContent = `Device: ${deviceName}`;
         document.getElementById('modal-plug-id').textContent = `ID: ${code}`;
-        
-        // Update Sync Tag
+
         const syncTag = document.getElementById('modal-plug-sync-tag');
         syncTag.style.display = isVerified ? 'none' : 'inline-block';
 
-        // Update Status Badge
         const badge = document.getElementById('modal-plug-status-badge');
         badge.textContent = status.toUpperCase();
         if (status === 'online') {
@@ -438,14 +548,13 @@
             badge.style.background = 'rgba(255,255,255,0.05)';
             badge.style.color = 'var(--text-muted)';
         }
-        
-        // Update Power Button
+
         const pwrBtn = document.getElementById('modal-plug-power-btn');
         const actionInput = document.getElementById('modal-plug-action-val');
         const controlForm = document.getElementById('modal-plug-control-form');
-        
+
         controlForm.action = `/houses/{{ active_house.id }}/plugs/${id}/control/`;
-        
+
         if (isOn === 'on') {
             pwrBtn.textContent = 'TURN OFF';
             pwrBtn.style.background = 'rgba(248, 113, 113, 0.1)';
@@ -460,12 +569,10 @@
             actionInput.value = 'on';
         }
 
-        // Update Edit Form
         const editForm = document.getElementById('modal-plug-edit-form');
         editForm.action = `/houses/{{ active_house.id }}/plugs/${id}/edit/`;
         document.getElementById('modal-plug-name-input').value = name;
-        
-        // Set room select
+
         const roomSelect = document.getElementById('modal-plug-room-select');
         for (let i = 0; i < roomSelect.options.length; i++) {
             if (roomSelect.options[i].text === roomName) {
@@ -474,10 +581,11 @@
             }
         }
 
-        // Update Delete Form
         document.getElementById('modal-plug-delete-form').action = `/houses/{{ active_house.id }}/plugs/${id}/delete/`;
-        
+
         modal.showModal();
     }
+
+    document.addEventListener('DOMContentLoaded', initPlugSockets);
 </script>
 {% endblock %}

@@ -1249,7 +1249,6 @@ function handlePlugUpdate(plugCode, data) {
     const nfcStatusEl = plugCard.querySelector('.nfc-status');
     
     if (deviceNameEl) deviceNameEl.textContent = data.device_name || '—';
-    if (deviceTypeEl) deviceTypeEl.textContent = data.device_type || '—';
     if (nfcStatusEl) {
       nfcStatusEl.textContent = 'อุปกรณ์ตรวจพบ';
       nfcStatusEl.className = 'nfc-status status-green';

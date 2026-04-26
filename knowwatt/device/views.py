@@ -30,11 +30,6 @@ def require_membership(house_id, user, min_role=None):
     return m, None
 
 
-DEVICE_TYPE_EMOJI = {
-    'kitchen': '🍳', 'appliance': '🔌', 'entertainment': '📺',
-    'lighting': '💡', 'hvac': '❄️', 'office': '💻', 'other': '🔌',
-}
-
 def plug_to_dict(plug):
     # Active session → detected device
     active_session = plug.sessions.filter(is_active=True).select_related('device').first()
@@ -53,9 +48,6 @@ def plug_to_dict(plug):
         'current_power_w': round(latest.power_w, 1) if latest else None,
         'device_id': str(device.id) if device else None,
         'device_name': device.name if device else None,
-        'device_type': device.device_type if device else None,
-        'device_emoji': DEVICE_TYPE_EMOJI.get(device.device_type, '🔌') if device else None,
-        'device_risk': device.risk_level if device else None,
     }
 
 
@@ -64,10 +56,10 @@ def device_to_dict(dev):
         'id': str(dev.id),
         'house_id': str(dev.house_id),
         'name': dev.name,
-        'device_type': dev.device_type,
         'rated_power_watts': dev.rated_power_watts,
-        'risk_level': dev.risk_level,
-        'auto_cutoff_minutes': dev.auto_cutoff_minutes,
+        'until_notify_minutes': dev.until_notify_minutes,
+        'until_alert_minutes': dev.until_alert_minutes,
+        'until_cutoff_minutes': dev.until_cutoff_minutes,
         'created_at': dev.created_at.isoformat(),
     }
 
@@ -230,27 +222,23 @@ class ElectricalDeviceListCreateView(APIView):
             return err
 
         name = request.data.get('name', '').strip()
-        device_type = request.data.get('device_type', 'other')
         rated_power = request.data.get('rated_power_watts')
-        risk_level = request.data.get('risk_level', 'low')
-        auto_cutoff = request.data.get('auto_cutoff_minutes')
+        until_notify = request.data.get('until_notify_minutes')
+        until_alert = request.data.get('until_alert_minutes')
+        until_cutoff = request.data.get('until_cutoff_minutes')
 
         if not name:
             return Response({'error': 'name is required'}, status=400)
         if rated_power is None:
             return Response({'error': 'rated_power_watts is required'}, status=400)
-        if device_type not in [c[0] for c in ElectricalDevice.DEVICE_TYPE_CHOICES]:
-            return Response({'error': 'Invalid device_type'}, status=400)
-        if risk_level not in ('low', 'medium', 'high'):
-            return Response({'error': 'risk_level must be low, medium, or high'}, status=400)
 
         device = ElectricalDevice.objects.create(
             house_id=house_id,
             name=name,
-            device_type=device_type,
             rated_power_watts=float(rated_power),
-            risk_level=risk_level,
-            auto_cutoff_minutes=int(auto_cutoff) if auto_cutoff is not None else None,
+            until_notify_minutes=int(until_notify) if until_notify is not None else None,
+            until_alert_minutes=int(until_alert) if until_alert is not None else None,
+            until_cutoff_minutes=int(until_cutoff) if until_cutoff is not None else None,
             created_by=request.user,
         )
         return Response(device_to_dict(device), status=201)
@@ -287,14 +275,14 @@ class ElectricalDeviceDetailView(APIView):
         if not device:
             return Response({'error': 'Device not found'}, status=404)
 
-        for field in ('name', 'device_type', 'risk_level'):
-            if field in request.data:
-                setattr(device, field, request.data[field])
+        if 'name' in request.data:
+            device.name = request.data['name']
         if 'rated_power_watts' in request.data:
             device.rated_power_watts = float(request.data['rated_power_watts'])
-        if 'auto_cutoff_minutes' in request.data:
-            val = request.data['auto_cutoff_minutes']
-            device.auto_cutoff_minutes = int(val) if val is not None else None
+        for field in ('until_notify_minutes', 'until_alert_minutes', 'until_cutoff_minutes'):
+            if field in request.data:
+                val = request.data[field]
+                setattr(device, field, int(val) if val is not None else None)
 
         device.save()
         return Response(device_to_dict(device))
@@ -554,6 +542,8 @@ class NFCTagRegisterView(APIView):
         # publish device info to {plug_code}/config
         active_sessions = PlugSession.objects.filter(nfc_tag=tag, is_active=True)
         
+        from device.mqtt_handlers import send_plug_update
+
         if active_sessions.exists():
             # Update session device
             active_sessions.update(device=device)
@@ -562,6 +552,17 @@ class NFCTagRegisterView(APIView):
             for session in active_sessions:
                 plug = session.plug
                 
+                # Send WebSocket update
+                send_plug_update(
+                    plug.plug_code,
+                    'nfc_scan',
+                    uid=tag.tag_uid,
+                    known=True,
+                    device_id=str(device.id),
+                    device_name=device.name,
+                    rated_watts=device.rated_power_watts
+                )
+
                 # Publish to {plug_code}/config
                 import paho.mqtt.client as mqtt
                 import os
@@ -585,8 +586,6 @@ class NFCTagRegisterView(APIView):
                     config_payload = {
                         'uid': tag.tag_uid,
                         'device_name': device.name,
-                        'device_type': device.device_type,
-                        'risk_level': device.risk_level,
                         'rated_watts': device.rated_power_watts
                     }
                     
@@ -608,9 +607,7 @@ class NFCTagRegisterView(APIView):
             'device': {
                 'id': str(device.id),
                 'name': device.name,
-                'device_type': device.device_type,
                 'rated_power_watts': device.rated_power_watts,
-                'risk_level': device.risk_level,
             }
         }, status=200)
 
