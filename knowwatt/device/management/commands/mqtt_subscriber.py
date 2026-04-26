@@ -1,178 +1,293 @@
-import os
 import json
 import logging
-import time
 import signal
+import ssl
 import sys
+from datetime import datetime
 
-import paho.mqtt.client as mqtt
 from django.core.management.base import BaseCommand
 from django.conf import settings
-import django
+from django.utils import timezone
+from django.db import close_old_connections
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from paho.mqtt import client as mqtt
+
+from device.models import SmartPlug, EnergyLog
 
 logger = logging.getLogger(__name__)
 
-# MQTT configuration from environment variables
-MQTT_HOST = os.environ.get('MQTT_HOST', '')
-MQTT_PORT = int(os.environ.get('MQTT_PORT', 8883))
-MQTT_USER = os.environ.get('MQTT_USER', '')
-MQTT_PASS = os.environ.get('MQTT_PASS', '')
-MQTT_USE_TLS = os.environ.get('MQTT_USE_TLS', 'true').lower() == 'true'
-
-# Reconnection settings
-MAX_RECONNECT_DELAY = 60  # seconds
-INITIAL_RECONNECT_DELAY = 1
+TOPIC_STATUS = "status"
+TOPIC_ENERGY = "energy_usage"
+TOPIC_EVENT  = "event"
 
 
 class Command(BaseCommand):
-    help = 'MQTT subscriber for NFC tag events from smart plugs'
+    help = 'Runs the MQTT subscriber daemon to sync smart plug state with the database'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = None
-        self.reconnect_delay = INITIAL_RECONNECT_DELAY
-        self.should_stop = False
+        self.shutdown_requested = False
+        self.channel_layer = get_channel_layer()
 
     def handle(self, *args, **options):
-        """Main entry point for the management command."""
-        # Setup signal handlers for graceful shutdown
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
+        self.stdout.write("Starting KnowWatt MQTT Subscriber...")
 
-        self.stdout.write(self.style.SUCCESS('Starting MQTT subscriber...'))
-        
-        # Create MQTT client
-        self.client = mqtt.Client(client_id='django_mqtt_subscriber')
-        
-        # Set up authentication
-        if MQTT_USER:
-            self.client.username_pw_set(MQTT_USER, MQTT_PASS)
-        
-        # Set up TLS if enabled
-        if MQTT_USE_TLS:
-            self.client.tls_set()
-        
-        # Set up callbacks
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
-        self.client.on_message = self._on_message
-        self.client.on_log = self._on_log
-        
-        # Connect to broker
-        self._connect()
-        
-        # Start loop - runs forever
+        signal.signal(signal.SIGTERM, self._handle_exit)
+        signal.signal(signal.SIGINT, self._handle_exit)
+
+        self.client = mqtt.Client(
+            client_id="knowwatt-daemon",
+            protocol=mqtt.MQTTv5
+        )
+        self.client.on_connect    = self.on_connect
+        self.client.on_disconnect = self.on_disconnect
+        self.client.on_message    = self.on_message
+
+        self.client.username_pw_set(settings.MQTT_USER, settings.MQTT_PASSWORD)
+        self.client.tls_set(tls_version=ssl.PROTOCOL_TLS_CLIENT)
+        self.client.reconnect_delay_set(min_delay=1, max_delay=30)
+
         try:
-            self.client.loop_forever()
+            self.client.connect(settings.MQTT_BROKER, settings.MQTT_PORT, keepalive=60)
         except Exception as e:
-            logger.error(f'Loop error: {e}')
-            raise
+            self.stderr.write(f"Could not connect to MQTT broker: {e}")
+            sys.exit(1)
 
-    def _signal_handler(self, signum, frame):
-        """Handle shutdown signals gracefully."""
-        self.stdout.write(self.style.WARNING('Received shutdown signal, stopping...'))
-        self.should_stop = True
+        self.client.loop_forever(retry_first_connection=True)
+
+    def _handle_exit(self, signum, frame):
+        self.stdout.write(f"Received signal {signum}. Shutting down cleanly...")
+        self.shutdown_requested = True
         if self.client:
             self.client.disconnect()
-            self.client.loop_stop()
+        close_old_connections()
         sys.exit(0)
 
-    def _connect(self):
-        """Connect to MQTT broker with retry logic."""
-        try:
-            logger.info(f'Connecting to MQTT broker at {MQTT_HOST}:{MQTT_PORT}')
-            self.stdout.write(f'Connecting to MQTT broker at {MQTT_HOST}:{MQTT_PORT}')
-            result = self.client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
-            if result == mqtt.MQTT_ERR_SUCCESS:
-                self.reconnect_delay = INITIAL_RECONNECT_DELAY
-                logger.info('Connected to MQTT broker')
-                self.stdout.write(self.style.SUCCESS('Connected to MQTT broker'))
-            else:
-                raise Exception(f'Connection failed with result code: {result}')
-        except Exception as e:
-            logger.error(f'Failed to connect to MQTT broker: {e}')
-            self.stdout.write(self.style.ERROR(f'Failed to connect: {e}'))
-            self._schedule_reconnect()
+    # ------------------------------------------------------------------ #
+    # Paho callbacks                                                       #
+    # ------------------------------------------------------------------ #
 
-    def _schedule_reconnect(self):
-        """Schedule a reconnection attempt with exponential backoff."""
-        if self.should_stop:
-            return
-        logger.info(f'Scheduling reconnect in {self.reconnect_delay} seconds')
-        self.stdout.write(f'Scheduling reconnect in {self.reconnect_delay} seconds...')
-        time.sleep(self.reconnect_delay)
-        self.reconnect_delay = min(self.reconnect_delay * 2, MAX_RECONNECT_DELAY)
-        self._connect()
-
-    def _on_connect(self, client, userdata, flags, rc):
-        """Callback when connected to MQTT broker."""
+    def on_connect(self, client, userdata, flags, rc, properties=None):
         if rc == 0:
-            logger.info('MQTT connection established')
-            self.stdout.write(self.style.SUCCESS('MQTT connection established'))
-            # Subscribe to plug events
-            topic = '+/event'
-            client.subscribe(topic)
-            logger.info(f'Subscribed to topic: {topic}')
-            self.stdout.write(f'Subscribed to topic: {topic}')
-        elif rc == 1:
-            logger.error('Connection refused - incorrect protocol version')
-            self.stdout.write(self.style.ERROR('Connection refused - incorrect protocol version'))
-        elif rc == 2:
-            logger.error('Connection refused - invalid client identifier')
-            self.stdout.write(self.style.ERROR('Connection refused - invalid client identifier'))
-        elif rc == 3:
-            logger.error('Connection refused - server unavailable')
-            self.stdout.write(self.style.ERROR('Connection refused - server unavailable'))
-        elif rc == 4:
-            logger.error('Connection refused - bad username or password')
-            self.stdout.write(self.style.ERROR('Connection refused - bad username or password'))
-        elif rc == 5:
-            logger.error('Connection refused - not authorized')
-            self.stdout.write(self.style.ERROR('Connection refused - not authorized'))
+            self.stdout.write("Connected to MQTT Broker successfully.")
+            client.subscribe([
+                (TOPIC_STATUS, 1),
+                (TOPIC_ENERGY, 1),
+                (TOPIC_EVENT,  1),
+            ])
+            logger.info("Subscribed to %s, %s, %s with QoS 1",
+                        TOPIC_STATUS, TOPIC_ENERGY, TOPIC_EVENT)
         else:
-            logger.error(f'Connection failed with code: {rc}')
-            self.stdout.write(self.style.ERROR(f'Connection failed with code: {rc}'))
+            self.stderr.write(f"Failed to connect, return code: {rc}")
 
-    def _on_disconnect(self, client, userdata, rc):
-        """Callback when disconnected from MQTT broker."""
-        if rc != 0:
-            logger.warning(f'Disconnected from MQTT broker with return code: {rc}')
-            self.stdout.write(self.style.WARNING(f'Disconnected from MQTT broker (rc: {rc})'))
-            self._schedule_reconnect()
-        else:
-            logger.info('Disconnected from MQTT broker gracefully')
-            self.stdout.write('Disconnected from MQTT broker gracefully')
+    def on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties=None):
+        self.stdout.write(f"Disconnected — reason code: {reason_code}")
+        if not self.shutdown_requested:
+            logger.info("Unclean disconnect — loop_forever() will handle reconnection")
 
-    def _on_message(self, client, userdata, msg):
-        """Callback when a message is received."""
+    def on_message(self, client, userdata, msg):
+        topic_suffix = msg.topic.split('/')[-1]
+
         try:
-            topic = msg.topic
-            payload = msg.payload
-            
-            logger.info(f'Received message on topic: {topic}')
-            self.stdout.write(f'Received message on topic: {topic}')
-            
-            # Import here to avoid circular imports - will be created in TASK 2
-            from device.mqtt_handlers import handle_nfc_event
-            
-            # Call the handler with the client for publishing back
-            handle_nfc_event(client, topic, payload)
-            
-        except Exception as e:
-            logger.error(f'Error processing message: {e}')
-            self.stdout.write(self.style.ERROR(f'Error processing message: {e}'))
-        finally:
-            # Close old database connections to prevent stale connections
-            # (paho-mqtt runs callbacks in a separate thread)
-            import django.db
-            django.db.close_old_connections()
-            logger.debug('Closed old database connections')
+            payload = msg.payload.decode('utf-8')
+            data = json.loads(payload)
+            self.stdout.write(f"MQTT Message Received: Topic: {msg.topic} | Payload: {payload}")
+        except json.JSONDecodeError as e:
+            self.stderr.write(f"JSON decode error on topic '{msg.topic}': {e}")
+            return
 
-    def _on_log(self, client, userdata, level, string):
-        """Callback for MQTT client logs."""
-        # Only log warnings and errors to avoid flooding logs
-        # Map paho log levels to Python logging levels
-        if level == mqtt.MQTT_LOG_ERR:
-            logger.error(f'MQTT: {string}')
-        elif level == mqtt.MQTT_LOG_WARNING:
-            logger.warning(f'MQTT: {string}')
+        if topic_suffix == 'status':
+            self._handle_status(data)
+        elif topic_suffix == 'energy_usage':
+            self._handle_energy(data)
+        elif topic_suffix == 'event':
+            self._handle_event(data)
+        else:
+            logger.debug("Unhandled topic suffix '%s' — ignoring", topic_suffix)
+
+    # ------------------------------------------------------------------ #
+    # Handlers                                                             #
+    # ------------------------------------------------------------------ #
+
+    def _handle_status(self, data):
+        try:
+            close_old_connections()
+            plug_id = data.get('plug_id')
+            if not plug_id:
+                logger.warning("_handle_status: missing plug_id in payload")
+                return
+
+            self.stdout.write(f"Processing status for {plug_id}: {data}")
+
+            is_online_val = data.get('state') == 'online'
+            online_status_val = data.get('state', 'offline')
+
+            updated_count = SmartPlug.objects.filter(plug_code=plug_id).update(
+                is_online=is_online_val,
+                online_status=online_status_val,
+                uptime=data.get('uptime', 0),
+                relay_state=data.get('relay', False),
+                is_on=data.get('relay', False),
+                rssi=data.get('rssi'),
+                ip_address=data.get('ip'),
+            )
+
+            if updated_count == 0:
+                self.stdout.write(f"No SmartPlug found with plug_code {plug_id}")
+            else:
+                self.stdout.write(f"Successfully updated status for {plug_id}")
+                # Broadcast via WebSockets
+                try:
+                    channel_layer = get_channel_layer()
+                    async_to_sync(channel_layer.group_send)(
+                        f"plug_{plug_id}",
+                        {
+                            "type": "plug.update",
+                            "event": "status",
+                            "plug_code": plug_id,
+                            "is_online": is_online_val,
+                            "online_status": online_status_val,
+                            "relay_state": data.get('relay', False),
+                            "is_on": data.get('relay', False),
+                            "uptime": data.get('uptime', 0),
+                            "rssi": data.get('rssi'),
+                            "ip_address": data.get('ip'),
+                        }
+                    )
+                except Exception as broadcast_error:
+                    logger.error(f"Broadcast failed: {broadcast_error}")
+
+            logger.debug("Status updated for plug %s", plug_id)
+        except Exception as e:
+            self.stderr.write(f"Error in _handle_status: {e}")
+        finally:
+            close_old_connections()
+
+    def _handle_energy(self, data):
+        try:
+            close_old_connections()
+            plug_id = data.get('plug_id')
+            if not plug_id:
+                logger.warning("_handle_energy: missing plug_id in payload")
+                return
+
+            self.stdout.write(f"Processing energy data for {plug_id}")
+            try:
+                plug = SmartPlug.objects.get(plug_code=plug_id)
+            except SmartPlug.DoesNotExist:
+                self.stdout.write(f"Discarding energy log — SmartPlug '{plug_id}' does not exist")
+                return
+
+            ts_str = data.get('timestamp')
+            if ts_str:
+                naive_dt = datetime.fromisoformat(ts_str)
+                aware_dt = timezone.make_aware(naive_dt)
+            else:
+                aware_dt = timezone.now()
+
+            EnergyLog.objects.create(
+                plug=plug,
+                watts=data.get('watts', 0.0),
+                kwh=data.get('kwh', 0.0),
+                volts=data.get('volts', 0.0),
+                amps=data.get('amps', 0.0),
+                frequency=data.get('frequency', 0.0),
+                pf=data.get('pf', 0.0),
+                timestamp=aware_dt,
+            )
+            self.stdout.write(f"Successfully created EnergyLog for {plug_id}")
+
+            # Broadcast via WebSockets
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"plug_{plug_id}",
+                    {
+                        "type": "plug.update",
+                        "event": "energy",
+                        "plug_code": plug_id,
+                        "watts": data.get('watts', 0.0),
+                        "volts": data.get('volts', 0.0),
+                        "amps": data.get('amps', 0.0),
+                        "timestamp": aware_dt.isoformat(),
+                    }
+                )
+            except Exception as broadcast_error:
+                self.stderr.write(f"Broadcast failed: {broadcast_error}")
+
+            logger.debug("EnergyLog created for plug %s", plug_id)
+        except Exception as e:
+            self.stderr.write(f"Error in _handle_energy: {e}")
+        finally:
+            close_old_connections()
+
+    def _handle_event(self, data):
+        try:
+            close_old_connections()
+            plug_id    = data.get('plug_id')
+            event_type = data.get('type')
+
+            if not plug_id or not event_type:
+                logger.warning("_handle_event: missing plug_id or type in payload")
+                return
+
+            if event_type in ('relay_on', 'relay_off'):
+                self.stdout.write(f"Processing event {event_type} for {plug_id}")
+                updated_count = SmartPlug.objects.filter(plug_code=plug_id).update(
+                    relay_state=event_type == 'relay_on',
+                    is_on=event_type == 'relay_on'
+                )
+                if updated_count == 0:
+                    self.stdout.write(f"No SmartPlug found for event {event_type} on {plug_id}")
+                else:
+                    self.stdout.write(f"Successfully updated relay state for {plug_id}")
+                    # Broadcast via WebSockets
+                    try:
+                        channel_layer = get_channel_layer()
+                        async_to_sync(channel_layer.group_send)(
+                            f"plug_{plug_id}",
+                            {
+                                "type": "plug.update",
+                                "event": event_type,
+                                "plug_code": plug_id,
+                                "relay_state": event_type == 'relay_on',
+                                "is_on": event_type == 'relay_on'
+                            }
+                        )
+                    except Exception as broadcast_error:
+                        self.stderr.write(f"Broadcast failed: {broadcast_error}")
+
+            elif event_type == 'nfc_scan':
+                uid = data.get('uid')
+                self.stdout.write(f"Processing NFC scan {uid} for {plug_id}")
+                updated_count = SmartPlug.objects.filter(plug_code=plug_id).update(
+                    active_uid=None if uid == "null" else uid
+                )
+                if updated_count == 0:
+                    self.stdout.write(f"No SmartPlug found for NFC scan on {plug_id}")
+                else:
+                    self.stdout.write(f"Successfully updated NFC UID for {plug_id}")
+                    # Broadcast via WebSockets
+                    try:
+                        channel_layer = get_channel_layer()
+                        async_to_sync(channel_layer.group_send)(
+                            f"plug_{plug_id}",
+                            {
+                                "type": "plug.update",
+                                "event": "nfc_scan",
+                                "plug_code": plug_id,
+                                "active_uid": None if uid == "null" else uid
+                            }
+                        )
+                    except Exception as broadcast_error:
+                        self.stderr.write(f"Broadcast failed: {broadcast_error}")
+
+            else:
+                logger.debug("Ignoring unknown event type '%s'", event_type)
+
+        except Exception as e:
+            self.stderr.write(f"Error in _handle_event: {e}")
+        finally:
+            close_old_connections()

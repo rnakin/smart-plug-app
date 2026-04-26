@@ -613,3 +613,62 @@ class NFCTagRegisterView(APIView):
                 'risk_level': device.risk_level,
             }
         }, status=200)
+
+import json
+import paho.mqtt.publish as publish
+from django.conf import settings
+from django.shortcuts import render
+from django.views.decorators.http import require_POST
+from django.http import HttpResponse
+
+@require_POST
+def publish_command(request, plug_id):
+    """
+    Publishes a turn_on/turn_off command to MQTT and returns a pending HTMX state.
+    """
+    action = request.POST.get('action')
+    if action not in ['turn_on', 'turn_off']:
+        return HttpResponse("Invalid action", status=400)
+
+    # Topic: <plug_id>/command
+    topic = f"{plug_id}/command"
+    payload = json.dumps({"command": action})
+
+    auth = None
+    if settings.MQTT_USER and settings.MQTT_PASSWORD:
+        auth = {'username': settings.MQTT_USER, 'password': settings.MQTT_PASSWORD}
+
+    # Stateless publish
+    publish.single(
+        topic,
+        payload=payload,
+        hostname=settings.MQTT_BROKER,
+        port=settings.MQTT_PORT,
+        auth=auth,
+        qos=1
+    )
+
+    # Return the pending state partial
+    return render(request, 'device/partials/_button_pending.html', {
+        'plug_id': plug_id,
+        'action': action
+    })
+
+def relay_status(request, plug_id):
+    """
+    Polling endpoint to check if the relay state matches the desired state.
+    """
+    plug = get_object_or_404(SmartPlug, plug_id=plug_id)
+    target_state = request.GET.get('target')
+    current_state = "turn_on" if plug.relay_state else "turn_off"
+    
+    if target_state and current_state != target_state:
+        return render(request, 'device/partials/_button_pending.html', {
+            'plug_id': plug_id,
+            'action': target_state
+        })
+
+    return render(request, 'device/partials/_button_confirmed.html', {
+        'plug': plug
+    })
+

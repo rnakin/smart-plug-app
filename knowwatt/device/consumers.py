@@ -48,15 +48,5 @@ class PlugConsumer(AsyncWebsocketConsumer):
         This method is called when we send to group with type "plug.update".
         """
         # Send the event data to the WebSocket
-        await self.send(text_data=json.dumps({
-            'type': 'plug.update',
-            'event': event.get('event'),
-            'uid': event.get('uid'),
-            'known': event.get('known'),
-            'device_name': event.get('device_name'),
-            'device_type': event.get('device_type'),
-            'risk_level': event.get('risk_level'),
-            'rated_watts': event.get('rated_watts'),
-            'timestamp': event.get('timestamp'),
-        }))
-        logger.debug(f'Sent plug update to WebSocket: {event.get("event")}')
+        await self.send(text_data=json.dumps(event))
+        logger.debug(f'Sent plug update to WebSocket: {event.get("type")}')

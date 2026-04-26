@@ -1,0 +1,19 @@
+<div id="plug-control-{{ plug_id }}">
+    <button class="btn btn-secondary" disabled>
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        Processing...
+    </button>
+    
+    <div hx-get="/plugs/{{ plug_id }}/relay-status/?target={{ action }}" 
+         hx-trigger="every 1500ms [window.plugPollActive]" 
+         hx-target="#plug-control-{{ plug_id }}"
+         hx-swap="outerHTML">
+    </div>
+
+    <script>
+        window.plugPollActive = true;
+        setTimeout(() => {
+            window.plugPollActive = false;
+        }, 10000);
+    </script>
+</div>

@@ -54,30 +54,32 @@
         </div>
         <div class="plug-grid">
           {% for pd in room_plugs %}
-          <div class="plug-card {% if pd.plug.is_on %}on{% endif %}">
+          <div class="plug-card {% if pd.plug.is_on %}on{% endif %}" data-plug-code="{{ pd.plug.plug_code }}" id="plug-card-{{ pd.plug.plug_code }}">
             <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
               <span style="font-size:11px; color:var(--text3); text-transform:uppercase;">{{ pd.plug.location|default:"—" }}</span>
-              <div style="width:8px;height:8px;border-radius:50%;background:{% if pd.plug.online_status == 'online' %}var(--accent){% else %}var(--text3){% endif %};"></div>
+              <div class="online-dot" id="dot-{{ pd.plug.plug_code }}" style="width:8px;height:8px;border-radius:50%;background:{% if pd.plug.online_status == 'online' %}var(--accent){% else %}var(--text3){% endif %};"></div>
             </div>
             <div style="font-size:11px; color:var(--text3); font-family:'DM Mono',monospace;">{{ pd.plug.plug_code }}</div>
-            <div style="font-size:20px; margin:4px 0;">{{ pd.device_emoji }}</div>
+            <div style="font-size:20px; margin:4px 0;" class="device-emoji">{{ pd.device_emoji }}</div>
             <div style="font-size:13px; font-weight:600;">{{ pd.plug.name }}</div>
             {% if pd.device %}
-            <div style="font-size:11px; color:var(--text3);">{{ pd.device.name }}</div>
+            <div style="font-size:11px; color:var(--text3);" class="device-name">{{ pd.device.name }}</div>
             {% endif %}
-            <div style="font-size:13px; font-weight:600; color:var(--accent); margin-top:4px;">
+            <div class="power-display" style="font-size:13px; font-weight:600; color:var(--accent); margin-top:4px;">
               {% if pd.plug.is_on and pd.power_w %}{{ pd.power_w }}W{% else %}—{% endif %}
             </div>
             <div style="display:flex; gap:6px; margin-top:8px;">
-              <form method="post" action="{% url 'page-plug-control' house_pk=house.pk plug_pk=pd.plug.pk %}">
+              <form method="post" action="{% url 'page-plug-control' house_pk=house.pk plug_pk=pd.plug.pk %}" class="control-form">
                 {% csrf_token %}
-                {% if pd.plug.is_on %}
-                <input type="hidden" name="action" value="off">
-                <button type="submit" style="padding:6px 12px;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:var(--accent);color:#000;">ON</button>
-                {% else %}
-                <input type="hidden" name="action" value="on">
-                <button type="submit" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--text2);">OFF</button>
-                {% endif %}
+                <div class="control-btn-container">
+                  {% if pd.plug.is_on %}
+                  <input type="hidden" name="action" value="off">
+                  <button type="submit" class="status-btn" style="padding:6px 12px;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:var(--accent);color:#000;">ON</button>
+                  {% else %}
+                  <input type="hidden" name="action" value="on">
+                  <button type="submit" class="status-btn" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--text2);">OFF</button>
+                  {% endif %}
+                </div>
               </form>
               <a href="{% url 'page-plug-edit' house_pk=house.pk plug_pk=pd.plug.pk %}"
                  style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text2);text-decoration:none;">Edit</a>
@@ -103,7 +105,7 @@
 
   <div class="sum-bar">
     <div class="ss"><div class="ssl">Plugs</div><div class="ssv">{{ plug_data|length }}</div></div>
-    <div class="ss"><div class="ssl">Power</div><div class="ssv acc">{{ total_power }} W</div></div>
+    <div class="ss"><div class="ssl">Power</div><div class="ssv acc" id="total-power-val">{{ total_power }} W</div></div>
     <div class="ss"><div class="ssl">Today</div><div class="ssv">{{ today_kwh }} kWh</div></div>
     <div class="ss"><div class="ssl">Alerts</div><div class="ssv wrn">{{ pending_alerts }}</div></div>
     <div style="flex:1;"></div>
@@ -112,4 +114,108 @@
     <a href="{% url 'page-house-members' pk=house.pk %}" class="tbtn" style="text-decoration:none;">Members →</a>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const plugCodes = [];
+    document.querySelectorAll('.plug-card').forEach(card => {
+        const code = card.dataset.plugCode;
+        if (code) plugCodes.push(code);
+    });
+
+    plugCodes.forEach(code => {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const socketUrl = `${protocol}//${window.location.host}/ws/plug/${code}/`;
+        const socket = new WebSocket(socketUrl);
+
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log('WS Update:', data);
+
+            if (data.type === 'plug.update') {
+                updatePlugUI(data);
+            }
+        };
+
+        socket.onclose = function(e) {
+            console.log(`Socket closed for ${code}, retrying...`);
+            // Add reconnection logic if needed
+        };
+    });
+
+    function updatePlugUI(data) {
+        const card = document.getElementById(`plug-card-${data.plug_code}`);
+        if (!card) return;
+
+        // Update Online/Offline dot
+        const dot = document.getElementById(`dot-${data.plug_code}`);
+        if (dot && data.online_status) {
+            dot.style.background = data.online_status === 'online' ? 'var(--accent)' : 'var(--text3)';
+        }
+
+        // Update Relay State (ON/OFF)
+        if (data.relay_state !== undefined) {
+            if (data.relay_state) {
+                card.classList.add('on');
+            } else {
+                card.classList.remove('on');
+            }
+
+            // Update button text and action
+            const btnContainer = card.querySelector('.control-btn-container');
+            const form = card.querySelector('.control-form');
+            if (btnContainer && form) {
+                const actionInput = form.querySelector('input[name="action"]');
+                const btn = btnContainer.querySelector('.status-btn');
+                
+                if (data.relay_state) {
+                    actionInput.value = 'off';
+                    btn.textContent = 'ON';
+                    btn.style.background = 'var(--accent)';
+                    btn.style.color = '#000';
+                    btn.style.border = 'none';
+                } else {
+                    actionInput.value = 'on';
+                    btn.textContent = 'OFF';
+                    btn.style.background = 'var(--surface2)';
+                    btn.style.color = 'var(--text2)';
+                    btn.style.border = '1px solid var(--border)';
+                }
+            }
+        }
+
+        // Update Power (Watts)
+        if (data.watts !== undefined || data.event === 'energy' || data.event === 'status') {
+            const powerDisplay = card.querySelector('.power-display');
+            if (powerDisplay) {
+                const isOff = data.relay_state === false || (data.relay_state === undefined && !card.classList.contains('on'));
+                if (isOff) {
+                    powerDisplay.textContent = '—';
+                } else if (data.watts !== undefined) {
+                    powerDisplay.textContent = `${data.watts}W`;
+                }
+            }
+            updateTotalPower();
+        }
+        
+        // Update NFC scanned device name/emoji if available
+        if (data.event === 'nfc_scan' && data.device_name) {
+            const emojiEl = card.querySelector('.device-emoji');
+            const nameEl = card.querySelector('.device-name');
+            if (emojiEl) emojiEl.textContent = data.device_emoji || '🔌';
+            if (nameEl) nameEl.textContent = data.device_name;
+        }
+    }
+
+    function updateTotalPower() {
+        let total = 0;
+        document.querySelectorAll('.plug-card.on .power-display').forEach(el => {
+            const val = parseFloat(el.textContent);
+            if (!isNaN(val)) total += val;
+        });
+        const totalEl = document.getElementById('total-power-val');
+        if (totalEl) totalEl.textContent = `${total.toLocaleString()} W`;
+    }
+});
+</script>
 {% endblock %}

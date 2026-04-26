@@ -1,0 +1,16 @@
+<div id="plug-control-{{ plug.plug_id }}" hx-swap-oob="true">
+    <form hx-post="/plugs/{{ plug.plug_id }}/command/" hx-target="#plug-control-{{ plug.plug_id }}" hx-swap="outerHTML">
+        {% csrf_token %}
+        {% if plug.relay_state %}
+            <input type="hidden" name="action" value="turn_off">
+            <button type="submit" class="btn btn-danger">Turn Off</button>
+        {% else %}
+            <input type="hidden" name="action" value="turn_on">
+            <button type="submit" class="btn btn-success">Turn On</button>
+        {% endif %}
+    </form>
+</div>
+
+<span id="plug-status-badge-{{ plug.plug_id }}" class="badge {% if plug.relay_state %}bg-success{% else %}bg-secondary{% endif %}" hx-swap-oob="true">
+    {% if plug.relay_state %}ON{% else %}OFF{% endif %}
+</span>

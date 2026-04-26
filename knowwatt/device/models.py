@@ -1,10 +1,29 @@
 from django.db import models
+
+class EnergyLog(models.Model):
+    plug = models.ForeignKey('SmartPlug', on_delete=models.CASCADE, related_name='energy_logs')
+    watts = models.FloatField()
+    kwh = models.FloatField()
+    volts = models.FloatField()
+    amps = models.FloatField()
+    frequency = models.FloatField()
+    pf = models.FloatField()
+    timestamp = models.DateTimeField()
+
 import uuid
 from django.conf import settings
 from house.models import House
 
+#this is the table of smartplug that is produced
+class ValidSmartPlug(models.Model):
 
-class SmartPlug(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plug_code = models.CharField(max_length=64, unique=True,null=False)  # QR/manual code
+    registered_at = models.DateTimeField(auto_now_add=True)
+    blacklist = models.BooleanField(default=False)
+
+# this is the table of smartplug entries use by the app
+class SmartPlug(models.Model):#this is use by the app
     """Smart plug device registered to a house"""
     STATUS_CHOICES = [
         ('online', 'Online'),
@@ -12,7 +31,7 @@ class SmartPlug(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='plugs')
+    house = models.ForeignKey(House, on_delete=models.CASCADE, null=True,related_name='plugs')
     room = models.ForeignKey(
         'house.Room',
         on_delete=models.SET_NULL,
@@ -34,6 +53,19 @@ class SmartPlug(models.Model):
     )
     registered_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Added fields from KnowWatt Spec
+    relay_state = models.BooleanField(default=False)
+    is_online = models.BooleanField(default=False)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    rssi = models.IntegerField(null=True, blank=True)
+    uptime = models.IntegerField(default=0)
+    active_uid = models.CharField(max_length=50, null=True, blank=True)
+
+    # Alias for plug_id as per spec requirement for some lookups if needed
+    @property
+    def plug_id(self):
+        return str(self.id)
 
     class Meta:
         db_table = 'smart_plug'

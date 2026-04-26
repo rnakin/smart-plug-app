@@ -76,7 +76,7 @@ ASGI_APPLICATION = 'knowwatt.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-if os.environ.get('USE_SQLITE') == 'True':
+if os.environ.get('DEBUG') == 'True':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -87,22 +87,36 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB'),
-            'USER': os.environ.get('DB_USER'),
-            'PASSWORD': os.environ.get('DB_PASSWORD'),
-            'HOST': os.environ.get('DB_HOST'),
-            'PORT': os.environ.get('DB_PORT'),
+            'NAME': os.environ.get('DB', 'knowwatt'),
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
+            'HOST': os.environ.get('DB_HOST', 'db'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
         }
     }
 
 # Channel layers configuration for real-time WebSocket support
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [('redis', 6379)],
+if DEBUG == 'False':
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [(os.environ.get('REDIS_HOST', 'redis'), 6379)],
+            },
         },
-    },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+
+# WebPush settings (optional/future)
+WEBPUSH_SETTINGS = {
+   "VAPID_PUBLIC_KEY": os.environ.get("VAPID_PUBLIC_KEY"),
+   "VAPID_PRIVATE_KEY": os.environ.get("VAPID_PRIVATE_KEY"),
+   "VAPID_ADMIN_EMAIL": os.environ.get("VAPID_ADMIN_EMAIL")
 }
 
 # Password validation
@@ -141,6 +155,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -159,3 +174,13 @@ CORS_ALLOWED_ORIGINS = [
 LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/home/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
+
+# MQTT Settings
+# settings.py
+import os
+
+MQTT_BROKER   = os.environ.get("MQTT_HOST")
+MQTT_PORT     = int(os.environ.get("MQTT_PORT", 8883))
+MQTT_USER     = os.environ.get("MQTT_USER")
+MQTT_PASSWORD = os.environ.get("MQTT_PASS")
+MQTT_USE_TLS  = os.environ.get("MQTT_USE_TLS", "false").lower() == "true"

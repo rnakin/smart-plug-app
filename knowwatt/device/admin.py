@@ -1,5 +1,11 @@
 from django.contrib import admin
-from .models import SmartPlug, ElectricalDevice, NFCTag, PlugSession
+from .models import SmartPlug, ElectricalDevice, NFCTag, PlugSession,ValidSmartPlug
+
+@admin.register(ValidSmartPlug)
+class ValidSmartPlugAdmin(admin.ModelAdmin):
+    list_display = ('plug_code', 'registered_at', 'blacklist')
+    list_filter = ('blacklist',)
+    search_fields = ('plug_code',)
 
 @admin.register(SmartPlug)
 class SmartPlugAdmin(admin.ModelAdmin):

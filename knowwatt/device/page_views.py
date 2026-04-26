@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import SmartPlug, ElectricalDevice, NFCTag
+from .models import SmartPlug, ElectricalDevice, NFCTag, ValidSmartPlug
 from .forms import SmartPlugForm, SmartPlugEditForm, ElectricalDeviceForm
 from house.models import House, HouseMember
 
@@ -37,6 +37,10 @@ def plug_create(request, house_pk):
 
         if SmartPlug.objects.filter(plug_code=plug_code).exists():
             messages.error(request, f'Plug code "{plug_code}" is already registered.')
+            return redirect('page-house-detail', pk=house_pk)
+
+        if not ValidSmartPlug.objects.filter(plug_code__iexact=plug_code).exists():
+            messages.error(request, f'Invalid plug code: "{plug_code}". Please use a genuine KnowWatt plug.')
             return redirect('page-house-detail', pk=house_pk)
 
         plug = SmartPlug(
