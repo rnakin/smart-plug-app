@@ -589,34 +589,33 @@
   <!-- Global Escalation JS — connects to house WS on every page -->
   <script>
   (function() {
-    // Only run if user is logged in and has an active house
     {% if active_house %}
-    const HOUSE_ID = '{{ active_house.id }}';
-    const CSRF_TOKEN = '{{ csrf_token }}';
-    let _escModalSessionId = null;
-    let _escAudioCtx = null;
-    let _escBeepInterval = null;
+    window.HOUSE_ID = '{{ active_house.id }}';
+    window.CSRF_TOKEN = '{{ csrf_token }}';
+    window._escModalSessionId = null;
+    window._escAudioCtx = null;
+    window._escBeepInterval = null;
 
-    function _beep(freq, dur, vol) {
+    window._escBeep = function(freq, dur, vol) {
       try {
-        if (!_escAudioCtx) _escAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = _escAudioCtx.createOscillator(), g = _escAudioCtx.createGain();
-        osc.connect(g); g.connect(_escAudioCtx.destination);
+        if (!window._escAudioCtx) window._escAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = window._escAudioCtx.createOscillator(), g = window._escAudioCtx.createGain();
+        osc.connect(g); g.connect(window._escAudioCtx.destination);
         osc.frequency.value = freq; osc.type = 'sine';
-        g.gain.setValueAtTime(vol, _escAudioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, _escAudioCtx.currentTime + dur);
-        osc.start(); osc.stop(_escAudioCtx.currentTime + dur);
+        g.gain.setValueAtTime(vol, window._escAudioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, window._escAudioCtx.currentTime + dur);
+        osc.start(); osc.stop(window._escAudioCtx.currentTime + dur);
       } catch(e) {}
-    }
-    function _startAlertSound() {
-      _stopAlertSound();
-      _beep(880, 0.2, 0.3); setTimeout(() => _beep(1100, 0.2, 0.3), 260);
-      _escBeepInterval = setInterval(() => { _beep(880, 0.2, 0.3); setTimeout(() => _beep(1100, 0.2, 0.3), 260); }, 3500);
-    }
-    function _stopAlertSound() { if (_escBeepInterval) { clearInterval(_escBeepInterval); _escBeepInterval = null; } }
+    };
+    window._startAlertSound = function() {
+      window._stopAlertSound();
+      window._escBeep(880, 0.2, 0.3); setTimeout(() => window._escBeep(1100, 0.2, 0.3), 260);
+      window._escBeepInterval = setInterval(() => { window._escBeep(880, 0.2, 0.3); setTimeout(() => window._escBeep(1100, 0.2, 0.3), 260); }, 3500);
+    };
+    window._stopAlertSound = function() { if (window._escBeepInterval) { clearInterval(window._escBeepInterval); window._escBeepInterval = null; } };
 
-    function openEscModal(data, level) {
-      _escModalSessionId = data.session_id;
+    window.openEscModal = function(data, level) {
+      window._escModalSessionId = data.session_id;
       const deviceName = data.device_name || 'Device';
       const plugName   = data.plug_name   || 'Plug';
       const badgeEl = document.getElementById('esc-modal-badge');
@@ -632,83 +631,58 @@
         badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(77,159,255,0.15);color:#4d9fff;';
         msgEl.innerHTML = `<strong>${deviceName}</strong> has been on for <strong>${data.notify_minutes} minutes</strong>. Are you still using it?`;
         cutEl.style.display = 'none';
-        footerEl.innerHTML = `<button onclick="escModalRespond('reset')" class="btn btn-primary" style="flex:1;font-weight:700;">✅ Yes, still using it</button><button onclick="escModalRespond('cutoff')" class="btn" style="flex:1;color:#f87171;border-color:rgba(255,77,106,0.3);background:rgba(255,77,106,0.06);font-weight:700;">🔌 No, turn it off</button>`;
+        footerEl.innerHTML = `<button onclick="window.escModalRespond('reset')" class="btn btn-primary" style="flex:1;font-weight:700;">✅ Yes, still using it</button><button onclick="window.escModalRespond('cutoff')" class="btn" style="flex:1;color:#f87171;border-color:rgba(255,77,106,0.3);background:rgba(255,77,106,0.06);font-weight:700;">🔌 No, turn it off</button>`;
       } else if (level === 'alert') {
         badgeEl.innerHTML = '⚠️ ALERT';
         badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(255,170,58,0.15);color:#ffaa3a;';
         msgEl.innerHTML = `<strong>${deviceName}</strong> has been running for <strong>${data.alert_minutes} minutes</strong> — no response to the reminder. Is anyone using it?`;
         cutEl.style.display = 'none';
-        footerEl.innerHTML = `<button onclick="escModalRespond('reset')" class="btn btn-primary" style="flex:1;font-weight:700;">✅ Yes, still using it</button><button onclick="escModalRespond('cutoff')" class="btn" style="flex:1;color:#f87171;border-color:rgba(255,77,106,0.3);background:rgba(255,77,106,0.06);font-weight:700;">🔌 No, turn it off</button>`;
+        footerEl.innerHTML = `<button onclick="window.escModalRespond('reset')" class="btn btn-primary" style="flex:1;font-weight:700;">✅ Yes, still using it</button><button onclick="window.escModalRespond('cutoff')" class="btn" style="flex:1;color:#f87171;border-color:rgba(255,77,106,0.3);background:rgba(255,77,106,0.06);font-weight:700;">🔌 No, turn it off</button>`;
       } else {
         badgeEl.innerHTML = '⚡ AUTO CUTOFF';
         badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(255,77,106,0.15);color:#f87171;';
         msgEl.innerHTML = `<strong>${deviceName}</strong> was automatically turned off after ${data.cutoff_minutes} minutes with no response.`;
         cutEl.style.display = 'block';
-        footerEl.innerHTML = `<button onclick="closeEscModal()" class="btn" style="flex:1;font-weight:700;">Dismiss</button>`;
+        footerEl.innerHTML = `<button onclick="window.closeEscModal()" class="btn" style="flex:1;font-weight:700;">Dismiss</button>`;
       }
-
       document.getElementById('escalation-modal').showModal();
-    }
+    };
 
     window.closeEscModal = function() {
       document.getElementById('escalation-modal').close();
-      _escModalSessionId = null;
+      window._escModalSessionId = null;
     };
 
     window.escModalRespond = async function(action) {
-      if (!_escModalSessionId) return;
-      const sid = _escModalSessionId;
+      if (!window._escModalSessionId) return;
+      const sid = window._escModalSessionId;
       const footer = document.getElementById('esc-modal-footer');
       if (footer) footer.querySelectorAll('button').forEach(b => b.disabled = true);
       try {
-        await fetch(`/api/houses/${HOUSE_ID}/sessions/${sid}/respond/`, {
+        await fetch(`/api/houses/${window.HOUSE_ID}/sessions/${sid}/respond/`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN },
           body: JSON.stringify({ action }),
         });
-        closeEscModal();
+        window.closeEscModal();
       } catch(e) {
         if (footer) footer.querySelectorAll('button').forEach(b => b.disabled = false);
       }
     };
 
-    // House WebSocket — available on ALL pages
-    const houseWs = new WebSocket(`ws://${location.host}/ws/house/${HOUSE_ID}/`);
-
+    const houseWs = new WebSocket(`ws://${location.host}/ws/house/${window.HOUSE_ID}/`);
     houseWs.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
-
-        // Forward to page-specific handler if exists
         if (typeof window.handleHouseEvent === 'function') window.handleHouseEvent(data);
-
-        // ── Escalation events — always show modal ──────────
-        if (data.event === 'escalation_notify') {
-          openEscModal(data, 'notify');
-          return;
-        }
-        if (data.event === 'escalation_alert') {
-          openEscModal(data, 'alert');
-          _startAlertSound();
-          return;
-        }
-        if (data.event === 'escalation_cutoff') {
-          _stopAlertSound();
-          if (_escModalSessionId === data.session_id) openEscModal(data, 'cutoff');
-          else openEscModal(data, 'cutoff');
-          return;
-        }
-        if (data.event === 'session_ended') {
-          _stopAlertSound();
-          if (_escModalSessionId === data.session_id) closeEscModal();
-          return;
-        }
+        if (data.event === 'escalation_notify') { window.openEscModal(data, 'notify'); return; }
+        if (data.event === 'escalation_alert') { window.openEscModal(data, 'alert'); window._startAlertSound(); return; }
+        if (data.event === 'escalation_cutoff') { window._stopAlertSound(); window.openEscModal(data, 'cutoff'); return; }
+        if (data.event === 'session_ended') { window._stopAlertSound(); if (window._escModalSessionId === data.session_id) window.closeEscModal(); return; }
       } catch(err) { console.warn('[House WS] parse error', err); }
     };
-
     houseWs.onerror = (e) => console.warn('[House WS] error', e);
     houseWs.onclose = () => setTimeout(() => location.reload(), 6000);
-
     {% endif %}
   })();
   </script>

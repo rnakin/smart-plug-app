@@ -979,126 +979,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll(`.notif-card[data-session-id="${sessionId}"]`).forEach(c => c.remove());
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  // ESCALATION MODAL
-  // ══════════════════════════════════════════════════════════════════
-  let _escModalSessionId = null;
-  let _escModalOntimeInterval = null;
-
-  function openEscModal(data, level) {
-    _escModalSessionId = data.session_id;
-    const deviceName = data.device_name || 'Device';
-    const plugName   = data.plug_name   || 'Plug';
-
-    const badgeEl = document.getElementById('esc-modal-badge');
-    const msgEl   = document.getElementById('esc-modal-msg');
-    const cutEl   = document.getElementById('esc-modal-cutoff-strip');
-    const footerEl = document.getElementById('esc-modal-footer');
-    const ontimeEl = document.getElementById('esc-modal-ontime');
-
-    document.getElementById('esc-modal-device').textContent = deviceName;
-    document.getElementById('esc-modal-plug').textContent   = plugName;
-
-    if (level === 'notify') {
-      badgeEl.innerHTML = '⏱ REMINDER';
-      badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(77,159,255,0.15);color:#4d9fff;';
-      msgEl.innerHTML = `<strong>${deviceName}</strong> has been on for <strong>${data.notify_minutes} minutes</strong>. Are you still using it?`;
-      cutEl.style.display = 'none';
-      footerEl.innerHTML = `
-        <button onclick="escModalRespond('reset')" class="btn btn-primary" style="flex:1;font-weight:700;">✅ Yes, still using it</button>
-        <button onclick="escModalRespond('cutoff')" class="btn" style="flex:1;color:#f87171;border-color:rgba(255,77,106,0.3);background:rgba(255,77,106,0.06);font-weight:700;">🔌 No, turn it off</button>`;
-    } else if (level === 'alert') {
-      badgeEl.innerHTML = '⚠️ ALERT';
-      badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(255,170,58,0.15);color:#ffaa3a;';
-      msgEl.innerHTML = `<strong>${deviceName}</strong> has been running for <strong>${data.alert_minutes} minutes</strong> — no response to the reminder. Is anyone using it?`;
-      cutEl.style.display = 'none';
-      footerEl.innerHTML = `
-        <button onclick="escModalRespond('reset')" class="btn btn-primary" style="flex:1;font-weight:700;">✅ Yes, still using it</button>
-        <button onclick="escModalRespond('cutoff')" class="btn" style="flex:1;color:#f87171;border-color:rgba(255,77,106,0.3);background:rgba(255,77,106,0.06);font-weight:700;">🔌 No, turn it off</button>`;
-    } else {
-      // cutoff — already happened
-      badgeEl.innerHTML = '⚡ AUTO CUTOFF';
-      badgeEl.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;margin-bottom:8px;background:rgba(255,77,106,0.15);color:#f87171;';
-      msgEl.innerHTML = `<strong>${deviceName}</strong> was automatically turned off after ${data.cutoff_minutes} minutes with no response.`;
-      cutEl.style.display = 'block';
-      footerEl.innerHTML = `<button onclick="closeEscModal()" class="btn" style="flex:1;font-weight:700;">Dismiss</button>`;
-    }
-
-    // Live on-time counter inside modal
-    if (_escModalOntimeInterval) clearInterval(_escModalOntimeInterval);
-    const plugId = document.querySelector(`.plug-item[data-session-id="${data.session_id}"]`)?.dataset?.plugId;
-    function refreshOntime() {
-      if (!plugId) { ontimeEl.textContent = '—'; return; }
-      const sec = getRelayElapsedMin(plugId) * 60;
-      ontimeEl.textContent = fmtDuration(sec);
-    }
-    refreshOntime();
-    _escModalOntimeInterval = setInterval(refreshOntime, 1000);
-
-    document.getElementById('escalation-modal').showModal();
-  }
-
-  function closeEscModal() {
-    if (_escModalOntimeInterval) { clearInterval(_escModalOntimeInterval); _escModalOntimeInterval = null; }
-    document.getElementById('escalation-modal').close();
-    _escModalSessionId = null;
-  }
-
-  async function escModalRespond(action) {
-    if (!_escModalSessionId) return;
-    const sid = _escModalSessionId;
-    document.getElementById('esc-modal-footer').querySelectorAll('button').forEach(b => b.disabled = true);
-    try {
-      const res = await fetch(`/api/houses/{{ active_house.id }}/sessions/${sid}/respond/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-        body: JSON.stringify({ action }),
-      });
-      closeEscModal();
-      if (action === 'cutoff') {
-        clearTimerAttrsBySession(sid);
-        removeNotifCard(sid);
-        addNotifCard('cutoff', '—', '—', 'Plug turned off by user.', sid);
-      }
-    } catch(e) {
-      document.getElementById('esc-modal-footer').querySelectorAll('button').forEach(b => b.disabled = false);
-    }
-  }
-
-  // ── Sound ─────────────────────────────────────────────────────────
-  let _escAudioCtx = null, _escBeepInterval = null;
-  function _beep(freq, dur, vol) {
-    try {
-      if (!_escAudioCtx) _escAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = _escAudioCtx.createOscillator(), g = _escAudioCtx.createGain();
-      osc.connect(g); g.connect(_escAudioCtx.destination);
-      osc.frequency.value = freq; osc.type = 'sine';
-      g.gain.setValueAtTime(vol, _escAudioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, _escAudioCtx.currentTime + dur);
-      osc.start(); osc.stop(_escAudioCtx.currentTime + dur);
-    } catch(e) {}
-  }
-  function _startAlertSound() {
-    _stopAlertSound();
-    _beep(880, 0.2, 0.3); setTimeout(() => _beep(1100, 0.2, 0.3), 260);
-    _escBeepInterval = setInterval(() => { _beep(880, 0.2, 0.3); setTimeout(() => _beep(1100, 0.2, 0.3), 260); }, 3500);
-  }
-  function _stopAlertSound() { if (_escBeepInterval) { clearInterval(_escBeepInterval); _escBeepInterval = null; } }
-
-  // ── Timer attr helpers ────────────────────────────────────────────
-  function clearTimerAttrs(item) {
-    const plugId = item.dataset.plugId;
-    if (plugId) clearRelayTracking(plugId);
-    ['sessionId','sessionStarted','notifyMin','alertMin','cutoffMin'].forEach(k => delete item.dataset[k]);
-    item.dataset.relayOn = '0';
-    const t = item.querySelector('.session-timer');
-    if (t) { t.style.display = 'none'; t.innerHTML = ''; }
-  }
-  function clearTimerAttrsBySession(sessionId) {
-    const item = document.querySelector(`.plug-item[data-session-id="${sessionId}"]`);
-    if (item) clearTimerAttrs(item);
-  }
-
   // ── Timer attr helpers ────────────────────────────────────────────
   function clearTimerAttrs(item) {
     const plugId = item.dataset.plugId;
@@ -1155,18 +1035,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.event === 'escalation_alert') {
       addNotifCard('alert', data.device_name, data.plug_name,
         `Running for ${data.alert_minutes} min — no response to reminder.`, data.session_id);
-      if (typeof _startAlertSound === 'function') _startAlertSound();
+      if (typeof window._startAlertSound === 'function') window._startAlertSound();
       return;
     }
     if (data.event === 'escalation_cutoff') {
-      if (typeof _stopAlertSound === 'function') _stopAlertSound();
+      if (typeof window._stopAlertSound === 'function') window._stopAlertSound();
       addNotifCard('cutoff', data.device_name, data.plug_name,
         `Auto cutoff after ${data.cutoff_minutes} min.`, data.session_id);
       clearTimerAttrsBySession(data.session_id);
       return;
     }
     if (data.event === 'session_ended') {
-      if (typeof _stopAlertSound === 'function') _stopAlertSound();
+      if (typeof window._stopAlertSound === 'function') window._stopAlertSound();
       clearTimerAttrsBySession(data.session_id);
       removeNotifCard(data.session_id);
       return;

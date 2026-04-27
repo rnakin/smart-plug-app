@@ -169,8 +169,27 @@ def _handle_cutoff(session, house_id: str):
     """Auto power-off: fire MQTT, end session, broadcast cutoff."""
     from alert.engine import execute_auto_off, end_session, broadcast_session_ended
 
-    execute_auto_off(session.plug)
-    end_session(session)
+    print(f"[ESCALATION] _handle_cutoff starting for session {session.id}")
+    plug_code = session.plug.plug_code
+    print(f"[ESCALATION] Plug code: {plug_code}")
+
+    try:
+        execute_auto_off(session.plug)
+        print(f"[ESCALATION] execute_auto_off returned successfully")
+    except Exception as e:
+        print(f"[ESCALATION] execute_auto_off FAILED: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+    try:
+        end_session(session)
+        print(f"[ESCALATION] end_session returned successfully")
+    except Exception as e:
+        print(f"[ESCALATION] end_session FAILED: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
     device_name = session.device.name if session.device else ''
     broadcast_session_ended(

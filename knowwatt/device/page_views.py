@@ -1,6 +1,7 @@
 import json
 import logging
 import threading
+import ssl
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -29,6 +30,7 @@ def _mqtt_relay_async(plug_code, action):
                 port=settings.MQTT_PORT,
                 auth=auth,
                 qos=1,
+                tls={'tls_version': ssl.PROTOCOL_TLS_CLIENT} if getattr(settings, 'MQTT_USE_TLS', True) else None,
             )
         except Exception as e:
             logger.error(f"MQTT relay failed for {plug_code}: {e}")
