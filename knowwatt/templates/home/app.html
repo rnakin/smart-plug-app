@@ -298,10 +298,42 @@
       </div>
     </div>
 
-    <div style="padding: 0 24px;">
+    <div style="padding: 0 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
       <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; min-height: 400px;">
         <div style="margin-bottom: 20px; font-weight: 700;">Energy Trends</div>
         <div style="padding:16px; height:260px;"><canvas id="energy-chart"></canvas></div>
+      </div>
+      
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; min-height: 400px; display: flex; flex-direction: column;">
+        <div style="margin-bottom: 20px; font-weight: 700;">Device Usage (This Month)</div>
+        {% if device_ranking %}
+        <div style="display: flex; align-items: center; gap: 20px; flex: 1;">
+          <div style="position: relative; width: 200px; height: 200px; flex-shrink: 0;">
+            <canvas id="device-donut-chart"></canvas>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
+              <div style="font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 600; color: var(--text);">{{ device_ranking_total }}</div>
+              <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px;">kWh</div>
+            </div>
+          </div>
+          <div style="flex: 1; overflow-y: auto; max-height: 280px;">
+            {% for d in device_ranking %}
+            <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border);">
+              <div style="width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;" class="legend-color-{{ forloop.counter0 }}"></div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ d.name }}</div>
+              </div>
+              <div style="text-align: right; flex-shrink: 0;">
+                <div style="font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text);">{{ d.kwh }}</div>
+                <div style="font-size: 10px; color: var(--text-muted);">{{ d.pct }}%</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <a href="{% url 'page-device-ranking' house_pk=active_house.pk %}" style="margin-top: 16px; padding: 10px; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; text-align: center; text-decoration: none; font-size: 12px; font-weight: 600; transition: all .15s;">View Full Ranking</a>
+        {% else %}
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px;">No device data yet</div>
+        {% endif %}
       </div>
     </div>
   </main>
@@ -732,6 +764,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+
+    const deviceRankingData = {{ device_ranking_json|safe }};
+    if (deviceRankingData.length > 0) {
+      const COLORS = [
+        'rgba(0, 217, 139, 0.85)',
+        'rgba(77, 159, 255, 0.85)',
+        'rgba(255, 170, 58, 0.85)',
+        'rgba(255, 77, 106, 0.85)',
+        'rgba(168, 85, 247, 0.85)',
+        'rgba(236, 72, 153, 0.85)',
+        'rgba(34, 211, 238, 0.85)',
+        'rgba(250, 204, 21, 0.85)',
+      ];
+      
+      const donutCtx = document.getElementById('device-donut-chart').getContext('2d');
+      new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: deviceRankingData.map(d => d.name),
+          datasets: [{
+            data: deviceRankingData.map(d => d.kwh),
+            backgroundColor: COLORS.slice(0, deviceRankingData.length),
+            borderWidth: 0,
+            hoverOffset: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          cutout: '65%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.label}: ${ctx.parsed} kWh (${deviceRankingData[ctx.dataIndex].pct}%)`
+              }
+            }
+          }
+        }
+      });
+      
+      document.querySelectorAll('[class^="legend-color-"]').forEach((el, i) => {
+        el.style.background = COLORS[i % COLORS.length];
+      });
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
       initPlugSockets();

@@ -8,6 +8,7 @@ from .models import House, HouseMember, Room, Invite, generate_join_code
 from .forms import HouseForm, HouseMemberInviteForm, HouseMemberRoleForm
 from device.models import SmartPlug, ElectricalDevice
 from energy.models import EnergyReading
+import json
 from django.db.models import Sum, Avg, Max
 from django.db.models.functions import TruncDate
 from datetime import date, timedelta
@@ -183,6 +184,26 @@ def house_detail(request, pk):
     members = house.members.all().select_related('user')
     devices = house.devices.all()
 
+    # Device ranking for doughnut chart (this month)
+    month_start = today.replace(day=1)
+    device_ranking_raw = list(
+        EnergyReading.objects
+        .filter(plug__house=house, device__isnull=False, recorded_at__date__gte=month_start)
+        .values('device__id', 'device__name')
+        .annotate(total_kwh=Sum('energy_kwh'))
+        .order_by('-total_kwh')
+    )
+    grand_total = sum(row['total_kwh'] or 0 for row in device_ranking_raw)
+    device_ranking = [
+        {
+            'name': row['device__name'],
+            'kwh': round(row['total_kwh'] or 0, 3),
+            'pct': round((row['total_kwh'] or 0) / grand_total * 100, 1) if grand_total else 0,
+        }
+        for row in device_ranking_raw
+    ]
+    device_ranking_json = json.dumps(device_ranking)
+
     return render(request, 'home/app.html', {
         'active_house': house,
         'user_houses': user_houses,
@@ -195,6 +216,9 @@ def house_detail(request, pk):
         'members': members,
         'chart_data': chart_data_fmt,
         'devices': devices,
+        'device_ranking': device_ranking,
+        'device_ranking_json': device_ranking_json,
+        'device_ranking_total': round(grand_total, 3),
     })
 
 
