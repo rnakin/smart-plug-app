@@ -87,7 +87,7 @@
         </div>
         <h1 class="auth-headline">Email verified!</h1>
         <p class="auth-subhead">{{ message }}</p>
-        <a href="/login/" class="btn-primary">Sign In</a>
+        <a href="/auth/login/" class="btn-primary">Sign In</a>
       </div>
     {% elif error %}
       <!-- Error state -->
@@ -101,7 +101,7 @@
         </div>
         <h1 class="auth-headline">Verification failed</h1>
         <p class="auth-subhead">{{ error }}</p>
-        <a href="/login/" class="btn-primary">Back to Sign In</a>
+        <a href="/auth/login/" class="btn-primary">Back to Sign In</a>
       </div>
     {% else %}
       <!-- Loading state -->

@@ -604,7 +604,7 @@ class NFCTagRegisterView(APIView):
                 MQTT_PORT = int(os.environ.get('MQTT_PORT', 8883))
                 MQTT_USER = os.environ.get('MQTT_USER', '')
                 MQTT_PASS = os.environ.get('MQTT_PASS', '')
-                MQTT_USE_TLS = os.environ.get('MQTT_USE_TLS', 'true').lower() == 'true'
+                MQTT_USE_TLS = os.environ.get('MQTT_USE_TLS', 'false').lower() == 'true'
                 
                 try:
                     mqtt_client = mqtt.Client(client_id='django_nfc_register')

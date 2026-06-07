@@ -174,7 +174,7 @@ LOGOUT_REDIRECT_URL = '/auth/login/'
 import os
 
 MQTT_BROKER   = os.environ.get("MQTT_HOST")
-MQTT_PORT     = int(os.environ.get("MQTT_PORT", 8883))
+MQTT_PORT     = int(os.environ.get("MQTT_PORT", 1883))
 MQTT_USER     = os.environ.get("MQTT_USER")
 MQTT_PASSWORD = os.environ.get("MQTT_PASS")
 MQTT_USE_TLS  = os.environ.get("MQTT_USE_TLS", "false").lower() == "true"

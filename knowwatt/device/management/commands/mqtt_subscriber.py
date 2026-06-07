@@ -47,8 +47,10 @@ class Command(BaseCommand):
         self.client.on_disconnect = self.on_disconnect
         self.client.on_message    = self.on_message
 
-        self.client.username_pw_set(settings.MQTT_USER, settings.MQTT_PASSWORD)
-        self.client.tls_set(tls_version=ssl.PROTOCOL_TLS_CLIENT)
+        if getattr(settings, 'MQTT_USER', None) and getattr(settings, 'MQTT_PASSWORD', None):
+            self.client.username_pw_set(settings.MQTT_USER, settings.MQTT_PASSWORD)
+        if getattr(settings, 'MQTT_USE_TLS', False):
+            self.client.tls_set(tls_version=ssl.PROTOCOL_TLS_CLIENT)
         self.client.reconnect_delay_set(min_delay=1, max_delay=30)
 
         try:
