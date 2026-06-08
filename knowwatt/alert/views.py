@@ -3,6 +3,8 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 from .models import AlertRule, AlertEvent, UserPushToken
 from device.models import SmartPlug, ElectricalDevice
@@ -474,17 +476,24 @@ class SessionRespondView(APIView):
         elif action == 'cutoff':
             cancel_escalation(str(session.id))
             execute_auto_off(plug)
-            end_session(session)
-            broadcast_session_ended(
-                house_id=str(house_id),
-                session_id=str(session.id),
-                plug_id=str(plug.id),
-                plug_name=plug.name,
-                device_name=session.device.name if session.device else '',
-                reason='user_cutoff',
+
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"plug_{plug.plug_code}",
+                {
+                    "type": "plug.update",
+                    "plug_code": plug.plug_code,
+                    "plug_id": str(plug.id),
+                    "online_status": plug.online_status,
+                    "is_on": False,
+                    "relay_state": False,
+                    "current_device_name": session.device.name if session.device else None,
+                    "current_power_w": plug.current_power_w,
+                }
             )
+
             return Response({
-                'message': 'Plug turned off and session ended',
+                'message': 'Plug turned off',
                 'session_id': str(session.id),
             })
 

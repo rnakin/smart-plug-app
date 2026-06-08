@@ -13,6 +13,8 @@ from house.models import House, HouseMember
 from energy.models import EnergyReading
 
 from django.http import JsonResponse
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 logger = logging.getLogger(__name__)
 
@@ -680,6 +682,27 @@ def publish_command(request, plug_id):
             qos=1
         )
         print(f"MQTT published: {topic} → {payload}")
+        
+        plug = SmartPlug.objects.filter(plug_code=plug_id).first()
+        if plug:
+            is_on = action == 'turn_on'
+            plug.is_on = is_on
+            plug.relay_state = is_on
+            plug.save(update_fields=['is_on', 'relay_state'])
+            
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'plug_{plug_id}',
+                {
+                    'type': 'plug.update',
+                    'plug_id': str(plug.id),
+                    'plug_code': plug_id,
+                    'is_on': is_on,
+                    'relay_state': is_on,
+                    'current_power_w': plug.current_power_w,
+                }
+            )
+            print(f"Optimistic WS broadcast: plug_{plug_id} → {action}")
     except Exception as e:
         print(f"MQTT PUBLISH FAILED: {e}")
         import traceback

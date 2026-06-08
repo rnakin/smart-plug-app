@@ -166,8 +166,10 @@ def _fire_stage(plug_id: str, session_id: str, house_id: str, level: str):
 
 
 def _handle_cutoff(session, house_id: str):
-    """Auto power-off: fire MQTT, end session, broadcast cutoff."""
-    from alert.engine import execute_auto_off, end_session, broadcast_session_ended
+    """Auto power-off: fire MQTT, cancel timers, broadcast cutoff."""
+    from alert.engine import execute_auto_off
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
 
     print(f"[ESCALATION] _handle_cutoff starting for session {session.id}")
     plug_code = session.plug.plug_code
@@ -182,29 +184,25 @@ def _handle_cutoff(session, house_id: str):
         traceback.print_exc()
         raise
 
-    try:
-        end_session(session)
-        print(f"[ESCALATION] end_session returned successfully")
-    except Exception as e:
-        print(f"[ESCALATION] end_session FAILED: {e}")
-        import traceback
-        traceback.print_exc()
-        raise
-
     device_name = session.device.name if session.device else ''
-    broadcast_session_ended(
-        house_id=house_id,
-        session_id=str(session.id),
-        plug_id=str(session.plug.id),
-        plug_name=session.plug.name,
-        device_name=device_name,
-        reason='auto_cutoff',
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"plug_{plug_code}",
+        {
+            "type": "plug.update",
+            "plug_code": plug_code,
+            "plug_id": str(session.plug.id),
+            "online_status": session.plug.online_status,
+            "is_on": False,
+            "relay_state": False,
+            "current_device_name": device_name,
+            "current_power_w": session.plug.current_power_w,
+        }
     )
 
-    # Also send a calm cutoff broadcast so the frontend can update the modal
     _broadcast_escalation(house_id, session, 'cutoff')
 
-    # Cancel any remaining notify/alert timers (they shouldn't exist, but be safe)
     cancel_escalation(str(session.id))
 
     print(f"[ESCALATION] Auto cutoff executed for session {session.id}")

@@ -9,6 +9,8 @@ from django.contrib import messages
 from .models import SmartPlug, ElectricalDevice, NFCTag, ValidSmartPlug
 from .forms import SmartPlugForm, SmartPlugEditForm, ElectricalDeviceForm
 from house.models import House, HouseMember
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 logger = logging.getLogger(__name__)
 
@@ -153,13 +155,41 @@ def plug_control(request, house_pk, plug_pk):
     action = request.POST.get('action')
     if action == 'on':
         plug.is_on = True
-        plug.save()
+        plug.relay_state = True
+        plug.save(update_fields=['is_on', 'relay_state'])
         _mqtt_relay_async(plug.plug_code, 'on')
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'plug_{plug.plug_code}',
+            {
+                'type': 'plug.update',
+                'plug_id': str(plug.id),
+                'plug_code': plug.plug_code,
+                'is_on': True,
+                'relay_state': True,
+                'current_power_w': plug.current_power_w,
+            }
+        )
         messages.success(request, f'{plug.name} turned ON.')
     elif action == 'off':
         plug.is_on = False
-        plug.save()
+        plug.relay_state = False
+        plug.save(update_fields=['is_on', 'relay_state'])
         _mqtt_relay_async(plug.plug_code, 'off')
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'plug_{plug.plug_code}',
+            {
+                'type': 'plug.update',
+                'plug_id': str(plug.id),
+                'plug_code': plug.plug_code,
+                'is_on': False,
+                'relay_state': False,
+                'current_power_w': plug.current_power_w,
+            }
+        )
         messages.success(request, f'{plug.name} turned OFF.')
     return redirect('page-house-detail', pk=house_pk)
 

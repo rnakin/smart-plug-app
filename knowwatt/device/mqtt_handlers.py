@@ -89,6 +89,18 @@ def handle_nfc_event(client, topic, payload_dict):
                     "online_status": "online",
                 }
             )
+            async_to_sync(channel_layer.group_send)(
+                f"plug_{plug_id}",
+                {
+                    "type": "plug.update",
+                    "plug_code": plug_id,
+                    "plug_id": str(plug.id),
+                    "online_status": "online",
+                    "is_on": plug.is_on,
+                    "current_device_name": None,
+                    "current_power_w": plug.current_power_w,
+                }
+            )
             return
 
         # ── nfc scan ────────────────────────────────────────────
@@ -146,6 +158,18 @@ def handle_nfc_event(client, topic, payload_dict):
                     "online_status": "online",
                 }
             )
+            async_to_sync(channel_layer.group_send)(
+                f"plug_{plug_id}",
+                {
+                    "type": "plug.update",
+                    "plug_code": plug_id,
+                    "plug_id": str(plug.id),
+                    "online_status": "online",
+                    "is_on": plug.is_on,
+                    "current_device_name": nfc_tag.device.name,
+                    "current_power_w": plug.current_power_w,
+                }
+            )
         else:
             print(f"NFC unknown: {uid} on plug {plug_id}")
             async_to_sync(channel_layer.group_send)(
@@ -158,6 +182,18 @@ def handle_nfc_event(client, topic, payload_dict):
                     "plug_name": plug.name,
                     "uid": uid,
                     "online_status": "online",
+                }
+            )
+            async_to_sync(channel_layer.group_send)(
+                f"plug_{plug_id}",
+                {
+                    "type": "plug.update",
+                    "plug_code": plug_id,
+                    "plug_id": str(plug.id),
+                    "online_status": "online",
+                    "is_on": plug.is_on,
+                    "current_device_name": None,
+                    "current_power_w": plug.current_power_w,
                 }
             )
 

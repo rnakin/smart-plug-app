@@ -670,19 +670,29 @@
       }
     };
 
-    const houseWs = new WebSocket(`ws://${location.host}/ws/house/${window.HOUSE_ID}/`);
-    houseWs.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (typeof window.handleHouseEvent === 'function') window.handleHouseEvent(data);
-        if (data.event === 'escalation_notify') { window.openEscModal(data, 'notify'); return; }
-        if (data.event === 'escalation_alert') { window.openEscModal(data, 'alert'); window._startAlertSound(); return; }
-        if (data.event === 'escalation_cutoff') { window._stopAlertSound(); window.openEscModal(data, 'cutoff'); return; }
-        if (data.event === 'session_ended') { window._stopAlertSound(); if (window._escModalSessionId === data.session_id) window.closeEscModal(); return; }
-      } catch(err) { console.warn('[House WS] parse error', err); }
-    };
-    houseWs.onerror = (e) => console.warn('[House WS] error', e);
-    houseWs.onclose = () => setTimeout(() => location.reload(), 6000);
+    function connectHouseWs() {
+      const houseWs = new WebSocket(`ws://${location.host}/ws/house/${window.HOUSE_ID}/`);
+      let reconnectDelay = 1000;
+
+      houseWs.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (typeof window.handleHouseEvent === 'function') window.handleHouseEvent(data);
+          if (data.event === 'escalation_notify') { window.openEscModal(data, 'notify'); return; }
+          if (data.event === 'escalation_alert') { window.openEscModal(data, 'alert'); window._startAlertSound(); return; }
+          if (data.event === 'escalation_cutoff') { window._stopAlertSound(); window.openEscModal(data, 'cutoff'); return; }
+          if (data.event === 'session_ended') { window._stopAlertSound(); if (window._escModalSessionId === data.session_id) window.closeEscModal(); return; }
+        } catch(err) { console.warn('[House WS] parse error', err); }
+      };
+      houseWs.onerror = (e) => console.warn('[House WS] error', e);
+      houseWs.onopen = () => { reconnectDelay = 1000; };
+      houseWs.onclose = () => {
+        console.log('[House WS] closed, reconnecting in ' + reconnectDelay + 'ms');
+        setTimeout(connectHouseWs, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+      };
+    }
+    connectHouseWs();
     {% endif %}
   })();
   </script>

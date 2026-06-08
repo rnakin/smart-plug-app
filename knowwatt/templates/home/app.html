@@ -585,21 +585,32 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPlugId = null;
     const plugSockets = {};
 
+    function connectPlugSocket(plugCode) {
+        const ws = new WebSocket(`ws://${location.host}/ws/plug/${plugCode}/`);
+        let reconnectDelay = 1000;
+        plugSockets[plugCode] = ws;
+
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            updatePlugItem(data);
+            updateModalIfOpen(data);
+        };
+
+        ws.onerror = (e) => console.warn(`WS error for plug ${plugCode}`, e);
+        ws.onopen = () => { reconnectDelay = 1000; };
+        ws.onclose = () => {
+            console.log(`[Plug WS] ${plugCode} closed, reconnecting in ${reconnectDelay}ms`);
+            delete plugSockets[plugCode];
+            setTimeout(() => connectPlugSocket(plugCode), reconnectDelay);
+            reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+        };
+    }
+
     function initPlugSockets() {
         document.querySelectorAll('.plug-item').forEach(item => {
             const plugCode = item.dataset.plugCode;
             if (!plugCode || plugSockets[plugCode]) return;
-
-            const ws = new WebSocket(`ws://${location.host}/ws/plug/${plugCode}/`);
-            plugSockets[plugCode] = ws;
-
-            ws.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                updatePlugItem(data);
-                updateModalIfOpen(data);
-            };
-
-            ws.onerror = (e) => console.warn(`WS error for plug ${plugCode}`, e);
+            connectPlugSocket(plugCode);
         });
     }
 
@@ -608,14 +619,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!item) return;
 
     const dot = item.querySelector('.status-dot');
-    if (dot) dot.className = `status-dot ${data.online_status === 'online' ? 'status-online' : 'status-offline'}`;
+    if (dot && data.online_status !== undefined) {
+        dot.className = `status-dot ${data.online_status === 'online' ? 'status-online' : 'status-offline'}`;
+    }
 
     const powerDiv = item.querySelector('.power-status');
     if (powerDiv) {
-        if (data.is_on) {
+        const isOn = data.is_on !== undefined ? data.is_on : item.dataset.relayOn === '1';
+        const watts = data.watts !== undefined ? data.watts : (data.current_power_w ?? 0);
+        
+        if (isOn) {
             powerDiv.innerHTML = `<div style="display:flex;flex-direction:column;align-items:flex-end;">
                 <span style="color:var(--accent);font-weight:800;font-size:11px;letter-spacing:1px;">ON</span>
-                <span style="color:var(--accent);font-size:10px;font-family:'DM Mono',monospace;">${data.current_power_w ?? 0}W</span>
+                <span style="color:var(--accent);font-size:10px;font-family:'DM Mono',monospace;">${watts}W</span>
             </div>`;
         } else {
             powerDiv.innerHTML = `<span style="color:var(--text-muted);font-weight:800;font-size:11px;letter-spacing:1px;">OFF</span>`;
@@ -625,12 +641,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Track relay state changes for timer ───────────────────────
     const plugId    = item.dataset.plugId;
     const wasOn     = item.dataset.relayOn === '1';
-    const isNowOn   = !!data.is_on;
+    const isNowOn   = data.is_on !== undefined ? !!data.is_on : wasOn;
     if (plugId && wasOn !== isNowOn) {
       if (isNowOn) relayTurnedOn(plugId, item.dataset.sessionStarted);
       else         relayTurnedOff(plugId);
     }
-    item.dataset.relayOn = isNowOn ? '1' : '0';
+    if (data.is_on !== undefined) {
+        item.dataset.relayOn = isNowOn ? '1' : '0';
+    }
 
     const deviceName = item.querySelector('.device-name');
     if (deviceName && data.current_device_name !== undefined)
@@ -642,39 +660,44 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.getElementById('plug-detail-modal');
         if (!modal.open) return;
 
-        // status badge
-        const badge = document.getElementById('modal-plug-status-badge');
-        badge.textContent = data.online_status.toUpperCase();
-        if (data.online_status === 'online') {
-            badge.style.background = 'var(--accent-dim)';
-            badge.style.color = 'var(--accent)';
-        } else {
-            badge.style.background = 'rgba(255,255,255,0.05)';
-            badge.style.color = 'var(--text-muted)';
+        // status badge - only update if online_status is present
+        if (data.online_status !== undefined) {
+            const badge = document.getElementById('modal-plug-status-badge');
+            badge.textContent = data.online_status.toUpperCase();
+            if (data.online_status === 'online') {
+                badge.style.background = 'var(--accent-dim)';
+                badge.style.color = 'var(--accent)';
+            } else {
+                badge.style.background = 'rgba(255,255,255,0.05)';
+                badge.style.color = 'var(--text-muted)';
+            }
         }
 
-
-        // power button
-        const pwrBtn = document.getElementById('modal-plug-power-btn');
-        const actionInput = document.getElementById('modal-plug-action-val');
-        if (data.is_on) {
-            pwrBtn.textContent = 'TURN OFF';
-            pwrBtn.style.background = 'rgba(248, 113, 113, 0.1)';
-            pwrBtn.style.color = '#f87171';
-            pwrBtn.style.borderColor = 'rgba(248, 113, 113, 0.2)';
-            pwrBtn.disabled = false;
-            actionInput.value = 'off';
-        } else {
-            pwrBtn.textContent = 'TURN ON';
-            pwrBtn.style.background = 'var(--accent)';
-            pwrBtn.style.color = 'black';
-            pwrBtn.style.borderColor = 'transparent';
-             pwrBtn.disabled = false;
-            actionInput.value = 'on';
+        // power button - only update if is_on is present
+        if (data.is_on !== undefined) {
+            const pwrBtn = document.getElementById('modal-plug-power-btn');
+            const actionInput = document.getElementById('modal-plug-action-val');
+            if (data.is_on) {
+                pwrBtn.textContent = 'TURN OFF';
+                pwrBtn.style.background = 'rgba(248, 113, 113, 0.1)';
+                pwrBtn.style.color = '#f87171';
+                pwrBtn.style.borderColor = 'rgba(248, 113, 113, 0.2)';
+                pwrBtn.disabled = false;
+                actionInput.value = 'off';
+            } else {
+                pwrBtn.textContent = 'TURN ON';
+                pwrBtn.style.background = 'var(--accent)';
+                pwrBtn.style.color = 'black';
+                pwrBtn.style.borderColor = 'transparent';
+                pwrBtn.disabled = false;
+                actionInput.value = 'on';
+            }
         }
 
-        // device name
-        document.getElementById('modal-device-name').textContent = `Device: ${data.current_device_name || 'None'}`;
+        // device name - only update if current_device_name is present
+        if (data.current_device_name !== undefined) {
+            document.getElementById('modal-device-name').textContent = `Device: ${data.current_device_name || 'None'}`;
+        }
     }
 
     function openPlugModal(id, name, roomName, code, isOn, status, isVerified, deviceName) {

@@ -230,6 +230,19 @@ class Command(BaseCommand):
             else:
                 aware_dt = timezone.now()
 
+            # Handle pzem_read_fail as 0 values
+            if 'error' in data:
+                watts = 0.0
+                volts = 0.0
+                amps = 0.0
+                kwh = 0.0
+                self.stdout.write(f"PZEM read error for {plug_id}, treating as 0W")
+            else:
+                watts = data.get('watts', 0.0)
+                volts = data.get('volts', 0.0)
+                amps = data.get('amps', 0.0)
+                kwh = data.get('kwh', 0.0)
+
             # Link to active session if one exists
             active_session = PlugSession.objects.filter(
                 plug=plug, is_active=True
@@ -239,13 +252,13 @@ class Command(BaseCommand):
                 plug=plug,
                 session=active_session,
                 device=active_session.device if active_session else None,
-                power_w=data.get('watts', 0.0),
-                energy_kwh=data.get('kwh', 0.0),
-                voltage_v=data.get('volts', 0.0),
-                current_a=data.get('amps', 0.0),
+                power_w=watts,
+                energy_kwh=kwh,
+                voltage_v=volts,
+                current_a=amps,
                 recorded_at=aware_dt,
             )
-            self.stdout.write(f"Successfully created EnergyReading for {plug_id}: {data.get('watts', 0.0)}W")
+            self.stdout.write(f"Successfully created EnergyReading for {plug_id}: {watts}W")
 
             # Broadcast via WebSockets
             try:
@@ -257,9 +270,9 @@ class Command(BaseCommand):
                         "event": "energy",
                         "plug_code": plug_id,
                         "plug_id": str(plug.id),
-                        "watts": data.get('watts', 0.0),
-                        "volts": data.get('volts', 0.0),
-                        "amps": data.get('amps', 0.0),
+                        "watts": watts,
+                        "volts": volts,
+                        "amps": amps,
                         "timestamp": aware_dt.isoformat(),
                     }
                 )
